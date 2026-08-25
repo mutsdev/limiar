@@ -1,0 +1,1645 @@
+================================================================================
+CONTAGEM DE FLUXO DE PESSOAS NAS ENTRADAS DA FACULDADE
+Documento de Projeto - Versao 1 (Escopo "UNO")
+================================================================================
+
+Data............: 25/08/2026
+Autor...........: Joao Pedro
+Status..........: Proposta para aprovacao
+Escopo deste doc: Versao minima viavel ("Uno"). A versao avancada com
+                  re-identificacao de pessoas ("Ferrari") esta descrita
+                  apenas na secao 12, como evolucao futura.
+
+
+================================================================================
+INDICE
+================================================================================
+
+  1. OBJETIVO E ESCOPO
+  2. O QUE ESTA DENTRO E O QUE ESTA FORA
+  3. VISAO GERAL DA ARQUITETURA
+  4. DECISOES TECNOLOGICAS E JUSTIFICATIVAS
+  5. BIBLIOTECAS: O QUE CADA UMA FAZ E QUAIS FUNCOES USAMOS
+  6. ESTRUTURA DE PASTAS DO PROJETO
+  7. MODELO DE DADOS
+  8. O ALGORITMO DE CONTAGEM, EM DETALHE
+  9. ESTRATEGIA DE SIMULACAO (DESENVOLVER SEM HARDWARE)
+ 10. PASSO A PASSO COMPLETO (MICRO-ETAPAS)
+ 11. PLANO DE AVALIACAO E METRICAS
+ 12. EVOLUCAO FUTURA (A "FERRARI")
+ 13. RISCOS E MITIGACOES
+ 14. CRONOGRAMA SUGERIDO
+ 15. ENTREGAVEIS PARA A DISCIPLINA
+ 16. PRIVACIDADE E LGPD
+ 17. GLOSSARIO
+
+
+================================================================================
+1. OBJETIVO E ESCOPO
+================================================================================
+
+1.1 OBJETIVO PRINCIPAL
+
+Construir um sistema que, a partir de imagens de camera posicionadas nas duas
+entradas da faculdade, produza diariamente a resposta para:
+
+    "Quantas pessoas ENTRARAM e quantas SAIRAM por cada entrada, em cada
+     dia, e em cada faixa de horario?"
+
+1.2 OBJETIVOS SECUNDARIOS (derivados de graca do principal)
+
+  - Ocupacao estimada do predio ao longo do dia (entradas acumuladas menos
+    saidas acumuladas).
+  - Identificacao dos horarios de pico por entrada.
+  - Comparacao de volume entre as duas entradas.
+  - Serie historica por dia da semana.
+
+1.3 CRITERIO DE SUCESSO
+
+O sistema e considerado aprovado se, em um trecho de video de 15 minutos com
+contagem manual de referencia (ground truth), o erro absoluto percentual da
+contagem automatica for MENOR OU IGUAL A 10%, em cada direcao, e o sistema
+rodar de ponta a ponta sem intervencao manual.
+
+Esse numero e a meta declarada. Trabalhos da area costumam ficar bem melhores
+que isso em condicoes favoraveis, mas 10% e um piso honesto e defensavel para
+entrada de predio com contraluz e fluxo em grupo.
+
+
+================================================================================
+2. O QUE ESTA DENTRO E O QUE ESTA FORA
+================================================================================
+
+2.1 DENTRO DO ESCOPO "UNO"
+
+  [X] Deteccao de pessoas no video
+  [X] Rastreamento de cada pessoa enquanto ela esta no quadro (ID local,
+      valido apenas dentro daquela camera e daquela passagem)
+  [X] Linha virtual de contagem, com direcao (entrada vs saida)
+  [X] Registro de cada evento de cruzamento em banco de dados
+  [X] Servico HTTP que recebe os eventos e grava (microsservico)
+  [X] Agente que processa o video e envia os eventos ao servico
+  [X] Simulador que permite desenvolver tudo sem camera fisica
+  [X] Painel web com os numeros e graficos
+  [X] Rotina de avaliacao contra contagem manual
+  [X] Testes automatizados
+
+2.2 FORA DO ESCOPO "UNO" (fica para a fase 2)
+
+  [ ] Identificar que a pessoa X que entrou e a mesma pessoa X que saiu
+  [ ] Ligar entrada da porta A com saida da porta B (matriz origem-destino)
+  [ ] Tempo de permanencia individual
+  [ ] Reconhecimento facial (permanece fora PARA SEMPRE, por decisao de
+      projeto - ver secao 16)
+  [ ] Distincao entre aluno, professor e visitante
+  [ ] Hardware definitivo instalado no local
+
+2.3 POR QUE COMECAR PELO "UNO"
+
+  a) O "Uno" ja atende o objetivo declarado do trabalho. Se a fase 2 falhar,
+     o projeto continua entregavel.
+  b) Toda a infraestrutura do "Uno" (ingestao, deteccao, rastreio, banco,
+     servico, painel) e reaproveitada integralmente na fase 2. Nada e jogado
+     fora.
+  c) A fase 2 precisa de metricas de referencia para provar que melhorou
+     alguma coisa. Essas metricas so existem depois do "Uno".
+
+
+================================================================================
+3. VISAO GERAL DA ARQUITETURA
+================================================================================
+
+3.1 DIAGRAMA (fluxo de dados)
+
+    +---------------------+       +---------------------+
+    |  FONTE DE VIDEO A   |       |  FONTE DE VIDEO B   |
+    |  (arquivo / webcam  |       |  (arquivo / webcam  |
+    |   / RTSP / MJPEG)   |       |   / RTSP / MJPEG)   |
+    +----------+----------+       +----------+----------+
+               |                              |
+               v                              v
+    +---------------------+       +---------------------+
+    |   AGENTE DE BORDA   |       |   AGENTE DE BORDA   |
+    |  (processo Python)  |       |  (processo Python)  |
+    |                     |       |                     |
+    |  1. le frame        |       |         idem        |
+    |  2. detecta pessoas |       |                     |
+    |  3. rastreia        |       |                     |
+    |  4. testa a linha   |       |                     |
+    |  5. gera EVENTO     |       |                     |
+    +----------+----------+       +----------+----------+
+               |                              |
+               |     HTTP POST /eventos       |
+               +--------------+---------------+
+                              v
+                  +-----------------------+
+                  |   SERVICO CENTRAL     |
+                  |      (FastAPI)        |
+                  |                       |
+                  |  - valida o evento    |
+                  |  - deduplica          |
+                  |  - grava              |
+                  |  - expoe consultas    |
+                  +-----------+-----------+
+                              |
+                              v
+                  +-----------------------+
+                  |   BANCO (SQLite)      |
+                  |   eventos, cameras,   |
+                  |   sessoes             |
+                  +-----------+-----------+
+                              |
+                              v
+                  +-----------------------+
+                  |   PAINEL (Streamlit)  |
+                  |   graficos e tabelas  |
+                  +-----------------------+
+
+3.2 POR QUE SEPARAR AGENTE E SERVICO
+
+Esta separacao NAO e complexidade gratuita. Ela existe por tres razoes
+concretas:
+
+  a) NO MUNDO REAL, ELES VAO ESTAR EM MAQUINAS DIFERENTES. A camera fica na
+     porta, o banco fica num servidor. Se o codigo nascer monolitico, a
+     migracao vai exigir reescrita.
+
+  b) PERMITE DESENVOLVER EM PARALELO. Com o contrato HTTP definido, e possivel
+     construir o painel usando eventos sinteticos, sem que a parte de visao
+     computacional esteja pronta.
+
+  c) TOLERANCIA A FALHA. Se o servico cair, o agente guarda os eventos em fila
+     local e reenvia depois. Se o agente cair, o servico e o historico
+     continuam de pe.
+
+3.3 O CONTRATO ENTRE OS DOIS
+
+O agente envia um JSON. Este e o contrato, e ele nao muda entre a versao com
+video de arquivo e a versao com camera real:
+
+    POST /eventos
+    {
+      "camera_id":       "entrada_a",
+      "instante":        "2026-08-25T14:03:22.481-03:00",
+      "direcao":         "ENTRADA",         // ou "SAIDA"
+      "track_id_local":  1742,
+      "confianca":       0.91,
+      "id_evento":       "entrada_a-1742-ENTRADA-1756141402"
+    }
+
+O campo "id_evento" e deterministico e serve para deduplicacao: se o agente
+reenviar o mesmo evento por causa de uma falha de rede, o servico ignora a
+repeticao (idempotencia). Sem isso, uma reconexao vira contagem inflada.
+
+
+================================================================================
+4. DECISOES TECNOLOGICAS E JUSTIFICATIVAS
+================================================================================
+
+Esta secao responde "por que este algoritmo e nao o outro". E a parte que mais
+interessa numa defesa de projeto.
+
+
+4.1 DETECCAO DE PESSOAS
+------------------------
+
+ESCOLHA: YOLO11 (variantes n / s), via biblioteca `ultralytics`.
+
+ALTERNATIVAS CONSIDERADAS E POR QUE FORAM DESCARTADAS:
+
+  * SUBTRACAO DE FUNDO (MOG2 / KNN, do OpenCV)
+    Como funciona: modela o pixel de fundo estatisticamente e marca como
+    "objeto" o que se desvia.
+    Por que NAO: e o metodo classico e o mais barato, mas quebra exatamente
+    nas condicoes da nossa porta - mudanca de iluminacao ao longo do dia,
+    sombra que vira "pessoa", porta de vidro com reflexo, e principalmente
+    GRUPOS: tres pessoas juntas viram um unico blob e contam como um. Nao ha
+    como corrigir isso sem reintroduzir um detector.
+    Vale como: baseline de comparacao no relatorio. Implementar em 30 linhas e
+    mostrar que erra 40% e um otimo argumento a favor do YOLO.
+
+  * HOG + SVM (detector de pedestres classico do OpenCV)
+    Por que NAO: precisa da pessoa inteira, de pe, sem oclusao, em pose
+    frontal. Lento em CPU e com muitos falsos positivos. Foi superado por
+    redes convolucionais ha mais de uma decada.
+
+  * HAAR CASCADES
+    Por que NAO: feito para rostos frontais, nao para corpo. Fragil a angulo e
+    iluminacao. Fora de questao.
+
+  * FASTER R-CNN / detectores de dois estagios
+    Por que NAO: precisao um pouco maior, custo computacional varias vezes
+    maior. Inviavel em tempo real em CPU ou em hardware modesto. O ganho de
+    precisao nao compensa para o nosso caso.
+
+  * RT-DETR (detector transformer)
+    Por que NAO AGORA: bom modelo, disponivel inclusive no `ultralytics`, mas
+    mais pesado e com menos material de apoio. Fica como experimento opcional
+    de comparacao.
+
+POR QUE YOLO11 GANHA AQUI:
+
+  - Detector de estagio unico: uma passada da rede por frame, rapido.
+  - Ja vem treinado no COCO, que tem a classe "person" (indice 0). Nao
+    precisamos treinar nada - o que economiza semanas e a necessidade de
+    rotular milhares de imagens.
+  - Robusto a oclusao parcial, angulo e iluminacao - as tres coisas que
+    derrubam os metodos classicos.
+  - Escala por tamanho: comecamos no `n` (nano, ~2.6M parametros, roda em CPU)
+    e trocamos para `s` ou `m` se a precisao exigir. Trocar o modelo e mudar
+    uma string no arquivo de configuracao.
+  - A biblioteca `ultralytics` ja integra deteccao + rastreamento, o que elimina
+    a cola manual entre os dois.
+
+Observacao honesta: usar peso pre-treinado no COCO significa que o modelo foi
+treinado em fotos genericas da internet, nao em cameras de portaria em
+contraluz. Se a precisao medida ficar ruim, o caminho e (a) trocar para modelo
+maior, (b) ajustar o angulo da camera, (c) em ultimo caso, fine-tuning com
+imagens rotuladas do proprio local. A ordem importa: (a) e (b) sao baratos.
+
+
+4.2 RASTREAMENTO (TRACKING)
+----------------------------
+
+ESCOLHA: ByteTrack.
+
+O PROBLEMA QUE O RASTREADOR RESOLVE: o detector nao tem memoria. Ele olha o
+frame 100 e diz "ha tres pessoas aqui"; olha o frame 101 e diz "ha tres pessoas
+aqui". Ele nao sabe que sao as MESMAS tres. Sem rastreador, nao existe o
+conceito de "cruzou a linha" - so existe "havia gente perto da linha". O
+rastreador liga as deteccoes entre frames e da a cada pessoa um numero (track
+id) enquanto ela estiver visivel.
+
+ALTERNATIVAS CONSIDERADAS:
+
+  * SORT (Simple Online Realtime Tracking)
+    Como funciona: filtro de Kalman preve onde a caixa estara no proximo
+    frame; algoritmo hungaro casa previsao com deteccao usando IoU.
+    Por que NAO: descarta toda deteccao com confianca baixa. Quando a pessoa e
+    parcialmente ocluida (o que acontece o tempo todo numa porta movimentada),
+    a confianca cai, a deteccao e descartada, o track morre - e quando a pessoa
+    reaparece ela ganha um ID novo. Isso gera contagem dupla.
+
+  * DEEPSORT
+    Como funciona: SORT + descritor de aparencia por rede neural para
+    reassociar tracks perdidos.
+    Por que NAO: custo extra de uma rede de aparencia rodando por pessoa por
+    frame, e foi superado em precisao pelo ByteTrack, que consegue resultado
+    melhor SEM rede de aparencia. Pagar mais por menos nao se justifica.
+
+  * BOT-SORT
+    Como funciona: ByteTrack + compensacao de movimento de camera + aparencia
+    opcional.
+    Por que NAO AGORA: e provavelmente a escolha da FASE 2, porque o modulo de
+    aparencia dele e exatamente o que a re-identificacao precisa. Para o "Uno",
+    a aparencia e peso morto: camera fixa nao precisa de compensacao de
+    movimento, e nao queremos identidade global ainda.
+
+POR QUE BYTETRACK GANHA AQUI:
+
+  A sacada do ByteTrack e a associacao em DUAS PASSADAS:
+    passada 1: casa os tracks existentes com as deteccoes de ALTA confianca.
+    passada 2: pega os tracks que sobraram sem par e tenta casa-los com as
+               deteccoes de BAIXA confianca, que os outros algoritmos jogam
+               fora.
+  O raciocinio: uma deteccao de baixa confianca geralmente NAO e ruido - e uma
+  pessoa ocluida. Se ha um track ativo esperando exatamente naquela posicao, a
+  evidencia fraca vira suficiente.
+
+  Resultado pratico para nos: menos tracks quebrados durante oclusao, e
+  portanto menos contagem duplicada. E o modo de falha mais comum e mais caro
+  do nosso sistema.
+
+  Alem disso: nao usa rede neural de aparencia, entao e essencialmente de graca
+  em cima do custo da deteccao.
+
+IMPORTANTE SOBRE O ESCOPO DO ID: o track id do ByteTrack e LOCAL e EFEMERO.
+Vale dentro de uma camera, durante uma passagem. Se a pessoa sair do quadro e
+voltar, ganha id novo. Isso e esperado e nao e problema no "Uno" - so importa
+que ela nao cruze a linha duas vezes.
+
+
+4.3 CONTAGEM: LINHA VIRTUAL vs ZONA
+------------------------------------
+
+ESCOLHA: linha virtual com teste de sinal do produto vetorial.
+
+ALTERNATIVAS:
+
+  * CONTAR DETECCOES POR FRAME
+    Por que NAO: nao da direcao nenhuma, e conta a mesma pessoa em todos os
+    frames em que ela aparece. Nao resolve o problema.
+
+  * DUAS ZONAS (dentro / fora) E TRANSICAO ENTRE ELAS
+    Como funciona: define poligono "fora" e poligono "dentro"; conta quando o
+    track migra de um para o outro.
+    Vantagem: mais tolerante a jitter que a linha.
+    Por que NAO: exige desenhar e calibrar dois poligonos por camera, e a
+    logica de transicao tem mais estados. A linha com histerese (secao 8)
+    resolve o mesmo problema com menos configuracao.
+
+POR QUE A LINHA GANHA: e geometricamente exata, deterministica, testavel em
+teste unitario sem video nenhum (basta uma lista de coordenadas), e a direcao
+sai naturalmente do sinal do produto vetorial. E o componente mais critico do
+sistema e tambem o mais facil de provar correto.
+
+
+4.4 BANCO DE DADOS
+-------------------
+
+ESCOLHA: SQLite.
+
+Justificativa por volume: uma faculdade com 3.000 passagens/dia gera ~1 milhao
+de eventos em um ano. Cada evento tem ~100 bytes. Isso e ~100 MB. SQLite lida
+com isso sem esforco.
+
+Por que NAO PostgreSQL/MySQL: exigiriam servidor, usuario, senha, backup,
+container. Custo operacional real, beneficio zero nesta escala. O professor vai
+querer rodar o projeto na maquina dele - com SQLite e um arquivo.
+
+Por que NAO um arquivo CSV: sem indice, sem tipo, sem transacao, sem
+concorrencia. Dois agentes escrevendo ao mesmo tempo corrompem.
+
+Ponto de atencao: SQLite tem escrita serializada. Com dois agentes escrevendo
+simultaneamente pode haver contencao. Mitigacao: quem escreve no banco e SO o
+servico central (um processo), nao os agentes. Alem disso, ligar o modo WAL
+(`PRAGMA journal_mode=WAL`), que permite leitura concorrente com escrita.
+
+REGRA DE OURO: o arquivo do banco NUNCA fica dentro de pasta sincronizada por
+OneDrive/Dropbox/Google Drive. Sincronizacao concorrente corrompe SQLite. O
+banco vai em pasta local, e o caminho vem de variavel de ambiente.
+
+
+4.5 O SERVICO HTTP
+-------------------
+
+ESCOLHA: FastAPI + Uvicorn.
+
+Por que NAO Flask: funciona, mas exigiria validacao manual do JSON e
+documentacao manual da API.
+
+Por que FastAPI:
+  - Validacao automatica do corpo da requisicao via Pydantic. Se o agente
+    mandar "direcao": "ENTRDA" (com erro de digitacao), a API rejeita com 422 e
+    mensagem clara, em vez de gravar lixo no banco.
+  - Documentacao interativa automatica em /docs (Swagger UI). Isso e um
+    entregavel de apresentacao: abre o navegador e demonstra a API ao vivo para
+    o professor, sem slide.
+  - Suporte nativo a async, util quando os dois agentes enviarem ao mesmo
+    tempo.
+
+Por que NAO gRPC / filas (RabbitMQ, Kafka): projetados para volume que nao
+teremos. Dois agentes e algumas centenas de eventos por hora nao justificam a
+infraestrutura.
+
+
+4.6 O PAINEL
+-------------
+
+ESCOLHA: Streamlit.
+
+Por que: transforma script Python em pagina web sem HTML, CSS ou JavaScript. O
+painel inteiro sai em ~150 linhas. O valor do trabalho aparece na visualizacao,
+e nao queremos gastar duas semanas em front-end.
+
+Por que NAO Dash/Plotly Dash: mais poderoso, mais verboso, curva mais ingreme.
+Por que NAO React/HTML puro: fora do escopo da disciplina e do prazo.
+
+
+4.7 GERENCIAMENTO DE AMBIENTE
+------------------------------
+
+ESCOLHA: `uv`.
+
+Por que NAO `pip` + `requirements.txt` puro: nao trava versoes transitivas. O
+projeto funciona na sua maquina e quebra na do professor. Problema classico e
+totalmente evitavel.
+Por que NAO Anaconda: pesado, lento, e mistura dois gerenciadores de pacote.
+Por que `uv`: gera `uv.lock` com o grafo inteiro de dependencias travado.
+`uv sync` reproduz o ambiente identico em qualquer maquina. E ordens de
+grandeza mais rapido que pip.
+
+Alternativa aceitavel se houver restricao institucional: `python -m venv` +
+`pip freeze > requirements.txt`. Funciona, so e mais fragil.
+
+
+4.8 VERSAO DO PYTHON
+---------------------
+
+ESCOLHA: Python 3.11.
+
+Por que nao a mais nova: PyTorch, `ultralytics` e OpenCV costumam demorar a
+publicar wheels para versoes recem-lancadas. Instalar em versao muito nova leva
+a compilar do zero ou a nao instalar. 3.11 e a faixa estavel e bem suportada.
+
+
+================================================================================
+5. BIBLIOTECAS: O QUE CADA UMA FAZ E QUAIS FUNCOES USAMOS
+================================================================================
+
+--------------------------------------------------------------------------------
+5.1  ultralytics
+--------------------------------------------------------------------------------
+PAPEL: deteccao de pessoas e rastreamento. E o coracao da visao computacional.
+
+O QUE FAZ: empacota os modelos YOLO (v8 ate 11), baixa os pesos pre-treinados
+automaticamente na primeira execucao, e integra os rastreadores ByteTrack e
+BoT-SORT.
+
+FUNCOES/OBJETOS QUE USAMOS:
+  YOLO("yolo11n.pt")
+      Carrega o modelo. Baixa o peso na primeira vez.
+  modelo.track(source=..., persist=True, tracker="bytetrack.yaml",
+               classes=[0], conf=0.3, iou=0.5, stream=True, verbose=False)
+      A chamada principal. Detecta E rastreia em uma linha.
+      - persist=True  : mantem o estado do rastreador entre chamadas. SEM ISSO
+                        o track id reinicia a cada frame e nada funciona.
+      - classes=[0]   : so a classe "person" do COCO. Ignora carro, mochila,
+                        cadeira. Reduz custo e falso positivo.
+      - conf=0.3      : limiar de confianca. Baixo de proposito - o ByteTrack
+                        sabe aproveitar deteccao fraca.
+      - stream=True   : devolve um gerador em vez de acumular tudo em memoria.
+                        OBRIGATORIO para video longo, senao estoura a RAM.
+      - verbose=False : silencia o log por frame.
+  resultado.boxes.id      -> tensor com os track ids
+  resultado.boxes.xyxy    -> coordenadas das caixas (x1,y1,x2,y2)
+  resultado.boxes.conf    -> confianca de cada deteccao
+  resultado.plot()        -> devolve o frame ja desenhado, util para debug
+
+--------------------------------------------------------------------------------
+5.2  opencv-python (cv2)
+--------------------------------------------------------------------------------
+PAPEL: entrada e saida de video, desenho, e leitura de stream de camera.
+
+FUNCOES QUE USAMOS:
+  cv2.VideoCapture(caminho_ou_url)
+      Abre arquivo de video, webcam (indice 0) ou stream RTSP/MJPEG. A MESMA
+      funcao serve para os tres - e por isso que o codigo do "Uno" vai
+      funcionar com a camera real sem alteracao.
+  cap.read()          -> (sucesso, frame)
+  cap.get(cv2.CAP_PROP_FPS)          -> taxa de quadros
+  cap.get(cv2.CAP_PROP_FRAME_COUNT)  -> total de frames (para barra de progresso)
+  cv2.line(), cv2.circle(), cv2.putText(), cv2.rectangle()
+      Desenho do overlay de depuracao: a linha de contagem, o ponto de
+      referencia de cada pessoa, o contador na tela.
+  cv2.VideoWriter(...)
+      Grava o video anotado. Esse arquivo e o entregavel visual da apresentacao.
+  cv2.imshow() / cv2.waitKey()
+      Janela de visualizacao ao vivo durante o desenvolvimento.
+  cv2.resize()
+      Reduz o frame antes da deteccao quando for preciso ganhar velocidade.
+
+--------------------------------------------------------------------------------
+5.3  supervision
+--------------------------------------------------------------------------------
+PAPEL: utilitarios de contagem e anotacao que evitam reescrever geometria.
+
+O QUE FAZ: biblioteca da Roboflow com estruturas prontas para deteccao, zonas,
+linhas e anotadores visuais.
+
+FUNCOES QUE USAMOS:
+  sv.Detections.from_ultralytics(resultado)
+      Converte a saida do YOLO num formato padronizado.
+  sv.LineZone(start=sv.Point(x1,y1), end=sv.Point(x2,y2))
+      A linha virtual. Mantem internamente `in_count` e `out_count`.
+  linha.trigger(detections)
+      Recebe as deteccoes do frame e atualiza os contadores, devolvendo quais
+      cruzaram para dentro e quais para fora.
+  sv.LineZoneAnnotator, sv.BoxAnnotator, sv.TraceAnnotator
+      Desenham a linha com os numeros, as caixas e o rastro de cada pessoa.
+
+NOTA DE PROJETO: vamos usar o `supervision` para prototipar rapido, MAS vamos
+implementar nossa propria logica de cruzamento (secao 8) em paralelo, por dois
+motivos: (a) precisamos de histerese e cooldown, que exigem controle fino;
+(b) implementar o algoritmo e conteudo do trabalho - entregar "chamei uma
+funcao pronta" enfraquece a defesa. O `supervision` vira referencia de
+comparacao: nossa implementacao deve bater com a dele nos casos simples.
+
+--------------------------------------------------------------------------------
+5.4  numpy
+--------------------------------------------------------------------------------
+PAPEL: matematica vetorial.
+USOS: produto vetorial para o lado da linha, distancias, media movel do ponto
+de referencia para suavizar tremulacao, operacoes sobre as caixas.
+FUNCOES: np.array, np.cross, np.linalg.norm, np.mean, np.sign.
+
+--------------------------------------------------------------------------------
+5.5  fastapi
+--------------------------------------------------------------------------------
+PAPEL: o microsservico que recebe os eventos.
+FUNCOES/OBJETOS:
+  FastAPI()                     -> a aplicacao
+  @app.post("/eventos")         -> endpoint de ingestao
+  @app.get("/contagem/diaria")  -> consulta agregada
+  @app.get("/saude")            -> healthcheck, usado pelo agente
+  HTTPException                 -> erros com status code correto
+  Depends                       -> injecao da conexao com o banco
+
+--------------------------------------------------------------------------------
+5.6  pydantic
+--------------------------------------------------------------------------------
+PAPEL: definir e validar o formato do evento. Vem junto com o FastAPI.
+USO: uma classe `EventoCruzamento(BaseModel)` com os campos tipados. O FastAPI
+valida automaticamente contra ela. Enum para `direcao` garante que so
+"ENTRADA" ou "SAIDA" entrem.
+
+--------------------------------------------------------------------------------
+5.7  uvicorn
+--------------------------------------------------------------------------------
+PAPEL: servidor ASGI que executa o FastAPI.
+USO: `uvicorn fluxo.servico.api:app --host 0.0.0.0 --port 8000`
+O `--host 0.0.0.0` importa: e o que permite que outra maquina (o agente na
+portaria) alcance o servico.
+
+--------------------------------------------------------------------------------
+5.8  httpx
+--------------------------------------------------------------------------------
+PAPEL: cliente HTTP usado pelo agente para enviar eventos, e pelos testes.
+Por que nao `requests`: httpx suporta async e e o cliente que o FastAPI usa nos
+proprios testes, o que evita duas dependencias parecidas.
+FUNCOES: httpx.post(url, json=..., timeout=...), httpx.Client com retry.
+
+--------------------------------------------------------------------------------
+5.9  sqlite3 (biblioteca padrao)
+--------------------------------------------------------------------------------
+PAPEL: acesso ao banco. Nao precisa instalar nada.
+FUNCOES: sqlite3.connect, conn.execute, conn.executemany, conn.commit,
+row_factory = sqlite3.Row (para acessar coluna por nome).
+PRAGMAS que vamos ligar:
+  PRAGMA journal_mode=WAL;   -- leitura concorrente com escrita
+  PRAGMA foreign_keys=ON;    -- integridade referencial de fato ativa
+
+--------------------------------------------------------------------------------
+5.10 pandas
+--------------------------------------------------------------------------------
+PAPEL: agregacao para a analise e o painel.
+FUNCOES: pd.read_sql_query, df.groupby, df.resample, df.pivot_table,
+pd.to_datetime, df.cumsum (para a curva de ocupacao acumulada).
+
+--------------------------------------------------------------------------------
+5.11 streamlit
+--------------------------------------------------------------------------------
+PAPEL: o painel web.
+FUNCOES: st.title, st.metric (os numerões de entrada/saida), st.line_chart,
+st.bar_chart, st.dataframe, st.date_input (filtro de periodo),
+st.selectbox (escolher a camera), st.cache_data (evita reconsultar o banco a
+cada interacao).
+
+--------------------------------------------------------------------------------
+5.12 pyyaml
+--------------------------------------------------------------------------------
+PAPEL: ler os arquivos de configuracao das cameras (posicao da linha, fonte,
+orientacao). Configuracao fora do codigo e o que permite recalibrar sem editar
+Python.
+
+--------------------------------------------------------------------------------
+5.13 pytest
+--------------------------------------------------------------------------------
+PAPEL: testes automatizados.
+FOCO DOS TESTES: a geometria da linha (sem video nenhum - so coordenadas), a
+deduplicacao de eventos no servico, as consultas de agregacao, e um teste de
+ponta a ponta com um clipe curto de video e resultado conhecido.
+FUNCOES: assert, @pytest.fixture, @pytest.mark.parametrize (essencial para
+testar dezenas de trajetorias de cruzamento de uma vez).
+
+--------------------------------------------------------------------------------
+5.14 python-dotenv
+--------------------------------------------------------------------------------
+PAPEL: ler o arquivo .env com caminho do banco e URL do servico, mantendo
+configuracao de ambiente fora do codigo e fora do git.
+
+--------------------------------------------------------------------------------
+5.15 ruff
+--------------------------------------------------------------------------------
+PAPEL: lint e formatacao. Mantem o codigo apresentavel sem discussao de estilo.
+
+--------------------------------------------------------------------------------
+5.16 tqdm
+--------------------------------------------------------------------------------
+PAPEL: barra de progresso ao processar video longo. Pequeno, mas evita a duvida
+de "travou ou esta rodando?" durante uma demonstracao.
+
+
+================================================================================
+6. ESTRUTURA DE PASTAS DO PROJETO
+================================================================================
+
+fluxo-faculdade/
+|
+|-- PROJETO.txt                  <- este documento
+|-- README.md                    <- como rodar, em 10 linhas
+|-- pyproject.toml               <- dependencias e metadados
+|-- uv.lock                      <- versoes travadas (versionado!)
+|-- .env.exemplo                 <- modelo de configuracao
+|-- .gitignore                   <- ignora dados/, .env, *.db, *.pt
+|
+|-- config/
+|   |-- cameras.yaml             <- uma entrada por camera: fonte, linha,
+|   |                               orientacao, nome
+|   `-- pipeline.yaml            <- modelo, limiares, cooldown, histerese
+|
+|-- src/fluxo/
+|   |-- __init__.py
+|   |-- config.py                <- carrega .env e YAML; TODO caminho absoluto
+|   |
+|   |-- dominio/
+|   |   |-- __init__.py
+|   |   `-- evento.py            <- o modelo Pydantic do evento; a unica
+|   |                               definicao, compartilhada por agente e
+|   |                               servico
+|   |
+|   |-- visao/
+|   |   |-- __init__.py
+|   |   |-- fonte.py             <- abstracao de fonte de video
+|   |   |-- detector.py          <- envolve o YOLO
+|   |   |-- rastreador.py        <- envolve o ByteTrack
+|   |   `-- anotador.py          <- overlay de depuracao
+|   |
+|   |-- contagem/
+|   |   |-- __init__.py
+|   |   |-- geometria.py         <- lado da linha, interseccao (funcoes puras)
+|   |   |-- linha.py             <- LinhaDeContagem com histerese e cooldown
+|   |   `-- trajetoria.py        <- historico de posicoes por track
+|   |
+|   |-- agente/
+|   |   |-- __init__.py
+|   |   |-- processador.py       <- o laco principal do agente
+|   |   |-- remetente.py         <- envio HTTP com retry
+|   |   `-- fila_local.py        <- buffer em disco quando o servico cai
+|   |
+|   |-- servico/
+|   |   |-- __init__.py
+|   |   |-- api.py               <- endpoints FastAPI
+|   |   `-- dependencias.py      <- conexao com o banco
+|   |
+|   |-- persistencia/
+|   |   |-- __init__.py
+|   |   |-- esquema.sql          <- DDL
+|   |   `-- repositorio.py       <- inserir_evento, consultar_diario, etc.
+|   |
+|   |-- analise/
+|   |   |-- __init__.py
+|   |   |-- consultas.py         <- agregacoes em pandas
+|   |   `-- painel.py            <- app Streamlit
+|   |
+|   `-- avaliacao/
+|       |-- __init__.py
+|       |-- ground_truth.py      <- carrega a contagem manual de referencia
+|       `-- metricas.py          <- erro absoluto, percentual, MAE por janela
+|
+|-- scripts/                     <- entrypoints finos: so argumentos e chamada
+|   |-- calibrar_linha.py        <- ferramenta de clique para desenhar a linha
+|   |-- processar_video.py       <- roda o agente sobre um arquivo
+|   |-- rodar_agente.py          <- roda o agente sobre camera ao vivo
+|   |-- rodar_servico.py         <- sobe a API
+|   |-- rodar_painel.py          <- sobe o Streamlit
+|   |-- simular_dia.py           <- gera eventos sinteticos de um dia inteiro
+|   `-- avaliar.py               <- compara contagem automatica x manual
+|
+|-- dados/                       <- NUNCA versionado
+|   |-- videos/                  <- videos de teste e gravacoes
+|   |-- ground_truth/            <- contagens manuais em CSV
+|   |-- saidas/                  <- videos anotados gerados
+|   `-- banco/                   <- fluxo.db (fora do OneDrive)
+|
+|-- docs/
+|   |-- arquitetura.md
+|   |-- calibracao.md            <- como posicionar camera e desenhar a linha
+|   `-- resultados.md            <- as medicoes, para o relatorio
+|
+`-- tests/
+    |-- test_geometria.py
+    |-- test_linha.py
+    |-- test_api.py
+    |-- test_repositorio.py
+    `-- test_ponta_a_ponta.py
+
+PRINCIPIOS DE ESTRUTURA (valem para todo o projeto):
+
+  1. Dependencia so aponta para baixo: dominio <- visao/contagem <- agente/
+     servico <- scripts. Nunca o contrario.
+  2. Nenhum caminho relativo, nenhum os.chdir(). Todo caminho sai de config.py,
+     absoluto. Caminho relativo quebra quando o script e chamado de outra pasta,
+     e o bug e dificil de achar.
+  3. Scripts sao finos. Logica mora no pacote, para poder ser testada.
+  4. `dados/` nunca entra no git - contem imagem de pessoas reais.
+
+
+================================================================================
+7. MODELO DE DADOS
+================================================================================
+
+-- Tabela de cameras: cadastro estatico
+CREATE TABLE camera (
+    id            TEXT PRIMARY KEY,     -- 'entrada_a', 'entrada_b'
+    nome          TEXT NOT NULL,        -- 'Entrada Principal'
+    local         TEXT,
+    ativa         INTEGER NOT NULL DEFAULT 1
+);
+
+-- Tabela central: um registro por cruzamento de linha
+CREATE TABLE evento (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_evento      TEXT NOT NULL UNIQUE,   -- chave de idempotencia
+    camera_id      TEXT NOT NULL REFERENCES camera(id),
+    instante       TEXT NOT NULL,          -- ISO-8601 com fuso
+    data_ref       TEXT NOT NULL,          -- 'YYYY-MM-DD', dia de operacao
+    direcao        TEXT NOT NULL CHECK (direcao IN ('ENTRADA','SAIDA')),
+    track_id_local INTEGER,
+    confianca      REAL,
+    origem         TEXT NOT NULL DEFAULT 'VISAO'
+                   CHECK (origem IN ('VISAO','SINTETICO','MANUAL')),
+    recebido_em    TEXT NOT NULL
+);
+
+CREATE INDEX idx_evento_data    ON evento(data_ref, camera_id);
+CREATE INDEX idx_evento_instante ON evento(instante);
+
+-- Metadados de cada execucao do agente: rastreabilidade do resultado
+CREATE TABLE execucao (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    camera_id     TEXT NOT NULL REFERENCES camera(id),
+    fonte         TEXT NOT NULL,      -- caminho do video ou URL do stream
+    modelo        TEXT NOT NULL,      -- 'yolo11n.pt'
+    rastreador    TEXT NOT NULL,      -- 'bytetrack'
+    conf_minima   REAL NOT NULL,
+    inicio        TEXT NOT NULL,
+    fim           TEXT,
+    frames        INTEGER,
+    eventos       INTEGER,
+    versao_codigo TEXT                -- hash do commit
+);
+
+NOTAS DE MODELAGEM:
+
+  * `id_evento` UNIQUE e o que garante idempotencia. O agente monta essa string
+    de forma deterministica; se reenviar, o INSERT falha por violacao de UNIQUE
+    e o servico responde 200 com "ja registrado". Sem isso, uma reconexao de
+    rede vira contagem inflada, e o erro seria silencioso.
+
+  * `data_ref` e separado de `instante` de proposito. O "dia" operacional pode
+    nao comecar a meia-noite. Guardar o dia de referencia calculado evita
+    reprocessar essa regra em toda consulta e evita que uma mudanca futura na
+    regra reescreva o historico.
+
+  * `origem` distingue evento real de evento sintetico. E o que permite
+    desenvolver o painel com dados falsos sem nunca confundi-los com dados
+    reais no relatorio. Toda consulta de resultado filtra origem='VISAO'.
+
+  * `execucao` guarda modelo, limiares e hash do codigo. E isso que torna a
+    medicao reprodutivel: seis semanas depois da a para saber com qual
+    configuracao aquele numero foi produzido.
+
+  * Nao existe nenhuma coluna que identifique pessoa. Por construcao.
+
+
+================================================================================
+8. O ALGORITMO DE CONTAGEM, EM DETALHE
+================================================================================
+
+Este e o nucleo do trabalho. Vale descrever com precisao.
+
+8.1 O PONTO DE REFERENCIA DA PESSOA
+
+A deteccao devolve uma caixa (x1,y1,x2,y2). Precisamos de UM ponto para dizer
+"a pessoa esta deste lado da linha".
+
+  * Centro da caixa: instavel. Sobe e desce conforme a pessoa levanta o braco
+    ou e parcialmente ocluida no topo.
+  * ESCOLHA: centro da BASE da caixa -> ((x1+x2)/2, y2).
+    Motivo: e o ponto onde a pessoa toca o chao. A linha de contagem esta
+    desenhada no chao. Usar o ponto do pe faz a geometria corresponder a
+    realidade fisica, e e muito menos sensivel a variacao da caixa.
+
+8.2 O TESTE DE LADO (produto vetorial)
+
+Dada a linha definida pelos pontos A e B, e um ponto P:
+
+    lado(P) = sinal( (Bx-Ax)*(Py-Ay) - (By-Ay)*(Px-Ax) )
+
+O resultado e +1, -1 ou 0. O sinal diz de que lado da reta o ponto esta. Qual
+sinal significa "dentro" e definido na configuracao da camera (campo
+`lado_dentro`), porque depende de como a camera esta montada.
+
+8.3 A DETECCAO DO CRUZAMENTO
+
+Para cada track id, guardamos um historico das ultimas N posicoes.
+
+    houve cruzamento  <=>  lado(P_anterior) != lado(P_atual)
+                           E ambos sao diferentes de zero
+                           E o segmento P_anterior->P_atual intersecta o
+                             SEGMENTO AB (nao a reta infinita)
+
+A terceira condicao e essencial: sem ela, alguem passando muito a esquerda da
+porta, fora da linha, seria contado.
+
+A direcao sai do sentido da troca:
+    de FORA para DENTRO -> ENTRADA
+    de DENTRO para FORA -> SAIDA
+
+8.4 OS TRES PROBLEMAS PRATICOS E SUAS SOLUCOES
+
+PROBLEMA 1 - TREMULACAO (jitter).
+A caixa oscila alguns pixels entre frames. Se a pessoa parar EM CIMA da linha,
+o lado alterna rapidamente e o contador dispara varias vezes.
+SOLUCAO A - suavizacao: usar a media movel das ultimas 3 posicoes do ponto de
+referencia, em vez da posicao crua.
+SOLUCAO B - histerese: exigir que a pessoa se afaste da linha por uma distancia
+minima (ex.: 15 pixels) antes de o cruzamento ser confirmado. Enquanto ela
+estiver na faixa morta em volta da linha, nada e contado.
+
+PROBLEMA 2 - CONTAGEM DUPLA DO MESMO TRACK.
+Mesmo com histerese, um track pode cruzar, voltar e cruzar de novo (pessoa que
+hesita na porta).
+SOLUCAO - cooldown por track: apos contar um cruzamento para o track T, ignorar
+novos cruzamentos do MESMO T por um intervalo (ex.: 1,5 s).
+NOTA: cruzamento em direcao OPOSTA dentro do cooldown deve ser tratado com
+cuidado - a pessoa que realmente entrou e saiu em 1 segundo e rara; a que
+hesitou e comum. Decisao: dentro do cooldown, ignorar tudo. Documentar como
+limitacao conhecida e quantificar na avaliacao.
+
+PROBLEMA 3 - TRACK QUE NASCE JA DO OUTRO LADO.
+Se a pessoa aparece pela primeira vez ja depois da linha (porque estava
+ocluida), nao ha estado anterior e o cruzamento e perdido.
+SOLUCAO - exigir idade minima do track: um track so e elegivel para contagem
+depois de ter sido visto em pelo menos K frames (ex.: 3). Isso tambem elimina
+falso positivo de deteccao instantanea.
+CONSEQUENCIA ACEITA: perdemos cruzamentos de pessoas que so aparecem por 2
+frames. Isso e um erro conhecido, e a avaliacao vai medi-lo.
+
+8.5 PSEUDOCODIGO
+
+    para cada frame do video:
+        deteccoes = detector.detectar(frame)          # YOLO, so classe pessoa
+        rastros   = rastreador.atualizar(deteccoes)   # ByteTrack
+
+        para cada rastro em rastros:
+            P = ponto_base(rastro.caixa)
+            trajetoria[rastro.id].adicionar(P)
+
+            se trajetoria[rastro.id].tamanho < IDADE_MINIMA:
+                continuar
+
+            se rastro.id em cooldown:
+                continuar
+
+            P_ant = trajetoria[rastro.id].suavizado(-2)
+            P_at  = trajetoria[rastro.id].suavizado(-1)
+
+            se distancia_ate_linha(P_at) < ZONA_MORTA:
+                continuar
+
+            se lado(P_ant) != lado(P_at) e segmentos_se_cruzam(P_ant,P_at,A,B):
+                direcao = ENTRADA se lado(P_at) == LADO_DENTRO senao SAIDA
+                emitir_evento(camera, agora, direcao, rastro.id, rastro.conf)
+                cooldown[rastro.id] = agora + COOLDOWN
+
+        remover das estruturas os tracks que sumiram ha mais de M frames
+
+8.6 POR QUE ESSE DESENHO E TESTAVEL
+
+`lado()`, `segmentos_se_cruzam()` e `distancia_ate_linha()` sao funcoes puras
+sobre coordenadas. Nao precisam de video, de GPU nem de modelo. Da para
+escrever 50 casos de teste parametrizados cobrindo cruzamento diagonal,
+tangente, sobre o vertice, fora do segmento, e rodar em milissegundos. O
+componente mais critico do sistema fica provado sem depender de nada pesado.
+
+
+================================================================================
+9. ESTRATEGIA DE SIMULACAO (DESENVOLVER SEM HARDWARE)
+================================================================================
+
+Nao temos camera instalada. Existem TRES niveis de simulacao, e vamos usar os
+tres, cada um resolvendo um problema diferente.
+
+9.1 NIVEL 1 - EVENTOS SINTETICOS (sem video nenhum)
+
+O QUE E: um script que gera eventos plausiveis direto no banco / na API.
+
+COMO: modelar as chegadas como processo de Poisson com taxa variavel ao longo
+do dia (picos as 7h30, 12h, 13h30, 18h30, 22h30). Gerar entradas e saidas de
+forma que o balanco diario feche em ~zero.
+
+PARA QUE SERVE: permite construir e demonstrar o SERVICO, o BANCO, as CONSULTAS
+e o PAINEL INTEIRO sem que uma unica linha de visao computacional exista. Se o
+YOLO atrasar, o resto do projeto nao para.
+
+BIBLIOTECAS: apenas `random`, `datetime` e `math` da biblioteca padrao. Nao
+precisa de nada externo. (Opcionalmente `numpy.random.poisson`.)
+
+MARCACAO OBRIGATORIA: todo evento gerado assim entra com origem='SINTETICO'.
+Nunca aparece em resultado de relatorio.
+
+9.2 NIVEL 2 - VIDEO PUBLICO PRE-GRAVADO
+
+O QUE E: baixar videos de datasets publicos de vigilancia e rodar o pipeline
+real sobre eles.
+
+FONTES A AVALIAR (verificar licenca de cada uma no momento do download - as
+condicoes mudaram nos ultimos anos):
+  - MOTChallenge (MOT17 / MOT20): sequencias de pedestres com anotacao de
+    referencia completa. E o padrao da area para avaliar rastreamento.
+  - PETS2009: dataset classico de videovigilancia.
+  - VIRAT: cenas de vigilancia externa.
+  - Videos de camera de seguranca com licenca livre em bancos de video
+    (verificar termos de uso caso a caso).
+
+PARA QUE SERVE: valida deteccao, rastreamento e cruzamento de linha com pessoas
+reais, sem depender de acesso ao predio. Com MOT17, ha anotacao de referencia,
+o que permite avaliacao objetiva.
+
+LIMITACAO: o angulo, a iluminacao e a densidade dessas cenas nao sao os da
+nossa porta. Serve para provar que o software funciona, nao para calibrar.
+
+9.3 NIVEL 3 - GRAVACAO PROPRIA (o mais valioso)
+
+O QUE E: gravar com celular, em tripe, na entrada real da faculdade, por 15-30
+minutos, em horario movimentado.
+
+PARA QUE SERVE: e o UNICO dado que reflete a geometria, a iluminacao e o
+comportamento reais do local. A calibracao da linha, o limiar de confianca e o
+cooldown so podem ser ajustados contra esse video.
+
+PRIORIDADE: fazer isso o mais cedo possivel. E a tarefa de maior valor por hora
+gasta do projeto inteiro, e depende de autorizacao, que leva tempo.
+Autorizacao da coordenacao antes de gravar, sempre.
+
+9.4 SIMULACAO DE "CAMERA AO VIVO" A PARTIR DE ARQUIVO
+
+Alem dos niveis acima, o agente tera um modo `--tempo-real` que le um arquivo
+de video mas respeita o relogio (dorme entre frames para simular os FPS reais),
+e opcionalmente `--velocidade 10` para acelerar. Isso permite testar toda a
+logica de streaming, buffer, reconexao e envio HTTP sem camera fisica.
+
+Do ponto de vista do resto do sistema, arquivo em modo tempo real e camera ao
+vivo sao indistinguiveis - porque `cv2.VideoCapture` abre os dois igual. Essa e
+a razao de a troca para hardware real ser barata depois.
+
+
+================================================================================
+10. PASSO A PASSO COMPLETO (MICRO-ETAPAS)
+================================================================================
+
+Cada etapa tem um CRITERIO DE ACEITE. So passe para a proxima quando o criterio
+estiver cumprido. Etapas marcadas [PARALELO] podem ser feitas por outra pessoa
+da equipe ao mesmo tempo.
+
+
+--------------------------------------------------------------------------------
+FASE 0 - AMBIENTE E FUNDACAO
+--------------------------------------------------------------------------------
+
+0.1  Instalar Python 3.11.
+     ACEITE: `python --version` mostra 3.11.x
+
+0.2  Instalar o `uv`.
+     ACEITE: `uv --version` responde.
+
+0.3  Criar a pasta `fluxo-faculdade/` e rodar `git init`.
+     ACEITE: `git status` funciona.
+
+0.4  Criar `.gitignore` com: dados/, .env, *.db, *.db-wal, *.db-shm, *.pt,
+     __pycache__/, .venv/
+     ACEITE: criar um arquivo de teste em dados/ e confirmar que `git status`
+     nao o mostra.
+
+0.5  Criar `pyproject.toml` com nome, versao, `requires-python = ">=3.11,<3.12"`
+     e a lista de dependencias da secao 5.
+
+0.6  Rodar `uv sync`. Conferir que `uv.lock` foi criado.
+     ACEITE: `uv run python -c "import cv2, ultralytics, fastapi; print('ok')"`
+
+0.7  Versionar `uv.lock`. (Sim, ele VAI para o git - e o que garante que o
+     professor reproduza o ambiente.)
+
+0.8  Criar a arvore de pastas da secao 6, com `__init__.py` vazios.
+     ACEITE: `uv run python -c "import fluxo; print(fluxo.__file__)"`
+
+0.9  Escrever `.env.exemplo` com CAMINHO_BANCO, URL_SERVICO, CAMINHO_DADOS.
+     Copiar para `.env` e preencher.
+     ATENCAO: CAMINHO_BANCO deve apontar para pasta LOCAL, fora de OneDrive.
+
+0.10 Escrever `src/fluxo/config.py`: le o `.env`, resolve todos os caminhos como
+     absolutos, expoe constantes. Nenhum caminho relativo em lugar nenhum.
+     ACEITE: `uv run python -c "from fluxo.config import CAMINHO_BANCO;
+     print(CAMINHO_BANCO)"` imprime caminho absoluto.
+
+0.11 Configurar o `ruff` no pyproject.
+     ACEITE: `uv run ruff check .` passa.
+
+0.12 Criar `tests/test_config.py` com um teste trivial e rodar `uv run pytest`.
+     ACEITE: 1 teste passa. (Isso valida o encanamento de teste antes de haver
+     o que testar.)
+
+0.13 Primeiro commit.
+
+
+--------------------------------------------------------------------------------
+FASE 1 - BANCO E PERSISTENCIA  [pode ser feita antes da visao]
+--------------------------------------------------------------------------------
+
+1.1  Escrever `persistencia/esquema.sql` com o DDL da secao 7.
+
+1.2  Escrever `persistencia/repositorio.py`:
+       - criar_banco()          -> executa o DDL se as tabelas nao existirem
+       - conectar()             -> abre conexao, liga WAL e foreign_keys
+       - inserir_camera(...)
+       - inserir_evento(...)    -> devolve (inserido: bool) tratando UNIQUE
+       - consultar_eventos(data_inicio, data_fim, camera_id, origem)
+       - contagem_diaria(...)   -> agregado por dia/camera/direcao
+
+1.3  Escrever `tests/test_repositorio.py` usando banco em memoria
+     (`:memory:`) ou arquivo temporario:
+       - insere evento -> le de volta
+       - insere o MESMO id_evento duas vezes -> segunda devolve False e a
+         tabela continua com 1 linha  [este e o teste mais importante da fase]
+       - contagem_diaria devolve os numeros certos
+     ACEITE: todos passam.
+
+1.4  Criar script `scripts/criar_banco.py` e rodar.
+     ACEITE: o arquivo .db existe e `sqlite3 fluxo.db ".tables"` lista as
+     tabelas.
+
+1.5  Cadastrar as duas cameras ('entrada_a', 'entrada_b').
+
+1.6  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 2 - O MODELO DO EVENTO E O SERVICO HTTP  [PARALELO com fase 3]
+--------------------------------------------------------------------------------
+
+2.1  Escrever `dominio/evento.py` com o modelo Pydantic `EventoCruzamento`:
+     camera_id, instante (datetime), direcao (Enum), track_id_local,
+     confianca (float 0..1), id_evento (str).
+     Incluir um validador que rejeite confianca fora de [0,1].
+
+2.2  Escrever o metodo `data_ref` no modelo: dado o instante, devolve o dia
+     de operacao. Por ora, a propria data local.
+     ACEITE: teste unitario com evento as 23h59 e as 00h01.
+
+2.3  Escrever `servico/api.py` com:
+       POST /eventos          -> valida, grava, devolve {"registrado": bool}
+       POST /eventos/lote     -> lista de eventos (para reenvio da fila)
+       GET  /saude            -> {"status": "ok"}
+       GET  /contagem/diaria?data=...&camera_id=...
+       GET  /contagem/horaria?data=...
+     ACEITE: `uv run uvicorn fluxo.servico.api:app --reload` sobe sem erro.
+
+2.4  Abrir http://127.0.0.1:8000/docs e enviar um evento pela interface do
+     Swagger.
+     ACEITE: o evento aparece no banco.
+     NOTA: esta tela e um dos entregaveis de demonstracao. Guarde um print.
+
+2.5  Escrever `tests/test_api.py` com o `TestClient` do FastAPI:
+       - POST valido -> 200, registrado=true
+       - POST repetido -> 200, registrado=false
+       - POST com direcao invalida -> 422
+       - POST com camera inexistente -> 400 ou 404 (decidir e documentar)
+       - GET contagem devolve o agregado certo
+     ACEITE: todos passam.
+
+2.6  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 3 - SIMULADOR DE EVENTOS SINTETICOS  [desbloqueia a fase 7]
+--------------------------------------------------------------------------------
+
+3.1  Escrever `scripts/simular_dia.py`:
+       - argumentos: --data, --entradas-esperadas, --url, --semente
+       - modela a taxa de chegada por hora (curva com picos)
+       - gera entradas distribuidas por Poisson
+       - gera saidas correlacionadas (a maioria das pessoas sai no mesmo dia)
+       - distribui entre as duas cameras com proporcao configuravel
+       - envia via POST /eventos/lote, com origem='SINTETICO'
+     ACEITE: rodar para 3 dias e ver ~3.000 eventos no banco.
+
+3.2  Conferir que o balanco diario (entradas - saidas) fica proximo de zero.
+     ACEITE: |diferenca| < 5% do total.
+
+3.3  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 4 - VISAO: DETECCAO
+--------------------------------------------------------------------------------
+
+4.1  Baixar um video de teste com pessoas (dataset publico ou gravacao propria)
+     para `dados/videos/`.
+
+4.2  Escrever `visao/fonte.py`: classe `FonteDeVideo` que abre arquivo, webcam
+     ou URL, e itera devolvendo (indice_frame, instante, frame).
+       - modo --tempo-real: dorme para respeitar o FPS
+       - modo --velocidade N: acelera
+       - o `instante` de um arquivo e derivado do FPS + timestamp inicial; o de
+         uma camera ao vivo e o relogio. Quem consome nao ve diferenca.
+     ACEITE: script que abre o video e imprime "frame 0..N" com os instantes.
+
+4.3  Escrever `visao/detector.py`: envolve o YOLO, expondo
+     `detectar(frame) -> lista[Deteccao]`, filtrando classe 0 e conf minima.
+     Na primeira execucao o peso e baixado automaticamente.
+     ACEITE: rodar sobre 1 frame e imprimir o numero de pessoas detectadas.
+
+4.4  Escrever `visao/anotador.py`: desenha caixas, ids e a linha sobre o frame.
+
+4.5  Script de depuracao que abre o video, detecta e mostra numa janela.
+     ACEITE VISUAL: as caixas acompanham as pessoas. Se estiverem tremendo,
+     saltando ou aparecendo em objetos parados, o limiar de confianca precisa
+     de ajuste ANTES de seguir.
+
+4.6  Medir o desempenho: FPS de processamento na maquina de desenvolvimento.
+     ACEITE: anotar o numero em docs/resultados.md. Se ficar abaixo de ~10 FPS,
+     considerar (a) reduzir a resolucao com cv2.resize, (b) processar 1 frame a
+     cada 2, (c) modelo menor.
+     NOTA: processar 1 frame a cada 2 e legitimo e comum - reduz custo pela
+     metade e a pessoa continua sendo vista varias vezes atravessando a linha.
+     So nao pode ser tao esparso que ela "pule" a linha entre dois frames.
+
+4.7  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 5 - VISAO: RASTREAMENTO
+--------------------------------------------------------------------------------
+
+5.1  Trocar `modelo.predict` por `modelo.track(persist=True,
+     tracker="bytetrack.yaml")`.
+
+5.2  Escrever `visao/rastreador.py` expondo
+     `atualizar(frame) -> lista[Rastro]`, onde Rastro tem id, caixa, confianca.
+
+5.3  Desenhar o id sobre cada caixa e assistir ao video anotado.
+     ACEITE VISUAL - e o criterio mais importante desta fase:
+       - o id de uma pessoa NAO muda enquanto ela atravessa o quadro
+       - duas pessoas que se cruzam nao trocam de id
+       - se os ids piscam ou trocam, ajustar antes de prosseguir
+
+5.4  Escrever `contagem/trajetoria.py`: guarda o historico de pontos por id,
+     com suavizacao por media movel e limpeza de tracks mortos.
+     ACEITE: teste unitario da suavizacao com uma sequencia conhecida.
+
+5.5  Desenhar o rastro (a trajetoria) de cada pessoa no video anotado.
+     ACEITE VISUAL: os rastros sao curvas suaves, nao ziguezague.
+
+5.6  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 6 - CONTAGEM (o nucleo)
+--------------------------------------------------------------------------------
+
+6.1  Escrever `contagem/geometria.py` com funcoes PURAS:
+       lado(A, B, P) -> int
+       segmentos_se_cruzam(P1, P2, A, B) -> bool
+       distancia_ponto_reta(P, A, B) -> float
+       ponto_base(caixa) -> (x, y)
+
+6.2  Escrever `tests/test_geometria.py` com @pytest.mark.parametrize cobrindo
+     no minimo:
+       - ponto claramente de cada lado
+       - ponto exatamente sobre a reta
+       - cruzamento perpendicular, diagonal e quase tangente
+       - trajetoria que cruza a RETA mas fora do SEGMENTO -> nao conta
+       - trajetoria que passa exatamente por A ou por B
+     ACEITE: >= 25 casos, todos passando. Esta e a prova formal do nucleo.
+
+6.3  Escrever `scripts/calibrar_linha.py`: abre o primeiro frame do video numa
+     janela, o usuario clica dois pontos, e a ferramenta grava as coordenadas
+     e o `lado_dentro` no `config/cameras.yaml`.
+     ACEITE: rodar e ver a linha gravada no YAML.
+     POR QUE ISSO E UM PASSO PROPRIO: sem ferramenta de calibracao, recalibrar
+     vira editar numero a mao no codigo, e ninguem faz. Com ela, recalibrar
+     leva 20 segundos e a equipe recalibra sempre que precisa.
+
+6.4  Escrever `contagem/linha.py`: classe `LinhaDeContagem` que recebe rastros e
+     emite eventos, implementando o algoritmo da secao 8, com:
+       - IDADE_MINIMA_TRACK
+       - ZONA_MORTA (histerese)
+       - COOLDOWN_SEGUNDOS
+     Todos vindos de `config/pipeline.yaml`.
+
+6.5  Escrever `tests/test_linha.py`: alimentar a classe com trajetorias
+     sinteticas (listas de coordenadas, sem video) e verificar a contagem:
+       - travessia limpa -> 1 evento na direcao certa
+       - travessia com jitter em cima da linha -> 1 evento, nao 5
+       - pessoa que vai e volta rapido -> 1 evento (limitacao documentada)
+       - track que nasce depois da linha -> 0 eventos
+       - duas pessoas simultaneas -> 2 eventos
+     ACEITE: todos passam.
+
+6.6  Integrar: rodar o pipeline completo sobre o video e desenhar os
+     contadores na tela.
+
+6.7  ACEITE VISUAL CRITICO: assistir ao video anotado inteiro, com o contador
+     na tela, e conferir a olho se cada pessoa que atravessa incrementa
+     exatamente uma vez. Anotar cada discrepancia.
+     Este passo nao pode ser pulado. E o unico jeito de descobrir modo de falha
+     que nenhum teste unitario antecipa.
+
+6.8  Ajustar limiares a partir do que foi visto. Repetir 6.6-6.8 ate estabilizar.
+
+6.9  Gravar o video anotado com `cv2.VideoWriter` em `dados/saidas/`.
+     ACEITE: o arquivo abre e mostra caixas, ids, linha e contadores.
+     Este video E o principal entregavel de demonstracao.
+
+6.10 Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 7 - O AGENTE (juntando visao e servico)
+--------------------------------------------------------------------------------
+
+7.1  Escrever `agente/remetente.py`: envia o evento via httpx, com timeout curto
+     e retry com espera exponencial (3 tentativas).
+
+7.2  Escrever `agente/fila_local.py`: se o envio falhar apos os retries, grava
+     o evento em arquivo JSONL local. Ao voltar a conexao, reenvia em lote pelo
+     endpoint /eventos/lote e limpa a fila.
+     POR QUE: a rede da portaria vai cair. Sem fila, evento perdido e contagem
+     errada, silenciosamente.
+     ACEITE: derrubar o servico, rodar o agente, ver a fila crescer; subir o
+     servico e ver a fila esvaziar com os eventos no banco.
+
+7.3  Escrever `agente/processador.py`: o laco principal que amarra
+     fonte -> detector -> rastreador -> linha -> remetente.
+
+7.4  Escrever `scripts/processar_video.py` (arquivo) e
+     `scripts/rodar_agente.py` (ao vivo). Ambos finos, so argumentos.
+
+7.5  Registrar a execucao na tabela `execucao` (inicio, fim, modelo, limiares,
+     hash do commit).
+
+7.6  TESTE DE PONTA A PONTA: subir o servico, rodar o agente sobre um clipe
+     curto de contagem conhecida, e conferir no banco.
+     ACEITE: o numero no banco bate com o numero visto no video.
+
+7.7  Escrever `tests/test_ponta_a_ponta.py` automatizando 7.6 com um clipe de
+     ~20 segundos versionado no repositorio (clipe curto e leve, sem rosto
+     identificavel, ou trecho de dataset publico com licenca compativel).
+     ACEITE: `uv run pytest` roda tudo, inclusive este.
+
+7.8  Rodar as DUAS cameras ao mesmo tempo (dois processos, dois videos).
+     ACEITE: os eventos das duas chegam ao mesmo banco, com camera_id correto,
+     sem contencao de escrita.
+
+7.9  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 8 - ANALISE E PAINEL
+--------------------------------------------------------------------------------
+
+8.1  Escrever `analise/consultas.py` com pandas:
+       - total de entradas e saidas por dia e por camera
+       - serie por hora
+       - ocupacao acumulada ao longo do dia (cumsum de entradas - saidas)
+       - comparacao entre as duas entradas
+       - media por dia da semana
+     TODAS filtrando origem='VISAO' por padrao, com flag para incluir
+     sintetico.
+
+8.2  Escrever `tests` para as consultas com dados fixos conhecidos.
+
+8.3  Escrever `analise/painel.py` (Streamlit):
+       - seletor de periodo e de camera
+       - st.metric com os totais do dia
+       - grafico de barras: entradas x saidas por hora
+       - grafico de linha: ocupacao estimada ao longo do dia
+       - grafico comparando as duas entradas
+       - tabela dos eventos brutos (com paginacao)
+       - aviso visivel quando os dados exibidos incluem eventos sinteticos
+
+8.4  Rodar `uv run streamlit run src/fluxo/analise/painel.py`.
+     ACEITE: abre no navegador e mostra os dados sinteticos da fase 3.
+
+8.5  Trocar para os dados reais e conferir que os graficos fazem sentido.
+
+8.6  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 9 - AVALIACAO (o que transforma o projeto em trabalho academico)
+--------------------------------------------------------------------------------
+
+9.1  Escolher um trecho de video de 15 minutos em horario movimentado.
+
+9.2  CONTAR MANUALMENTE. Duas pessoas contam de forma independente, assistindo
+     ao video. Se divergirem mais de 3%, assistir juntas e reconciliar.
+     Registrar em `dados/ground_truth/<video>.csv` com contagem por minuto.
+     POR QUE POR MINUTO E NAO SO O TOTAL: totais podem bater por compensacao
+     (uma contagem a mais aqui, uma a menos ali). Por minuto revela isso.
+
+9.3  Escrever `avaliacao/metricas.py`:
+       - erro absoluto de entradas e de saidas
+       - erro percentual
+       - MAE por janela de 1 minuto
+       - taxa de contagem dupla e de contagem perdida (a partir da inspecao
+         visual da etapa 6.7)
+
+9.4  Escrever `scripts/avaliar.py` e rodar.
+     ACEITE: relatorio impresso com os numeros.
+
+9.5  Se o erro passar de 10%, diagnosticar em ordem:
+       a) o detector esta perdendo pessoas? (assistir com so as caixas)
+       b) os ids estao quebrando? (assistir com os ids)
+       c) a linha esta mal posicionada? (recalibrar)
+       d) os limiares estao errados? (varredura de valores)
+     Registrar cada tentativa e o resultado em docs/resultados.md.
+
+9.6  BASELINE DE COMPARACAO: implementar a contagem por subtracao de fundo
+     (cv2.createBackgroundSubtractorMOG2) em ~40 linhas e avaliar com a MESMA
+     metrica.
+     POR QUE: e o que transforma "eu usei YOLO" em "eu escolhi YOLO, e aqui
+     esta o numero que justifica". Vale muito na defesa.
+
+9.7  Escrever `docs/resultados.md` com a tabela comparativa.
+
+9.8  Commit.
+
+
+--------------------------------------------------------------------------------
+FASE 10 - EMPACOTAMENTO E ENTREGA
+--------------------------------------------------------------------------------
+
+10.1 Escrever o README.md: o que e, como instalar (3 comandos), como rodar,
+     como reproduzir os resultados.
+
+10.2 Escrever `docs/arquitetura.md` com o diagrama e a explicacao das camadas.
+
+10.3 Escrever `docs/calibracao.md`: como posicionar a camera e desenhar a
+     linha. Vai ser o manual de quem instalar no local.
+
+10.4 Testar a instalacao do zero em outra maquina (ou pasta limpa):
+     `git clone && uv sync && uv run pytest`
+     ACEITE: passa sem intervencao manual. Se nao passar, o professor tambem
+     nao vai conseguir rodar.
+
+10.5 Gravar um video de demonstracao de 3 minutos: agente rodando, video
+     anotado contando, Swagger recebendo, painel atualizando.
+
+10.6 Preparar a apresentacao: problema, arquitetura, decisoes tecnicas com
+     justificativa, resultados medidos, limitacoes conhecidas, proximos passos.
+
+10.7 Tag de versao `v1.0-uno`.
+
+
+--------------------------------------------------------------------------------
+FASE 11 - PONTE PARA O HARDWARE (fora do "Uno", mas o desenho ja prepara)
+--------------------------------------------------------------------------------
+
+11.1 Definir a camera. Avaliacao a ser feita, com um alerta ja levantado: o
+     ESP32-CAM com sensor OV2640 tem resolucao baixa, taxa de quadros baixa e
+     desempenho ruim em contraluz - e porta de predio e contraluz o dia
+     inteiro. Pode servir para contar; provavelmente nao serve para a fase 2.
+     Alternativas a comparar: ESP32-S3 com sensor melhor, camera IP com RTSP,
+     ou Raspberry Pi com camera (que processa localmente e dispensa streaming).
+
+11.2 Entender o papel do ESP32 corretamente: ele NAO roda YOLO. Ele e apenas o
+     transmissor de video. O processamento acontece num computador. Isso e uma
+     restricao de projeto, nao um problema.
+
+11.3 DECISAO DE INSTALACAO A TOMAR CEDO - o angulo. Altura ~2,5-3 m, inclinada
+     ~20-30 graus, corpo inteiro visivel. Camera apontada direto para baixo
+     (top-down) conta bem mas inviabiliza a fase 2, porque nao ha aparencia
+     visivel. Escolher o angulo agora evita reinstalar depois.
+
+11.4 Implementar `FonteDeVideo` para o stream MJPEG/RTSP. Como
+     `cv2.VideoCapture` aceita URL, isso deve ser configuracao, nao codigo novo.
+
+11.5 Testar em bancada, depois no local.
+
+11.6 Definir a operacao continua: servico como servico do sistema, agente com
+     reinicio automatico, backup diario do banco.
+
+
+================================================================================
+11. PLANO DE AVALIACAO E METRICAS
+================================================================================
+
+11.1 METRICAS DO "UNO"
+
+  ERRO ABSOLUTO      = |contagem_automatica - contagem_manual|
+  ERRO PERCENTUAL    = erro_absoluto / contagem_manual * 100
+  MAE POR JANELA     = media do erro absoluto em janelas de 1 minuto
+  CONTAGEM DUPLA     = eventos a mais que passagens reais
+  CONTAGEM PERDIDA   = passagens reais sem evento
+
+Reportar SEPARADAMENTE para entrada e para saida. Elas costumam ter erro
+diferente, porque uma direcao tende a ser mais ocluida que a outra.
+
+11.2 CONDICOES A AVALIAR SEPARADAMENTE
+
+Uma media unica esconde o comportamento do sistema. Avaliar em pelo menos tres
+regimes:
+  - fluxo baixo (poucas pessoas, isoladas)
+  - fluxo medio
+  - fluxo de pico (grupos, oclusao, pessoas lado a lado)
+O erro no pico e o numero que importa, e vai ser o pior.
+
+11.3 O QUE NAO VAMOS MEDIR NO "UNO"
+
+MOTA, IDF1 e HOTA sao metricas de qualidade de RASTREAMENTO. Elas so fazem
+sentido quando a identidade importa - ou seja, na fase 2. Medir no "Uno" seria
+esforco sem uso. Mencionar no relatorio como plano da fase seguinte.
+
+
+================================================================================
+12. EVOLUCAO FUTURA (A "FERRARI")
+================================================================================
+
+Registrado aqui para mostrar ao professor que o "Uno" e um primeiro passo
+deliberado, e nao o teto do projeto.
+
+FASE 2 - RE-IDENTIFICACAO E MATRIZ ORIGEM-DESTINO
+
+  Objetivo: responder "quantas pessoas entraram por A e sairam por B".
+
+  Como: extrair um vetor de aparencia (embedding) de cada pessoa que cruza a
+  linha, usando uma rede de re-identificacao (ex.: OSNet, via `torchreid`), e
+  manter um CONJUNTO DE OCUPACAO - quem entrou e ainda nao saiu. Quando alguem
+  sai, comparar contra esse conjunto.
+
+  A ideia central que torna isso viavel: o conjunto de candidatos nao e "todas
+  as pessoas do mundo", e "as pessoas que estao dentro do predio agora". Isso
+  transforma um problema de identificacao em galeria aberta (dificil) num
+  problema de atribuicao em conjunto fechado (bem mais tratavel). Somando as
+  restricoes fisicas - tempo minimo de trajeto entre as portas, distribuicao
+  plausivel de tempo de permanencia - o conjunto de candidatos encolhe muito.
+
+  Tres cuidados ja identificados:
+    a) A atribuicao deve ser resolvida EM LOTE (algoritmo hungaro sobre uma
+       janela de ~60s), nunca de forma gulosa uma saida por vez. Guloso erra
+       quando varias pessoas parecidas saem juntas.
+    b) NUNCA forcar casamento. Precisa existir a opcao "nao sei". Falhas de
+       deteccao criam "fantasmas" - pessoas que ficam no conjunto de ocupacao
+       para sempre - e forcar casamento faz uma pessoa real ser atribuida a um
+       fantasma, contaminando a matriz.
+    c) A identidade NAO sobrevive ao dia seguinte, porque a aparencia depende
+       da roupa. O escopo da identidade e a sessao, nao a pessoa.
+
+  Entregavel: matriz origem-destino com percentual explicito de "nao
+  atribuido". Reportar essa fatia e o que torna o resultado honesto.
+
+FASE 3 - ANALISES DERIVADAS
+  Tempo medio de permanencia, previsao de fluxo por dia da semana, deteccao de
+  anomalia (dia atipico), estimativa de lotacao em tempo real.
+
+
+================================================================================
+13. RISCOS E MITIGACOES
+================================================================================
+
+R1. CONTRALUZ NA ENTRADA.
+    Porta de vidro com sol atras deixa as pessoas em silhueta.
+    Mitigacao: reposicionar a camera para o lado interno apontando para dentro;
+    ajustar exposicao da camera; se necessario, modelo maior. Testar em
+    horarios diferentes do dia antes de fixar a posicao.
+
+R2. AGLOMERACAO NA TROCA DE TURNO.
+    Muitas pessoas juntas, oclusao severa. E o pior caso do sistema.
+    Mitigacao: angulo mais alto reduz oclusao; ByteTrack ja ajuda; medir e
+    reportar o erro nesse regime em vez de esconder na media.
+
+R3. DESEMPENHO INSUFICIENTE NA MAQUINA DISPONIVEL.
+    Mitigacao (nesta ordem): reduzir resolucao, processar 1 frame a cada 2,
+    modelo nano, e so entao considerar GPU.
+
+R4. AUTORIZACAO PARA GRAVAR DEMORAR.
+    E o risco de cronograma mais provavel, porque nao depende da equipe.
+    Mitigacao: pedir na PRIMEIRA semana; desenvolver com dataset publico
+    enquanto isso; o desenho em tres niveis de simulacao existe justamente para
+    isso.
+
+R5. A REDE DA PORTARIA CAIR.
+    Mitigacao: fila local em disco no agente (etapa 7.2), ja prevista.
+
+R6. BANCO CORROMPIDO POR SINCRONIZACAO EM NUVEM.
+    Mitigacao: banco em pasta local, nunca em OneDrive/Drive. Backup diario por
+    copia de arquivo.
+
+R7. ESCOPO CRESCER E NADA FICAR PRONTO.
+    E o risco mais comum em projeto de faculdade.
+    Mitigacao: a fase 2 so comeca depois do `v1.0-uno` marcado e do relatorio
+    de avaliacao escrito. Sem excecao.
+
+
+================================================================================
+14. CRONOGRAMA SUGERIDO
+================================================================================
+
+  Semana 1  | Fase 0 e Fase 1        | ambiente, banco, testes de repositorio
+            | + PEDIR AUTORIZACAO DE GRAVACAO (nao adiar)
+  Semana 2  | Fase 2 e Fase 3        | API funcionando, simulador de eventos
+  Semana 3  | Fase 4 e Fase 5        | deteccao e rastreamento no video
+  Semana 4  | Fase 6                 | contagem, calibracao, ajuste
+  Semana 5  | Fase 7 e Fase 8        | agente completo, painel
+  Semana 6  | Fase 9                 | avaliacao, baseline, resultados
+  Semana 7  | Fase 10                | documentacao, empacotamento, demo
+  Semana 8  | folga / inicio da fase 2
+
+A semana 8 de folga nao e opcional. Algo vai atrasar; se nao atrasar, ela vira
+o comeco da "Ferrari".
+
+
+================================================================================
+15. ENTREGAVEIS PARA A DISCIPLINA
+================================================================================
+
+  1. Este documento de projeto.
+  2. Repositorio Git com historico de commits legivel.
+  3. Codigo com testes automatizados passando (`uv run pytest`).
+  4. Video anotado mostrando a contagem funcionando, com contadores na tela.
+  5. Painel web com os dados.
+  6. Relatorio de avaliacao (docs/resultados.md) com:
+       - a metodologia de contagem manual de referencia
+       - o erro medido por direcao e por regime de fluxo
+       - a comparacao contra o baseline de subtracao de fundo
+       - as limitacoes conhecidas, declaradas
+  7. Documentacao de arquitetura e de calibracao.
+  8. Video de demonstracao de 3 minutos.
+  9. Apresentacao com as decisoes tecnicas justificadas.
+
+O item 6 e o que separa "fiz um programa que conta pessoas" de "conduzi um
+projeto de engenharia". Declarar limitacao medida vale mais que esconder erro.
+
+
+================================================================================
+16. PRIVACIDADE E LGPD
+================================================================================
+
+O sistema observa pessoas reais num espaco compartilhado. Isso exige cuidado
+explicito - e trata-lo bem e ponto forte do trabalho, nao burocracia.
+
+DECISOES DE PROJETO:
+
+  1. NENHUM RECONHECIMENTO FACIAL, em nenhuma fase. Dado biometrico e categoria
+     de dado pessoal sensivel na LGPD (Art. 5, II e Art. 11), com regime
+     juridico mais restrito. Nao ha necessidade para o objetivo declarado, e o
+     custo de conformidade seria desproporcional.
+
+  2. NENHUMA IMAGEM ARMAZENADA EM OPERACAO. O sistema grava apenas eventos:
+     camera, instante, direcao. Nao ha frame, nao ha recorte, nao ha rosto no
+     banco.
+
+  3. NENHUM VINCULO COM IDENTIDADE CIVIL. O sistema nao sabe matricula, nome
+     nem CPF. Nao ha como ligar um evento a uma pessoa especifica.
+
+  4. VIDEOS DE DESENVOLVIMENTO SAO CONTROLADOS. Ficam em `dados/`, fora do git,
+     em maquina de desenvolvimento, apagados apos a conclusao das medicoes.
+
+  5. NA FASE 2, o vetor de aparencia expira em 24-48h e nao e reversivel para
+     imagem. Identidade e efemera por construcao, nao por politica.
+
+  6. TRANSPARENCIA. Aviso visivel nas entradas informando a coleta e a
+     finalidade. Autorizacao previa da coordenacao, por escrito, antes de
+     qualquer gravacao.
+
+  7. FINALIDADE DECLARADA E LIMITADA: dimensionamento de fluxo e planejamento
+     operacional. Nao ha uso disciplinar, de controle de frequencia individual
+     nem de seguranca patrimonial.
+
+
+================================================================================
+17. GLOSSARIO
+================================================================================
+
+BOUNDING BOX (CAIXA)  Retangulo que delimita o objeto detectado, em (x1,y1,
+                      x2,y2).
+BYTETRACK             Algoritmo de rastreamento que associa em duas passadas,
+                      aproveitando deteccoes de baixa confianca para nao perder
+                      pessoas ocluidas.
+COCO                  Conjunto de dados de 80 classes de objetos usado para
+                      treinar os modelos que utilizamos. "person" e a classe 0.
+COOLDOWN              Intervalo apos uma contagem em que novos cruzamentos do
+                      mesmo track sao ignorados.
+EMBEDDING             Vetor numerico que representa a aparencia de uma pessoa.
+                      Usado apenas na fase 2.
+FILTRO DE KALMAN      Metodo que estima a posicao futura de um objeto a partir
+                      do movimento passado. Usado internamente pelo rastreador.
+GROUND TRUTH          A resposta correta, obtida manualmente, contra a qual o
+                      sistema e avaliado.
+HISTERESE             Zona morta em volta da linha que evita contagem repetida
+                      por tremulacao.
+IDEMPOTENCIA          Propriedade de a mesma operacao, repetida, ter o mesmo
+                      efeito da primeira. Garante que reenvio nao infle a
+                      contagem.
+IoU                   Intersection over Union: medida de sobreposicao entre
+                      duas caixas. Usada para casar deteccao com track.
+LINHA VIRTUAL         Segmento desenhado sobre a imagem que, ao ser cruzado,
+                      dispara a contagem.
+MJPEG                 Formato de streaming em que cada frame e um JPEG. E o que
+                      o ESP32-CAM costuma transmitir.
+RE-ID                 Re-identificacao: reconhecer que duas observacoes em
+                      cameras ou momentos diferentes sao a mesma pessoa.
+RTSP                  Protocolo de streaming usado por cameras IP.
+TRACK ID              Numero atribuido a uma pessoa pelo rastreador. Local a uma
+                      camera e valido apenas enquanto ela esta visivel.
+WAL                   Write-Ahead Logging: modo do SQLite que permite leitura
+                      concorrente com escrita.
+YOLO                  You Only Look Once: familia de detectores de objeto de
+                      estagio unico, rapidos o bastante para tempo real.
+
+================================================================================
+FIM DO DOCUMENTO
+================================================================================

@@ -1,0 +1,25 @@
+# Dados de pessoas reais: vídeo, gravação, contagem manual. Nunca versionado.
+dados/
+
+# Configuração de ambiente (caminhos locais da máquina)
+.env
+
+# Banco: mora fora do repositório, mas o ignore protege contra cópia acidental
+*.db
+*.db-wal
+*.db-shm
+
+# Pesos de modelo baixados sob demanda (centenas de MB)
+*.pt
+*.onnx
+*.engine
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/

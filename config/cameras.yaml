@@ -1,0 +1,24 @@
+# Uma entrada por câmera. A linha de contagem é escrita aqui por
+# scripts/calibrar_linha.py — não edite as coordenadas à mão.
+#
+# linha: [x1, y1, x2, y2] em pixels do quadro original
+# lado_dentro: sinal do produto vetorial que corresponde ao lado "dentro" do
+#              prédio. Depende de como a câmera está montada; a ferramenta de
+#              calibração pergunta e grava.
+
+cameras:
+  entrada_a:
+    nome: "Entrada Principal"
+    local: "Portaria da frente"
+    fonte: ""            # caminho de vídeo, índice de webcam ou URL RTSP/MJPEG
+    linha: null
+    lado_dentro: 1
+    ativa: true
+
+  entrada_b:
+    nome: "Entrada Lateral"
+    local: "Acesso pelo estacionamento"
+    fonte: ""
+    linha: null
+    lado_dentro: 1
+    ativa: true

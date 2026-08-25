@@ -1,0 +1,1241 @@
+<title>Limiar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+
+<style>
+/* ============================================================
+   LIMIAR — tokens
+   Desenho dark-first: a apresentacao acontece com a luz baixa.
+   O tema claro e um espelho completo, nao uma inversao ingenua.
+   ============================================================ */
+:root {
+  --ground:      #0E1420;
+  --surface:     #151D2B;
+  --surface-2:   #1C2637;
+  --rule:        #2A3648;
+  --rule-soft:   #202A3B;
+  --ink:         #E9EEF6;
+  --ink-2:       #B3C0D4;
+  --ink-3:       #7E8DA5;
+  --entrada:     #F2A93B;
+  --saida:       #43C3B4;
+  --limite:      #E4776A;
+  --glow:        rgba(242,169,59,.14);
+  --shadow:      0 1px 0 rgba(255,255,255,.04), 0 18px 40px -24px rgba(0,0,0,.8);
+  --grid-line:   rgba(255,255,255,.028);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ground:    #F1F4F9;
+    --surface:   #FFFFFF;
+    --surface-2: #F7F9FC;
+    --rule:      #CFD8E6;
+    --rule-soft: #E2E8F2;
+    --ink:       #131C2B;
+    --ink-2:     #3E4C61;
+    --ink-3:     #6B7A91;
+    --entrada:   #A9660B;
+    --saida:     #0F7568;
+    --limite:    #B4392B;
+    --glow:      rgba(169,102,11,.09);
+    --shadow:    0 1px 0 rgba(0,0,0,.02), 0 14px 34px -26px rgba(19,28,43,.5);
+    --grid-line: rgba(19,28,43,.035);
+  }
+}
+:root[data-theme="light"] {
+  --ground:    #F1F4F9;
+  --surface:   #FFFFFF;
+  --surface-2: #F7F9FC;
+  --rule:      #CFD8E6;
+  --rule-soft: #E2E8F2;
+  --ink:       #131C2B;
+  --ink-2:     #3E4C61;
+  --ink-3:     #6B7A91;
+  --entrada:   #A9660B;
+  --saida:     #0F7568;
+  --limite:    #B4392B;
+  --glow:      rgba(169,102,11,.09);
+  --shadow:    0 1px 0 rgba(0,0,0,.02), 0 14px 34px -26px rgba(19,28,43,.5);
+  --grid-line: rgba(19,28,43,.035);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- deck ---------- */
+#deck {
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  #deck { scroll-behavior: auto; }
+}
+
+.slide {
+  min-height: 100dvh;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  padding: 68px 40px 76px;
+  position: relative;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+.inner {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ---------- chrome fixo ---------- */
+#rail {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  width: 0%;
+  background: var(--entrada);
+  z-index: 40;
+  transition: width .25s ease;
+}
+@media (prefers-reduced-motion: reduce) { #rail { transition: none; } }
+
+#counter {
+  position: fixed;
+  right: 22px; bottom: 18px;
+  z-index: 40;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 5px 10px;
+  font-variant-numeric: tabular-nums;
+}
+#hint {
+  position: fixed;
+  left: 22px; bottom: 18px;
+  z-index: 40;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  opacity: .7;
+}
+#themebtn {
+  position: fixed;
+  right: 22px; top: 18px;
+  z-index: 40;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+#themebtn:hover { color: var(--ink); border-color: var(--ink-3); }
+:focus-visible { outline: 2px solid var(--entrada); outline-offset: 3px; }
+
+/* ---------- tipografia ---------- */
+.eyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.eyebrow::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+.eyebrow.uno   { color: var(--entrada); }
+.eyebrow.uno::after   { background: linear-gradient(90deg, var(--entrada), var(--rule) 40%); }
+.eyebrow.ferrari { color: var(--saida); }
+.eyebrow.ferrari::after { background: linear-gradient(90deg, var(--saida), var(--rule) 40%); }
+
+h1 {
+  font-family: "Bricolage Grotesque", "Archivo", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(3rem, 9vw, 6.2rem);
+  line-height: .92;
+  letter-spacing: -.035em;
+  margin: 0;
+  text-wrap: balance;
+}
+h2 {
+  font-family: "Bricolage Grotesque", "Archivo", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.7rem, 4.2vw, 2.9rem);
+  line-height: 1.05;
+  letter-spacing: -.025em;
+  margin: 0;
+  text-wrap: balance;
+}
+h3 {
+  font-family: "Bricolage Grotesque", "Archivo", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.02rem;
+  line-height: 1.25;
+  letter-spacing: -.005em;
+  margin: 0;
+}
+p { margin: 0; max-width: 68ch; }
+.lead { font-size: 1.16rem; color: var(--ink-2); line-height: 1.55; }
+.muted { color: var(--ink-3); }
+strong { font-weight: 500; color: var(--ink); }
+em { font-style: italic; }
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: .82rem;
+  letter-spacing: -.01em;
+}
+
+/* ---------- moldura de bounding box ---------- */
+.bbox {
+  position: relative;
+  background: var(--surface);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bbox::before, .bbox::after {
+  content: "";
+  position: absolute;
+  width: 13px; height: 13px;
+  border: 1.5px solid var(--rule);
+  pointer-events: none;
+}
+.bbox::before { top: -1px; left: -1px;  border-right: 0; border-bottom: 0; }
+.bbox::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.bbox > .c1, .bbox > .c2 {
+  position: absolute;
+  width: 13px; height: 13px;
+  border: 1.5px solid var(--rule);
+  pointer-events: none;
+}
+.bbox > .c1 { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+.bbox > .c2 { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
+.bbox.on-entrada::before, .bbox.on-entrada::after,
+.bbox.on-entrada > .c1, .bbox.on-entrada > .c2 { border-color: var(--entrada); }
+.bbox.on-saida::before, .bbox.on-saida::after,
+.bbox.on-saida > .c1, .bbox.on-saida > .c2 { border-color: var(--saida); }
+
+.bbox .tag {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.bbox p { font-size: .95rem; color: var(--ink-2); line-height: 1.5; }
+
+/* ---------- grades ---------- */
+.g2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; align-items: start; }
+@media (max-width: 860px) {
+  .g2, .g3, .g4, .split { grid-template-columns: 1fr; }
+  .slide { padding: 56px 22px 72px; }
+  body { font-size: 16px; }
+}
+
+/* ---------- listas ---------- */
+ul.clean { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+ul.clean li {
+  position: relative;
+  padding-left: 20px;
+  font-size: .97rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+ul.clean li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: .62em;
+  width: 9px; height: 1.5px;
+  background: var(--ink-3);
+}
+ul.clean.yes li::before { background: var(--entrada); }
+ul.clean.no li::before  { background: var(--limite); }
+ul.clean.next li::before { background: var(--saida); }
+
+/* ---------- tabela ---------- */
+.tablewrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; }
+th, td {
+  text-align: left;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--rule-soft);
+  font-size: .9rem;
+  vertical-align: top;
+}
+th {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 500;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--rule);
+}
+td { color: var(--ink-2); }
+td.k { color: var(--ink); font-weight: 500; font-family: "Bricolage Grotesque", sans-serif; }
+tbody tr:last-child td { border-bottom: 0; }
+td.win { color: var(--entrada); }
+td.num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+
+/* ---------- pipeline ---------- */
+.pipe { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+.pipe .step {
+  flex: 1 1 0;
+  min-width: 128px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-right: 0;
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pipe .step:last-child { border-right: 1px solid var(--rule); }
+.pipe .step .n {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--entrada);
+}
+.pipe .step .t {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: .92rem;
+  line-height: 1.15;
+}
+.pipe .step .d { font-size: .78rem; color: var(--ink-3); line-height: 1.4; }
+
+/* ---------- metric ---------- */
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 16px 16px 18px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.metric .v {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 800;
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.metric.a .v { color: var(--entrada); }
+.metric.b .v { color: var(--saida); }
+.metric .l {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.metric .s { font-size: .82rem; color: var(--ink-2); line-height: 1.4; }
+
+/* ---------- callout ---------- */
+.callout {
+  border-left: 2px solid var(--limite);
+  padding: 4px 0 4px 16px;
+  color: var(--ink-2);
+  font-size: .95rem;
+  line-height: 1.55;
+}
+.callout.ok { border-left-color: var(--saida); }
+.callout.warm { border-left-color: var(--entrada); }
+
+/* ---------- chips ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  padding: 5px 9px;
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  background: var(--surface);
+}
+.chip.a { border-color: var(--entrada); color: var(--entrada); }
+.chip.b { border-color: var(--saida); color: var(--saida); }
+
+/* ---------- capa ---------- */
+.cover { gap: 28px; }
+.cover .meta {
+  display: flex; flex-wrap: wrap; gap: 26px;
+  border-top: 1px solid var(--rule);
+  padding-top: 18px;
+}
+.cover .meta div { display: flex; flex-direction: column; gap: 3px; }
+.cover .meta .l {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3);
+}
+.cover .meta .v { font-size: .95rem; color: var(--ink); }
+
+/* ---------- svg ---------- */
+.figure { background: var(--surface); border: 1px solid var(--rule); padding: 14px; }
+.figure svg { display: block; width: 100%; height: auto; }
+.figcap {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-3); margin-top: 10px;
+}
+
+/* ---------- fases ---------- */
+.fases { display: flex; flex-direction: column; gap: 2px; }
+.fase {
+  display: grid;
+  grid-template-columns: 74px 190px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-left: 2px solid var(--rule);
+}
+.fase.on { border-left-color: var(--entrada); }
+.fase.off { border-left-color: var(--saida); opacity: .82; }
+.fase .w {
+  font-family: "JetBrains Mono", monospace;
+  font-size: .78rem; color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
+.fase .n { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: .93rem; }
+.fase .d { font-size: .85rem; color: var(--ink-3); line-height: 1.4; }
+@media (max-width: 860px) {
+  .fase { grid-template-columns: 60px 1fr; }
+  .fase .d { grid-column: 1 / -1; }
+}
+
+@media print {
+  #deck { height: auto; overflow: visible; }
+  .slide { min-height: auto; page-break-after: always; padding: 24px; background-image: none; }
+  #rail, #counter, #hint, #themebtn { display: none; }
+}
+</style>
+
+<div id="rail"></div>
+<button id="themebtn" type="button">TEMA</button>
+<div id="hint">← → PARA NAVEGAR</div>
+<div id="counter">01 / 19</div>
+
+<div id="deck">
+
+<!-- ============ 01 CAPA ============ -->
+<section class="slide">
+  <div class="inner cover">
+    <p class="eyebrow">Projeto de graduação · Visão computacional aplicada</p>
+    <h1>Limiar</h1>
+    <p class="lead" style="max-width:56ch">Um sistema que mede o fluxo de pessoas nas duas entradas da faculdade — quantas entram, quantas saem, em que horário — e, na segunda etapa, para onde elas vão por dentro do campus.</p>
+    <div class="chips">
+      <span class="chip a">ENTRADA</span>
+      <span class="chip b">SAÍDA</span>
+      <span class="chip">PYTHON</span>
+      <span class="chip">YOLO11</span>
+      <span class="chip">BYTETRACK</span>
+      <span class="chip">FASTAPI</span>
+      <span class="chip">SQLITE</span>
+    </div>
+    <div class="meta">
+      <div><span class="l">Autor</span><span class="v">João Pedro</span></div>
+      <div><span class="l">Etapa 1</span><span class="v">Contagem direcional</span></div>
+      <div><span class="l">Etapa 2</span><span class="v">Re-identificação e origem-destino</span></div>
+      <div><span class="l">Estado</span><span class="v">Proposta para aprovação</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 O PROBLEMA ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow">O problema</p>
+    <h2>A faculdade não sabe quantas pessoas passam por ela.</h2>
+    <p class="lead">Decisões de operação — quantos porteiros escalar, quando reforçar a limpeza, se a cantina comporta o intervalo, se vale abrir a segunda entrada às sextas — são tomadas hoje por impressão. Não porque ninguém queira medir, mas porque medir custa caro: catraca, crachá, cadastro.</p>
+    <div class="g3">
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Hoje</span>
+        <h3>Estimativa</h3>
+        <p>"Parece que tem mais gente à noite." Sem série histórica, sem hora, sem porta.</p>
+      </div>
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Alternativa cara</span>
+        <h3>Catraca e crachá</h3>
+        <p>Custo alto, obra, fila na entrada, e cadastro nominal de cada pessoa.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Proposta</span>
+        <h3>Uma câmera e software</h3>
+        <p>Conta sem identificar ninguém, sem obra, sem fila, sem nome no banco.</p>
+      </div>
+    </div>
+    <div class="callout warm">A pergunta que o projeto responde na primeira etapa: <strong>quantas pessoas entraram e saíram por cada porta, em cada hora de cada dia?</strong></div>
+  </div>
+</section>
+
+<!-- ============ 03 O MAPA ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow">Estratégia</p>
+    <h2>Construir o Uno antes da Ferrari.</h2>
+    <p class="lead">O projeto tem duas ambições muito diferentes de dificuldade. Tratá-las como uma coisa só é o jeito mais provável de não entregar nenhuma. Elas foram separadas de propósito.</p>
+    <div class="split">
+      <div class="bbox on-entrada" style="gap:14px"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Etapa 1 — o Uno</span>
+        <h3 style="font-size:1.5rem">Contagem direcional</h3>
+        <p>Detectar pessoas, rastreá-las enquanto atravessam o quadro e contar cada cruzamento de uma linha virtual, com direção.</p>
+        <ul class="clean yes">
+          <li>Problema resolvido na literatura, com bibliotecas maduras</li>
+          <li>Meta de acerto declarada: erro ≤ 10% contra contagem manual</li>
+          <li>Entregável completo por si só — se a etapa 2 falhar, o projeto existe</li>
+        </ul>
+      </div>
+      <div class="bbox on-saida" style="gap:14px"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Etapa 2 — a Ferrari</span>
+        <h3 style="font-size:1.5rem">Identidade de sessão e origem-destino</h3>
+        <p>Reconhecer que a pessoa que saiu pela porta A é a mesma que entrou pela porta B, e medir o trajeto e a permanência.</p>
+        <ul class="clean next">
+          <li>Problema de pesquisa em aberto, com acurácia a medir</li>
+          <li>Reaproveita 100% da infraestrutura da etapa 1</li>
+          <li>Só começa depois da etapa 1 avaliada e documentada</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout ok">A etapa 1 não é um protótipo descartável. Ingestão, detecção, rastreio, banco, serviço e painel são exatamente os mesmos na etapa 2. Nada é jogado fora.</div>
+  </div>
+</section>
+
+<!-- ============ 04 UNO ESCOPO ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow uno">Etapa 1 · Escopo</p>
+    <h2>O que o Uno faz — e o que ele deliberadamente não faz.</h2>
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <h3 style="color:var(--entrada)">Dentro do escopo</h3>
+        <ul class="clean yes">
+          <li>Detecção de pessoas em vídeo, com robustez a oclusão parcial e mudança de luz</li>
+          <li>Rastreamento dentro do quadro, com identificador local e efêmero</li>
+          <li>Linha virtual de contagem com direção — entrada e saída separadas</li>
+          <li>Registro de cada cruzamento em banco, com data, hora e porta</li>
+          <li>Serviço HTTP que recebe eventos das duas portas e grava</li>
+          <li>Fila local em disco: se a rede cair, nenhum evento é perdido</li>
+          <li>Painel web com totais, série por hora e ocupação estimada</li>
+          <li>Avaliação contra contagem manual, com erro medido e publicado</li>
+        </ul>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <h3 style="color:var(--limite)">Fora do escopo</h3>
+        <ul class="clean no">
+          <li>Saber que a pessoa X que entrou é a mesma que saiu — fica para a etapa 2</li>
+          <li>Ligar a entrada da porta A com a saída da porta B — etapa 2</li>
+          <li>Tempo de permanência individual — etapa 2</li>
+          <li>Distinguir aluno, professor e visitante — não é possível sem cadastro, e cadastro não faz parte do projeto</li>
+          <li>Reconhecimento facial — <strong>excluído em definitivo, nas duas etapas</strong></li>
+          <li>Hardware instalado no local — desenvolvimento é feito sobre vídeo</li>
+        </ul>
+        <div class="callout">Um escopo declarado é o que permite dizer, no fim, se o projeto foi entregue. Sem ele, todo resultado é discutível.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 COMO FUNCIONA ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow uno">Etapa 1 · Como funciona</p>
+    <h2>Cinco passos por quadro de vídeo.</h2>
+    <div class="pipe">
+      <div class="step"><span class="n">01</span><span class="t">Captura</span><span class="d">Um quadro chega da câmera, do arquivo ou do stream. A mesma interface serve aos três.</span></div>
+      <div class="step"><span class="n">02</span><span class="t">Detecção</span><span class="d">A rede neural devolve uma caixa por pessoa no quadro. Só a classe "pessoa".</span></div>
+      <div class="step"><span class="n">03</span><span class="t">Rastreio</span><span class="d">O rastreador liga as caixas entre quadros e dá um número a cada pessoa enquanto ela é visível.</span></div>
+      <div class="step"><span class="n">04</span><span class="t">Cruzamento</span><span class="d">Se o ponto do pé trocou de lado da linha, houve passagem. O sentido da troca dá a direção.</span></div>
+      <div class="step"><span class="n">05</span><span class="t">Evento</span><span class="d">Um registro é enviado ao servidor: porta, instante, direção. Nenhuma imagem sai daqui.</span></div>
+    </div>
+    <div class="figure">
+      <svg viewBox="0 0 900 250" role="img" aria-label="Diagrama: uma pessoa detectada por uma caixa atravessa a linha de contagem; o ponto da base da caixa muda de lado e gera um evento de entrada.">
+        <defs>
+          <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="var(--entrada)"/>
+          </marker>
+        </defs>
+        <!-- chao -->
+        <line x1="40" y1="215" x2="860" y2="215" stroke="var(--rule)" stroke-width="1"/>
+        <!-- linha de contagem -->
+        <line x1="450" y1="35" x2="450" y2="230" stroke="var(--entrada)" stroke-width="2" stroke-dasharray="7 6"/>
+        <text x="462" y="48" fill="var(--entrada)" font-family="JetBrains Mono, monospace" font-size="12">LINHA DE CONTAGEM</text>
+        <text x="150" y="48" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="12">FORA</text>
+        <text x="640" y="48" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="12">DENTRO</text>
+        <!-- zona morta -->
+        <rect x="424" y="35" width="52" height="195" fill="var(--glow)"/>
+        <text x="392" y="245" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="10">ZONA MORTA (HISTERESE)</text>
+        <!-- caixa 1 -->
+        <rect x="180" y="90" width="72" height="125" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+        <text x="180" y="84" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="11">id 42 · t0</text>
+        <circle cx="216" cy="215" r="4.5" fill="var(--ink-3)"/>
+        <!-- caixa 2 -->
+        <rect x="600" y="82" width="76" height="133" fill="none" stroke="var(--entrada)" stroke-width="1.5"/>
+        <text x="600" y="76" fill="var(--entrada)" font-family="JetBrains Mono, monospace" font-size="11">id 42 · t1</text>
+        <circle cx="638" cy="215" r="4.5" fill="var(--entrada)"/>
+        <!-- trajetoria -->
+        <path d="M216,215 C 330,205 520,222 638,215" fill="none" stroke="var(--entrada)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+        <text x="300" y="196" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="11">trajetória do ponto do pé</text>
+        <!-- evento -->
+        <rect x="700" y="120" width="160" height="46" fill="none" stroke="var(--entrada)" stroke-width="1"/>
+        <text x="712" y="140" fill="var(--entrada)" font-family="JetBrains Mono, monospace" font-size="12">EVENTO: ENTRADA</text>
+        <text x="712" y="157" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="10">porta_a · 14:03:22</text>
+      </svg>
+      <p class="figcap">O ponto de referência é a base da caixa — onde a pessoa toca o chão, o mesmo plano da linha.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 ARQUITETURA ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow uno">Etapa 1 · Arquitetura</p>
+    <h2>Dois processos, porque no fim eles vão estar em duas máquinas.</h2>
+    <p class="lead">A câmera fica na porta; o banco fica no servidor. Separar agente e serviço desde o primeiro dia evita reescrever tudo na hora de instalar — e permite que o painel seja construído com dados simulados enquanto a visão computacional ainda não existe.</p>
+    <div class="figure">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Arquitetura: duas câmeras alimentam dois agentes de borda, que enviam eventos por HTTP a um serviço central, que grava em banco SQLite, consumido por um painel web.">
+        <g font-family="JetBrains Mono, monospace" font-size="11">
+          <!-- cameras -->
+          <rect x="30" y="20" width="150" height="48" fill="var(--surface-2)" stroke="var(--rule)"/>
+          <text x="44" y="42" fill="var(--ink)">CÂMERA · PORTA A</text>
+          <text x="44" y="58" fill="var(--ink-3)" font-size="10">arquivo / RTSP / MJPEG</text>
+          <rect x="30" y="232" width="150" height="48" fill="var(--surface-2)" stroke="var(--rule)"/>
+          <text x="44" y="254" fill="var(--ink)">CÂMERA · PORTA B</text>
+          <text x="44" y="270" fill="var(--ink-3)" font-size="10">arquivo / RTSP / MJPEG</text>
+          <!-- agentes -->
+          <rect x="230" y="12" width="180" height="64" fill="var(--surface-2)" stroke="var(--entrada)"/>
+          <text x="244" y="34" fill="var(--entrada)">AGENTE DE BORDA</text>
+          <text x="244" y="50" fill="var(--ink-3)" font-size="10">detecta · rastreia · conta</text>
+          <text x="244" y="65" fill="var(--ink-3)" font-size="10">fila local se a rede cair</text>
+          <rect x="230" y="224" width="180" height="64" fill="var(--surface-2)" stroke="var(--entrada)"/>
+          <text x="244" y="246" fill="var(--entrada)">AGENTE DE BORDA</text>
+          <text x="244" y="262" fill="var(--ink-3)" font-size="10">detecta · rastreia · conta</text>
+          <text x="244" y="277" fill="var(--ink-3)" font-size="10">fila local se a rede cair</text>
+          <!-- servico -->
+          <rect x="480" y="108" width="180" height="84" fill="var(--surface-2)" stroke="var(--saida)"/>
+          <text x="494" y="130" fill="var(--saida)">SERVIÇO CENTRAL</text>
+          <text x="494" y="147" fill="var(--ink-3)" font-size="10">valida o evento</text>
+          <text x="494" y="162" fill="var(--ink-3)" font-size="10">rejeita duplicata</text>
+          <text x="494" y="177" fill="var(--ink-3)" font-size="10">grava e expõe consultas</text>
+          <!-- banco -->
+          <rect x="722" y="52" width="150" height="60" fill="var(--surface-2)" stroke="var(--rule)"/>
+          <text x="736" y="74" fill="var(--ink)">BANCO</text>
+          <text x="736" y="90" fill="var(--ink-3)" font-size="10">eventos · câmeras</text>
+          <text x="736" y="105" fill="var(--ink-3)" font-size="10">execuções</text>
+          <!-- painel -->
+          <rect x="722" y="188" width="150" height="60" fill="var(--surface-2)" stroke="var(--rule)"/>
+          <text x="736" y="210" fill="var(--ink)">PAINEL</text>
+          <text x="736" y="226" fill="var(--ink-3)" font-size="10">gráficos e tabelas</text>
+          <text x="736" y="241" fill="var(--ink-3)" font-size="10">totais por dia e hora</text>
+          <!-- setas -->
+          <g stroke="var(--rule)" stroke-width="1.2" fill="none">
+            <path d="M180,44 L228,44"/>
+            <path d="M180,256 L228,256"/>
+            <path d="M410,44 L445,44 L445,140 L478,140"/>
+            <path d="M410,256 L445,256 L445,160 L478,160"/>
+            <path d="M660,140 L692,140 L692,82 L720,82"/>
+            <path d="M660,160 L692,160 L692,218 L720,218"/>
+          </g>
+          <text x="430" y="96" fill="var(--ink-3)" font-size="10">HTTP POST /eventos</text>
+        </g>
+      </svg>
+      <p class="figcap">O contrato entre agente e serviço é um JSON com porta, instante, direção e uma chave de deduplicação.</p>
+    </div>
+    <div class="callout warm">Cada evento carrega uma chave determinística. Se a rede cair e o agente reenviar, o serviço reconhece a repetição e ignora. Sem isso, uma reconexão inflaria a contagem — e o erro seria silencioso.</div>
+  </div>
+</section>
+
+<!-- ============ 07 DECISOES ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow uno">Etapa 1 · Decisões técnicas</p>
+    <h2>Cada escolha foi feita contra alternativas, não por default.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Problema</th><th>Escolha</th><th>Alternativa descartada</th><th>Por quê</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="k">Detectar pessoas</td>
+            <td class="win">YOLO11</td>
+            <td>Subtração de fundo (MOG2)</td>
+            <td>Sombra vira pessoa, e um grupo de três vira um blob só. Quebra exatamente no horário de pico, que é quando o dado importa.</td>
+          </tr>
+          <tr>
+            <td class="k"></td>
+            <td class="win"></td>
+            <td>HOG + SVM</td>
+            <td>Exige pose frontal, corpo inteiro e sem oclusão. Lento e com muito falso positivo.</td>
+          </tr>
+          <tr>
+            <td class="k"></td>
+            <td class="win"></td>
+            <td>Faster R-CNN</td>
+            <td>Precisão marginalmente maior por custo várias vezes maior. Inviável em hardware modesto na porta.</td>
+          </tr>
+          <tr>
+            <td class="k">Manter identidade<br>entre quadros</td>
+            <td class="win">ByteTrack</td>
+            <td>SORT</td>
+            <td>Descarta detecção de baixa confiança. Pessoa parcialmente ocluída perde o rastro e ganha número novo — vira contagem dupla.</td>
+          </tr>
+          <tr>
+            <td class="k"></td>
+            <td class="win"></td>
+            <td>DeepSORT</td>
+            <td>Paga o custo de uma rede de aparência por pessoa por quadro e ainda assim tem desempenho inferior.</td>
+          </tr>
+          <tr>
+            <td class="k">Contar a passagem</td>
+            <td class="win">Linha virtual<br>com histerese</td>
+            <td>Contar detecções por quadro</td>
+            <td>Não dá direção e conta a mesma pessoa em todos os quadros em que ela aparece.</td>
+          </tr>
+          <tr>
+            <td class="k">Guardar os dados</td>
+            <td class="win">SQLite</td>
+            <td>PostgreSQL</td>
+            <td>Um milhão de eventos por ano ocupam cerca de 100 MB. Servidor, usuário e senha seriam custo sem benefício nesta escala.</td>
+          </tr>
+          <tr>
+            <td class="k">Receber os eventos</td>
+            <td class="win">FastAPI</td>
+            <td>Flask</td>
+            <td>Validação automática do formato e documentação interativa gerada sozinha. Um erro de digitação no agente vira erro 422, não lixo no banco.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout ok">A subtração de fundo será implementada mesmo assim, em cerca de 40 linhas, como <strong>linha de base de comparação</strong>. É o que transforma "usei YOLO" em "escolhi YOLO, e aqui está o número que justifica".</div>
+  </div>
+</section>
+
+<!-- ============ 08 UNO: DADO ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow uno">Etapa 1 · O dado gerado</p>
+    <h2>Um registro por passagem. Três campos, e nada mais.</h2>
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="tablewrap">
+          <table style="min-width:0">
+            <thead><tr><th>Campo</th><th>Exemplo</th></tr></thead>
+            <tbody>
+              <tr><td class="k">porta</td><td class="num">entrada_a</td></tr>
+              <tr><td class="k">instante</td><td class="num">2026-08-25 14:03:22</td></tr>
+              <tr><td class="k">direção</td><td class="num">ENTRADA</td></tr>
+              <tr><td class="k">confiança</td><td class="num">0.91</td></tr>
+              <tr><td class="k">origem</td><td class="num">VISAO</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">Não existe nenhuma coluna que identifique pessoa. Isso não é um esquecimento a corrigir depois — é a definição do sistema.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <h3>O que se calcula a partir disso</h3>
+        <ul class="clean yes">
+          <li><strong>Volume por porta e por dia</strong> — a série histórica que hoje não existe</li>
+          <li><strong>Curva por hora</strong> — onde estão os picos reais, não os presumidos</li>
+          <li><strong>Ocupação estimada</strong> — entradas acumuladas menos saídas acumuladas, ao longo do dia</li>
+          <li><strong>Desbalanceamento entre as portas</strong> — qual das duas carrega o fluxo, e quando</li>
+          <li><strong>Perfil por dia da semana</strong> — a terça não é a sexta</li>
+          <li><strong>Efeito de eventos</strong> — semana de prova, feriado, palestra, greve de ônibus</li>
+          <li><strong>Tendência ao longo do semestre</strong> — a curva de frequência caindo é visível em agregado</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 09 UNO: INSIGHTS ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow uno">Etapa 1 · Valor para a instituição</p>
+    <h2>Sete decisões que passam a ter número.</h2>
+    <div class="g2">
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Operação</span>
+        <h3>Escala de portaria e segurança por faixa horária</h3>
+        <p>Hoje o efetivo é constante o dia inteiro. Com a curva por hora, ele passa a acompanhar o fluxo — reforço às 18h30, redução às 10h.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Operação</span>
+        <h3>Limpeza atrelada a volume real</h3>
+        <p>Banheiro e área comum limpos em função de quantas pessoas passaram, não de um horário fixo herdado.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Infraestrutura</span>
+        <h3>Dimensionamento da cantina e das filas</h3>
+        <p>O pico de entrada antecede o pico de consumo em minutos. Saber a magnitude do primeiro permite preparar o segundo.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Infraestrutura</span>
+        <h3>Uso das duas entradas</h3>
+        <p>Se 80% do fluxo entra por uma porta, isso é sinalização mal resolvida ou acesso mal posicionado — e vira uma intervenção barata.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Segurança</span>
+        <h3>Ocupação estimada em tempo real</h3>
+        <p>Quantas pessoas estão no prédio agora. É o número que falta num plano de evacuação e numa avaliação de lotação.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Sustentabilidade</span>
+        <h3>Climatização e iluminação por ocupação</h3>
+        <p>Consumo ajustado à presença medida, e não a um cronograma. Ganho direto e auditável na conta de energia.</p>
+      </div>
+      <div class="bbox on-entrada" style="grid-column:1/-1"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Acadêmico</span>
+        <h3>Frequência agregada ao longo do semestre</h3>
+        <p>A curva de fluxo caindo semana a semana é um indicador precoce de evasão — em nível de instituição, sem observar nenhum aluno em particular. É exatamente o tipo de sinal que costuma chegar tarde demais.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10 UNO: PROVA ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow uno">Etapa 1 · Avaliação</p>
+    <h2>Como provamos que o número está certo.</h2>
+    <p class="lead">Um sistema de contagem que não é avaliado é uma opinião com interface bonita. A avaliação é parte do entregável, não um apêndice.</p>
+    <div class="g4">
+      <div class="metric a"><span class="v">≤10%</span><span class="l">Meta de erro</span><span class="s">Erro absoluto percentual contra contagem manual, em cada direção.</span></div>
+      <div class="metric a"><span class="v">15min</span><span class="l">Trecho avaliado</span><span class="s">Em horário movimentado, o pior caso do sistema.</span></div>
+      <div class="metric a"><span class="v">2×</span><span class="l">Contagem manual</span><span class="s">Duas pessoas contam separadamente e reconciliam se divergirem mais de 3%.</span></div>
+      <div class="metric a"><span class="v">1min</span><span class="l">Granularidade</span><span class="s">Erro medido minuto a minuto, não só no total.</span></div>
+    </div>
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>Por que minuto a minuto</h3>
+        <p class="muted" style="font-size:.95rem">Totais podem bater por compensação: uma contagem a mais às 14h02 e uma a menos às 14h09 dão um total perfeito e escondem dois erros. A janela de um minuto revela isso.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>Três regimes, medidos separadamente</h3>
+        <ul class="clean">
+          <li>Fluxo baixo — pessoas isoladas</li>
+          <li>Fluxo médio</li>
+          <li>Fluxo de pico — grupos, oclusão, pessoas lado a lado</li>
+        </ul>
+        <p class="muted" style="font-size:.9rem">Uma média única esconde o comportamento. O erro no pico é o número que importa, e vai ser o pior.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11 FERRARI: A IDEIA ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow ferrari">Etapa 2 · A ideia</p>
+    <h2>Contar é saber quantos. Identificar é saber o percurso.</h2>
+    <p class="lead">O Uno responde "entraram 1.240 pessoas". A Ferrari responde "1.240 pessoas entraram, 380 delas atravessaram o campus e saíram pela outra porta, e a permanência mediana foi de 3h10". São perguntas de natureza diferente.</p>
+    <div class="g3">
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Mecanismo 1</span>
+        <h3>Vetor de aparência</h3>
+        <p>Ao cruzar a linha, uma rede extrai um vetor numérico que representa a aparência da pessoa — silhueta, cores da roupa. Não é rosto, não é imagem, e não é reversível.</p>
+      </div>
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Mecanismo 2</span>
+        <h3>Conjunto de ocupação</h3>
+        <p>O sistema mantém a lista de quem entrou e ainda não saiu. Uma saída não é comparada com o mundo inteiro — só com quem está dentro do prédio agora.</p>
+      </div>
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Mecanismo 3</span>
+        <h3>Restrição física</h3>
+        <p>Quem saiu às 14h não entrou às 7h e ficou parado. Quem entrou há 40 segundos não teve tempo de atravessar o campus. Tempo poda candidatos de graça.</p>
+      </div>
+    </div>
+    <div class="callout ok">Essa combinação é o que torna a etapa 2 viável: ela transforma um problema de <strong>identificação em galeria aberta</strong>, que é difícil, num problema de <strong>atribuição em conjunto fechado</strong>, que é tratável.</div>
+  </div>
+</section>
+
+<!-- ============ 12 FERRARI: HONESTIDADE ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow ferrari">Etapa 2 · Limites conhecidos</p>
+    <h2>Três coisas que o sistema não vai conseguir fazer.</h2>
+    <p class="lead">Declarar isso antes de construir é o que separa um projeto de engenharia de uma demonstração. Cada limite abaixo tem uma decisão de projeto correspondente.</p>
+    <div class="g3">
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Limite 01</span>
+        <h3 style="color:var(--limite)">A identidade morre à meia-noite</h3>
+        <p>O reconhecimento é por aparência, e a pessoa troca de roupa. "Fulano vem toda terça" exigiria biometria — que está excluída do projeto. O escopo da identidade é a sessão, não a pessoa.</p>
+      </div>
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Limite 02</span>
+        <h3 style="color:var(--limite)">Fantasmas se acumulam</h3>
+        <p>Toda saída não detectada deixa alguém eternamente "dentro". Por isso o sistema <strong>nunca força um casamento</strong>: sempre existe a resposta "não sei". Forçar contaminaria a matriz inteira.</p>
+      </div>
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Limite 03</span>
+        <h3 style="color:var(--limite)">A restrição enfraquece no pico</h3>
+        <p>Com 800 pessoas dentro, o conjunto de candidatos deixa de ser pequeno. A janela de permanência é o que sustenta a precisão nesse horário — e ela precisa ser medida, não presumida.</p>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="callout warm">A atribuição é resolvida <strong>em lote</strong>, por otimização sobre uma janela de tempo — nunca uma saída de cada vez. O método guloso erra quando várias pessoas parecidas saem juntas.</div>
+      <div class="callout warm">Todo vínculo guarda sua confiança. O resultado é reportado como "matriz origem-destino com X% não atribuído" — e essa fatia declarada é o que torna o número honesto.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 13 FERRARI: DADO ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow ferrari">Etapa 2 · O dado gerado</p>
+    <h2>O evento vira trajeto.</h2>
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="tablewrap">
+          <table style="min-width:0">
+            <thead><tr><th>Campo novo</th><th>Exemplo</th></tr></thead>
+            <tbody>
+              <tr><td class="k">porta de entrada</td><td class="num">entrada_b</td></tr>
+              <tr><td class="k">porta de saída</td><td class="num">entrada_a</td></tr>
+              <tr><td class="k">permanência</td><td class="num">03:12:40</td></tr>
+              <tr><td class="k">confiança do vínculo</td><td class="num">0.78</td></tr>
+              <tr><td class="k">método</td><td class="num">APARENCIA+TEMPO</td></tr>
+              <tr><td class="k">reentradas no dia</td><td class="num">2</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout ok">O identificador continua sendo um número sequencial sem vínculo com matrícula, nome ou rosto — e ele expira em 24 a 48 horas.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <h3>O que se calcula a partir disso</h3>
+        <ul class="clean next">
+          <li><strong>Matriz origem-destino</strong> — quantos fazem A→A, A→B, B→A, B→B</li>
+          <li><strong>Distribuição de permanência</strong> — não a média, a distribuição inteira</li>
+          <li><strong>Taxa de reentrada</strong> — quem sai e volta no mesmo dia</li>
+          <li><strong>Passagens curtas</strong> — quem entra e sai em menos de dez minutos</li>
+          <li><strong>Ocupação real</strong> — casada, e não estimada por acumulação</li>
+          <li><strong>Curva de esvaziamento</strong> — quanto tempo o prédio leva para esvaziar depois da última aula</li>
+          <li><strong>Anomalia de padrão</strong> — o dia que não se parece com nenhum outro</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 14 FERRARI: INSIGHTS ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow ferrari">Etapa 2 · Valor para a instituição</p>
+    <h2>As perguntas que só o trajeto responde.</h2>
+    <div class="g2">
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Fluxo interno</span>
+        <h3>Onde o campus é atravessado</h3>
+        <p>Se um terço de quem entra por uma porta sai pela outra, existe um corredor de passagem real dentro do campus. É onde a sinalização, o mural, o café e a máquina de bebidas deveriam estar — e provavelmente não estão.</p>
+      </div>
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Espaço</span>
+        <h3>Quem fica e quem só passa</h3>
+        <p>A distribuição de permanência separa quem vem para uma aula e vai embora de quem passa o dia. A segunda população é a que demanda biblioteca, tomada, wi-fi e lugar para sentar — e a que ninguém dimensiona.</p>
+      </div>
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Diagnóstico</span>
+        <h3>A taxa de reentrada é um sintoma</h3>
+        <p>Gente que sai e volta no mesmo dia geralmente saiu para comer, imprimir ou estudar em outro lugar. Uma taxa alta entre duas aulas é evidência direta de que falta algo dentro do campus — e diz o quê, pelo horário.</p>
+      </div>
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Diagnóstico</span>
+        <h3>Passagens de menos de dez minutos</h3>
+        <p>Entrou e saiu rápido: entrega, visita, ou alguém que veio resolver algo e desistiu da fila. Concentradas num horário e numa porta, viram um problema de atendimento identificável.</p>
+      </div>
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Operação</span>
+        <h3>Quando o prédio realmente esvazia</h3>
+        <p>A curva de esvaziamento depois da última aula diz a que horas faz sentido fechar, desligar a climatização e liberar a equipe — em vez de um horário fixo escolhido há anos.</p>
+      </div>
+      <div class="bbox on-saida"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Planejamento</span>
+        <h3>Simular antes de mudar</h3>
+        <p>Com a matriz origem-destino, dá para estimar o efeito de fechar uma entrada para obra, mudar um horário de turma ou abrir um acesso novo — antes de fazer, e não depois de reclamarem.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 15 COMPARATIVO ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow">Comparativo</p>
+    <h2>Uno e Ferrari, lado a lado.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th></th><th style="color:var(--entrada)">Etapa 1 — Uno</th><th style="color:var(--saida)">Etapa 2 — Ferrari</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="k">Pergunta</td><td>Quantos passaram?</td><td>Quem foi para onde, e por quanto tempo?</td></tr>
+          <tr><td class="k">Unidade do dado</td><td>Um evento de cruzamento</td><td>Um trajeto com origem, destino e duração</td></tr>
+          <tr><td class="k">Identidade</td><td>Local ao quadro, descartada em segundos</td><td>De sessão, expira em 24–48h</td></tr>
+          <tr><td class="k">Técnica adicional</td><td>—</td><td>Vetor de aparência, conjunto de ocupação, atribuição em lote</td></tr>
+          <tr><td class="k">Maturidade</td><td>Consolidada na literatura</td><td>Pesquisa em aberto</td></tr>
+          <tr><td class="k">Acurácia esperada</td><td class="num">≥ 90%</td><td>A medir, e reportada com a fatia não atribuída</td></tr>
+          <tr><td class="k">Risco de não entregar</td><td>Baixo</td><td>Real — por isso vem depois</td></tr>
+          <tr><td class="k">Condição de instalação</td><td>Qualquer ângulo de câmera</td><td><strong>Exige câmera inclinada, com corpo visível</strong></td></tr>
+          <tr><td class="k">Depende de</td><td>Nada — é a base</td><td>Etapa 1 avaliada e documentada</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warm">A última linha da tabela é a decisão mais urgente do projeto: câmera apontada direto para baixo conta bem e <strong>inviabiliza a etapa 2</strong>, porque não sobra aparência para comparar. O ângulo precisa ser escolhido antes de furar a parede.</div>
+  </div>
+</section>
+
+<!-- ============ 16 STACK ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow">Ferramentas</p>
+    <h2>Tudo em Python, e tudo com função declarada.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Biblioteca</th><th>Papel no projeto</th><th>Etapa</th></tr></thead>
+        <tbody>
+          <tr><td class="k">ultralytics</td><td>Detecção de pessoas (YOLO11) e rastreamento (ByteTrack), integrados</td><td class="num">1</td></tr>
+          <tr><td class="k">opencv-python</td><td>Leitura de vídeo, arquivo e stream; desenho do overlay de depuração; gravação do vídeo anotado</td><td class="num">1</td></tr>
+          <tr><td class="k">supervision</td><td>Utilitários de linha e zona, usados como referência de comparação da nossa implementação</td><td class="num">1</td></tr>
+          <tr><td class="k">numpy</td><td>Geometria do cruzamento, suavização da trajetória</td><td class="num">1</td></tr>
+          <tr><td class="k">fastapi + pydantic</td><td>O serviço que recebe os eventos, com validação de formato e documentação automática</td><td class="num">1</td></tr>
+          <tr><td class="k">httpx</td><td>Envio dos eventos pelo agente, com retentativa</td><td class="num">1</td></tr>
+          <tr><td class="k">sqlite3</td><td>Banco de eventos, sem servidor e sem configuração</td><td class="num">1</td></tr>
+          <tr><td class="k">pandas</td><td>Agregação por dia, hora e porta; ocupação acumulada</td><td class="num">1</td></tr>
+          <tr><td class="k">streamlit</td><td>O painel web, escrito em Python, sem front-end</td><td class="num">1</td></tr>
+          <tr><td class="k">pytest</td><td>Testes automatizados, com foco na geometria da contagem</td><td class="num">1</td></tr>
+          <tr><td class="k">uv</td><td>Ambiente reproduzível com versões travadas — o projeto roda igual em outra máquina</td><td class="num">1</td></tr>
+          <tr><td class="k">torchreid</td><td>Extração do vetor de aparência para a re-identificação</td><td class="num">2</td></tr>
+          <tr><td class="k">scipy</td><td>Atribuição ótima em lote entre saídas e o conjunto de ocupação</td><td class="num">2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chips">
+      <span class="chip">Python 3.11</span>
+      <span class="chip">GPU NVIDIA disponível</span>
+      <span class="chip">Sem custo de licença</span>
+      <span class="chip">Sem serviço em nuvem</span>
+      <span class="chip">Sem chave de API paga</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 17 SIMULACAO / CRONOGRAMA ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow">Execução</p>
+    <h2>O software inteiro se desenvolve antes de existir câmera.</h2>
+    <p class="lead">Três níveis de simulação, cada um destravando uma parte diferente do trabalho. É o que impede que a espera pela autorização de gravação pare o projeto.</p>
+    <div class="g3">
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Nível 1</span>
+        <h3>Eventos sintéticos</h3>
+        <p>Um gerador cria um dia inteiro de passagens plausíveis, com picos de horário. Constrói banco, serviço e painel sem uma linha de visão computacional.</p>
+      </div>
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Nível 2</span>
+        <h3>Vídeo público anotado</h3>
+        <p>Bases de vigilância com contagem de referência já feita. Validam detecção, rastreio e contagem — e permitem avaliar sem contagem manual.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Nível 3</span>
+        <h3>Gravação da porta real</h3>
+        <p>O único dado com a geometria, a luz e o comportamento do local. É o que calibra o sistema. Depende de autorização — por isso é pedida na primeira semana.</p>
+      </div>
+    </div>
+    <div class="fases">
+      <div class="fase on"><span class="w">SEM 1</span><span class="n">Fundação</span><span class="d">Ambiente, banco, testes — e o pedido de autorização de gravação, que não pode esperar</span></div>
+      <div class="fase on"><span class="w">SEM 2</span><span class="n">Serviço e simulador</span><span class="d">API recebendo eventos, gerador de dia sintético</span></div>
+      <div class="fase on"><span class="w">SEM 3</span><span class="n">Visão</span><span class="d">Detecção e rastreamento sobre vídeo</span></div>
+      <div class="fase on"><span class="w">SEM 4</span><span class="n">Contagem</span><span class="d">Linha virtual, calibração, ajuste de limiares</span></div>
+      <div class="fase on"><span class="w">SEM 5</span><span class="n">Integração</span><span class="d">Agente completo com fila local, painel web</span></div>
+      <div class="fase on"><span class="w">SEM 6</span><span class="n">Avaliação</span><span class="d">Contagem manual de referência, métricas, linha de base comparativa</span></div>
+      <div class="fase on"><span class="w">SEM 7</span><span class="n">Entrega</span><span class="d">Documentação, empacotamento, vídeo de demonstração</span></div>
+      <div class="fase off"><span class="w">SEM 8</span><span class="n">Folga</span><span class="d">Reserva para atraso — ou início da etapa 2</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 18 PRIVACIDADE ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow">Privacidade</p>
+    <h2>O sistema observa pessoas reais. Isso foi desenhado, não contornado.</h2>
+    <div class="g2">
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Decisão 01</span>
+        <h3>Nenhum reconhecimento facial, nas duas etapas</h3>
+        <p>Dado biométrico é categoria de dado pessoal sensível na LGPD, com regime jurídico mais restrito. Não há necessidade para o objetivo do projeto, e o custo de conformidade seria desproporcional.</p>
+      </div>
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Decisão 02</span>
+        <h3>Nenhuma imagem armazenada em operação</h3>
+        <p>O banco guarda porta, instante e direção. Não há quadro, não há recorte, não há rosto. Os vídeos de desenvolvimento ficam fora do repositório e são apagados após as medições.</p>
+      </div>
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Decisão 03</span>
+        <h3>Nenhum vínculo com identidade civil</h3>
+        <p>O sistema não conhece matrícula, nome nem documento. Não existe caminho técnico para ligar um evento a uma pessoa específica — a ausência é estrutural, não uma política que alguém possa mudar.</p>
+      </div>
+      <div class="bbox"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Decisão 04</span>
+        <h3>Finalidade declarada e limitada</h3>
+        <p>Dimensionamento de fluxo e planejamento operacional. Sem uso disciplinar, sem controle de frequência individual, sem função de segurança patrimonial. Aviso visível nas entradas e autorização prévia da coordenação.</p>
+      </div>
+    </div>
+    <div class="callout ok">Na etapa 2, o vetor de aparência expira em 24 a 48 horas e não é reversível para imagem. A identidade é efêmera <strong>por construção</strong> — é uma propriedade do método, não uma promessa administrativa.</div>
+  </div>
+</section>
+
+<!-- ============ 19 PEDIDO ============ -->
+<section class="slide">
+  <div class="inner">
+    <p class="eyebrow">Próximo passo</p>
+    <h2>O que precisa ser decidido para começar.</h2>
+    <div class="g3">
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Pedido 01</span>
+        <h3>Autorização para gravar</h3>
+        <p>Quinze a trinta minutos das duas entradas, em horário movimentado, com aviso à coordenação. É o item de maior valor por hora do projeto inteiro, e o único que não depende da equipe.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Pedido 02</span>
+        <h3>Definição do ângulo da câmera</h3>
+        <p>Cerca de 2,5 a 3 metros de altura, inclinada, com o corpo visível. Escolher agora preserva a etapa 2; escolher depois pode custar uma reinstalação.</p>
+      </div>
+      <div class="bbox on-entrada"><span class="c1"></span><span class="c2"></span>
+        <span class="tag">Pedido 03</span>
+        <h3>Aprovação do escopo em duas etapas</h3>
+        <p>Que a avaliação considere o Uno como entrega completa, e a Ferrari como extensão — para que o risco da segunda não ameace o resultado da primeira.</p>
+      </div>
+    </div>
+    <div class="split" style="border-top:1px solid var(--rule);padding-top:22px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>O que já está pronto</h3>
+        <ul class="clean yes">
+          <li>Documento de projeto com 111 etapas e critério de aceite em cada uma</li>
+          <li>Decisões técnicas justificadas contra as alternativas descartadas</li>
+          <li>Modelo de dados, arquitetura e plano de avaliação definidos</li>
+          <li>Ambiente de desenvolvimento verificado — Python, GPU e ferramentas disponíveis</li>
+        </ul>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3>O que começa na aprovação</h3>
+        <ul class="clean next">
+          <li>Repositório, ambiente reproduzível e banco</li>
+          <li>Serviço de eventos e simulador de dia sintético</li>
+          <li>Detecção e rastreamento sobre vídeo público</li>
+          <li>Contagem calibrada, assim que a gravação do local existir</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var deck = document.getElementById('deck');
+  var slides = Array.prototype.slice.call(deck.querySelectorAll('.slide'));
+  var counter = document.getElementById('counter');
+  var rail = document.getElementById('rail');
+  var total = slides.length;
+  var current = 0;
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function paint(i) {
+    current = i;
+    counter.textContent = pad(i + 1) + ' / ' + pad(total);
+    rail.style.width = ((i + 1) / total * 100) + '%';
+  }
+
+  function go(i) {
+    i = Math.max(0, Math.min(total - 1, i));
+    slides[i].scrollIntoView({ block: 'start' });
+    paint(i);
+  }
+
+  // Observa qual slide ocupa a tela, para o contador seguir o scroll manual.
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting && e.intersectionRatio > 0.5) {
+          paint(slides.indexOf(e.target));
+        }
+      });
+    }, { root: deck, threshold: [0.5] });
+    slides.forEach(function (s) { io.observe(s); });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.target && e.target.tagName === 'BUTTON' && e.key === ' ') return;
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowDown': case 'PageDown': case ' ':
+        e.preventDefault(); go(current + 1); break;
+      case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+        e.preventDefault(); go(current - 1); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End':  e.preventDefault(); go(total - 1); break;
+    }
+  });
+
+  // Tema: alterna entre claro e escuro, guardando a escolha quando possível.
+  var btn = document.getElementById('themebtn');
+  var root = document.documentElement;
+  try {
+    var saved = localStorage.getItem('limiar-tema');
+    if (saved) root.setAttribute('data-theme', saved);
+  } catch (err) { /* armazenamento indisponível: segue no tema do sistema */ }
+
+  btn.addEventListener('click', function () {
+    var atual = root.getAttribute('data-theme');
+    var escuro = atual
+      ? atual === 'dark'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var proximo = escuro ? 'light' : 'dark';
+    root.setAttribute('data-theme', proximo);
+    try { localStorage.setItem('limiar-tema', proximo); } catch (err) { /* ok */ }
+  });
+
+  paint(0);
+})();
+</script>

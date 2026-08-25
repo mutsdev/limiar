@@ -1,0 +1,33 @@
+# Parâmetros do pipeline de visão e contagem.
+# Estão fora do código porque são ajustados por medição, não por raciocínio:
+# o valor certo sai de assistir ao vídeo anotado e comparar com a contagem manual.
+
+deteccao:
+  modelo: "yolo11n.pt"     # troca para yolo11s.pt / yolo11m.pt se a precisão exigir
+  classes: [0]             # 0 = "person" no COCO
+  confianca_minima: 0.30   # baixo de propósito: o ByteTrack aproveita detecção fraca
+  iou: 0.50
+  dispositivo: "auto"      # "auto" | "cpu" | "0" (índice da GPU)
+  pular_quadros: 0         # 1 processa 1 de cada 2 quadros; 0 processa todos
+
+rastreio:
+  tracker: "bytetrack.yaml"
+
+contagem:
+  # Quantos quadros um track precisa existir antes de poder gerar evento.
+  # Elimina detecção instantânea e falso positivo de um quadro só.
+  idade_minima_track: 3
+
+  # Suavização do ponto de referência: média móvel das últimas N posições.
+  janela_suavizacao: 3
+
+  # Faixa morta em pixels em volta da linha. Enquanto a pessoa está dentro
+  # dela, nada é contado — evita disparo repetido por tremulação da caixa.
+  zona_morta_px: 15
+
+  # Após contar um cruzamento do track T, ignora novos cruzamentos do MESMO T
+  # por este intervalo. Trata a pessoa que hesita na porta.
+  cooldown_segundos: 1.5
+
+  # Um track sem detecção por este número de quadros é esquecido.
+  quadros_ate_esquecer: 60

@@ -1,0 +1,64 @@
+[project]
+name = "fluxo"
+version = "0.1.0"
+description = "Limiar: contagem de fluxo de pessoas nas entradas da faculdade"
+requires-python = ">=3.11,<3.12"
+
+# Núcleo: tudo que as fases 0 a 3 precisam. Instala em segundos.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "httpx>=0.27",
+    "pandas>=2.2",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "streamlit>=1.39",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# Visão computacional: ~2,5 GB com PyTorch. Só entra na fase 4.
+#   uv sync --extra visao
+visao = [
+    "ultralytics>=8.3",
+    "opencv-python>=4.10",
+    "supervision>=0.24",
+    "numpy>=1.26",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.7",
+]
+
+[tool.uv]
+# O projeto NÃO é construído nem instalado no venv — só as dependências são.
+#
+# Motivo: o repositório vive dentro do OneDrive, e o cache de hardlinks do uv
+# é incompatível com o filtro de sincronização da nuvem (os error 396,
+# "operação de nuvem não pode ser executada em arquivo com links físicos
+# incompatíveis"). Qualquer build aqui falha de forma intermitente.
+#
+# Em vez de lutar contra isso, `src` entra no sys.path: o pytest via
+# `pythonpath` abaixo, e os scripts via três linhas no topo de cada um.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Depends()/Query() no valor padrão é a forma canônica de declarar
+# dependência e parâmetro no FastAPI. B008 é falso-positivo aqui.
+"src/fluxo/servico/*.py" = ["B008"]
+# Entrypoints precisam ajustar o sys.path antes de importar o pacote.
+"scripts/*.py" = ["E402"]
