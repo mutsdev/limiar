@@ -112,3 +112,24 @@ def instante_inicial_de(caminho: Path | str, informado: datetime | None) -> date
     if p.exists():
         return datetime.fromtimestamp(p.stat().st_mtime, tz=FUSO_LOCAL)
     return datetime.now(FUSO_LOCAL)
+
+
+def versao_do_codigo() -> str:
+    """Hash curto do commit atual, ou "" se não for um repositório git.
+
+    Vai junto com a medição: sem saber qual código produziu um número, o
+    resultado não é reproduzível.
+    """
+    import subprocess
+
+    try:
+        saida = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=Path(__file__).resolve().parents[3],
+        )
+        return saida.stdout.strip() if saida.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        return ""

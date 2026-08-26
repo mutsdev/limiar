@@ -71,3 +71,47 @@ class Remetente:
             return r.status_code == 200
         except httpx.HTTPError:
             return False
+
+    def abrir_execucao(
+        self,
+        camera_id: str,
+        fonte: str,
+        modelo: str,
+        rastreador: str,
+        conf_minima: float,
+        versao_codigo: str = "",
+    ) -> int | None:
+        """Registra o início da execução. None se o serviço não responder.
+
+        Falhar aqui não pode derrubar a contagem: rastreabilidade é
+        desejável, contar é obrigatório.
+        """
+        try:
+            r = httpx.post(
+                f"{self.url}/execucoes",
+                json={
+                    "camera_id": camera_id,
+                    "fonte": fonte,
+                    "modelo": modelo,
+                    "rastreador": rastreador,
+                    "conf_minima": conf_minima,
+                    "versao_codigo": versao_codigo,
+                },
+                timeout=self.timeout,
+            )
+            r.raise_for_status()
+            return int(r.json()["execucao_id"])
+        except (httpx.HTTPError, KeyError, ValueError):
+            return None
+
+    def fechar_execucao(self, execucao_id: int, quadros: int, eventos: int) -> bool:
+        try:
+            r = httpx.post(
+                f"{self.url}/execucoes/{execucao_id}/fim",
+                json={"quadros": quadros, "eventos": eventos},
+                timeout=self.timeout,
+            )
+            r.raise_for_status()
+            return True
+        except httpx.HTTPError:
+            return False

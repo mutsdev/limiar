@@ -115,3 +115,28 @@ class RespostaLote(BaseModel):
     recebidos: int
     registrados: int
     duplicados: int
+
+
+class InicioExecucao(BaseModel):
+    """Abre o registro de uma execução do agente.
+
+    Guardar modelo e limiares junto do resultado é o que torna uma medição
+    reproduzível: seis semanas depois ainda dá para saber com qual
+    configuração aquele número foi produzido.
+    """
+
+    camera_id: str = Field(min_length=1, max_length=64)
+    fonte: str
+    modelo: str
+    rastreador: str
+    conf_minima: float = Field(ge=0.0, le=1.0)
+    versao_codigo: str = ""
+
+
+class FimExecucao(BaseModel):
+    quadros: int = Field(ge=0)
+    eventos: int = Field(ge=0)
+
+
+class RespostaExecucao(BaseModel):
+    execucao_id: int

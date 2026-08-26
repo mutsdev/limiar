@@ -142,3 +142,32 @@ class TestRemetente:
         monkeypatch.setattr(httpx, "get", lambda url, **kw: _RespostaFalsa(status))
         r = Remetente("http://x", FilaLocal(tmp_path / "f.jsonl"))
         assert r.servico_no_ar() is esperado
+
+
+class TestRegistroDeExecucao:
+    def test_abre_e_devolve_o_id(self, tmp_path, monkeypatch):
+        class R(_RespostaFalsa):
+            def json(self):
+                return {"execucao_id": 7}
+
+        monkeypatch.setattr(httpx, "post", lambda url, **kw: R())
+        r = Remetente("http://x", FilaLocal(tmp_path / "f.jsonl"))
+        assert r.abrir_execucao("entrada_a", "v.mp4", "yolo11n.pt", "bytetrack", 0.3) == 7
+
+    def test_servico_fora_do_ar_nao_derruba_a_contagem(self, tmp_path, monkeypatch):
+        """Rastreabilidade é desejável; contar é obrigatório."""
+
+        def cai(url, **kw):
+            raise httpx.ConnectError("sem rede")
+
+        monkeypatch.setattr(httpx, "post", cai)
+        r = Remetente("http://x", FilaLocal(tmp_path / "f.jsonl"))
+        assert r.abrir_execucao("entrada_a", "v.mp4", "yolo11n.pt", "bytetrack", 0.3) is None
+
+    def test_fechar_devolve_falso_sem_rede(self, tmp_path, monkeypatch):
+        def cai(url, **kw):
+            raise httpx.ConnectError("sem rede")
+
+        monkeypatch.setattr(httpx, "post", cai)
+        r = Remetente("http://x", FilaLocal(tmp_path / "f.jsonl"))
+        assert r.fechar_execucao(1, 100, 5) is False

@@ -96,6 +96,14 @@ def main() -> None:
     print(f"Início   : {inicio:%d/%m/%Y %H:%M:%S}")
     print()
 
+    execucao_id = None
+    if remetente is not None:
+        execucao_id = remetente.abrir_execucao(
+            args.camera, str(fonte_str), cfg_visao.modelo,
+            cfg_visao.tracker, cfg_visao.confianca_minima,
+            processador.versao_do_codigo(),
+        )
+
     try:
         resultado = processador.processar(
             fonte, rastreador, linha, remetente, gravador, args.limite
@@ -104,6 +112,11 @@ def main() -> None:
         fonte.fechar()
         if gravador is not None:
             gravador.fechar()
+
+    if remetente is not None and execucao_id is not None:
+        remetente.fechar_execucao(
+            execucao_id, resultado.quadros, len(resultado.eventos)
+        )
 
     print()
     print(f"Quadros  : {resultado.quadros}  ({resultado.fps:.1f} q/s)")

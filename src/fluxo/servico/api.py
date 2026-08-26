@@ -15,8 +15,11 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 
 from fluxo.dominio.evento import (
     EventoCruzamento,
+    FimExecucao,
+    InicioExecucao,
     Origem,
     RespostaEvento,
+    RespostaExecucao,
     RespostaLote,
 )
 from fluxo.persistencia import repositorio
@@ -147,3 +150,56 @@ def listar_eventos(
         conn, data_inicio, data_fim, camera_id, origem, limite
     )
     return [dict(linha) for linha in linhas]
+
+
+@app.post("/execucoes", response_model=RespostaExecucao, tags=["operação"])
+def abrir_execucao(
+    inicio: InicioExecucao,
+    conn: sqlite3.Connection = Depends(obter_conexao),
+) -> RespostaExecucao:
+    """Registra o começo de uma execução do agente."""
+    if not repositorio.camera_existe(conn, inicio.camera_id):
+        raise HTTPException(
+            status_code=404, detail=f"Câmera '{inicio.camera_id}' não está cadastrada."
+        )
+    execucao_id = repositorio.registrar_execucao(
+        conn,
+        inicio.camera_id,
+        inicio.fonte,
+        inicio.modelo,
+        inicio.rastreador,
+        inicio.conf_minima,
+        inicio.versao_codigo,
+    )
+    return RespostaExecucao(execucao_id=execucao_id)
+
+
+@app.post("/execucoes/{execucao_id}/fim", tags=["operação"])
+def fechar_execucao(
+    execucao_id: int,
+    fim: FimExecucao,
+    conn: sqlite3.Connection = Depends(obter_conexao),
+) -> dict[str, bool]:
+    existe = conn.execute(
+        "SELECT 1 FROM execucao WHERE id = ?", (execucao_id,)
+    ).fetchone()
+    if existe is None:
+        raise HTTPException(status_code=404, detail=f"Execução {execucao_id} não existe.")
+    repositorio.finalizar_execucao(conn, execucao_id, fim.quadros, fim.eventos)
+    return {"fechada": True}
+
+
+@app.get("/execucoes", tags=["consulta"])
+def listar_execucoes(
+    camera_id: str | None = Query(default=None),
+    limite: int = Query(default=50, ge=1, le=500),
+    conn: sqlite3.Connection = Depends(obter_conexao),
+) -> list[dict]:
+    sql = "SELECT * FROM execucao"
+    params: list[object] = []
+    if camera_id:
+        sql += " WHERE camera_id = ?"
+        params.append(camera_id)
+    sql += " ORDER BY id DESC LIMIT ?"
+    params.append(limite)
+    return [dict(linha) for linha in conn.execute(sql, params)]
