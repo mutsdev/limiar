@@ -5,7 +5,20 @@ Documento de Projeto - Versao 1 (Escopo "UNO")
 
 Data............: 25/08/2026
 Autor...........: Joao Pedro
-Status..........: Proposta para aprovacao
+Status..........: Etapa "Uno" IMPLEMENTADA (v1.0-uno)
+Repositorio.....: https://github.com/mutsdev/fluxo-faculdade
+
+ESTADO EM 25/08/2026
+  Fases 0 a 10 concluidas. 179 testes automatizados, lint limpo, instalacao
+  limpa verificada. Os numeros medidos estao em docs/resultados.md.
+
+  Erro medido contra anotacao humana (MOT17-09): 31,2% contra tudo que foi
+  anotado, 10,0% contra quem tinha ao menos 25% de visibilidade. A linha de
+  base por subtracao de fundo erra 68,8% na mesma cena.
+
+  FALTA, e nao e codigo: a gravacao das duas entradas reais e a contagem
+  manual de referencia por duas pessoas (secao 11). So com ela a meta dos
+  10% pode ser verificada na porta da faculdade. Depende de autorizacao.
 Escopo deste doc: Versao minima viavel ("Uno"). A versao avancada com
                   re-identificacao de pessoas ("Ferrari") esta descrita
                   apenas na secao 12, como evolucao futura.
