@@ -10,9 +10,13 @@ cameras:
   entrada_a:
     nome: "Entrada Principal"
     local: "Portaria da frente"
-    fonte: ""            # caminho de vídeo, índice de webcam ou URL RTSP/MJPEG
-    linha: null
-    lado_dentro: 1
+    # Vídeo público de amostra (Intel, Apache-2.0), usado enquanto não há
+    # gravação da porta real. Trocar pela fonte da câmera quando existir.
+    fonte: "dados/videos/people-detection.mp4"
+    # Longe do pilar da sala (x ~420-440): linha atrás de oclusor quebra o
+    # track no momento exato da passagem, e o cruzamento se perde.
+    linha: [330, 120, 330, 432]
+    lado_dentro: -1      # o lado direito do quadro é o "dentro"
     ativa: true
 
   entrada_b:

@@ -50,6 +50,37 @@ URL_SERVICO = os.getenv("URL_SERVICO", "http://127.0.0.1:8000").rstrip("/")
 UTC_OFFSET_HORAS = -3
 
 
+def carregar_cameras() -> dict[str, dict]:
+    import yaml
+
+    dados = yaml.safe_load(ARQUIVO_CAMERAS.read_text(encoding="utf-8")) or {}
+    return dados.get("cameras") or {}
+
+
+def carregar_pipeline() -> dict:
+    import yaml
+
+    return yaml.safe_load(ARQUIVO_PIPELINE.read_text(encoding="utf-8")) or {}
+
+
+def salvar_cameras(cameras: dict[str, dict]) -> None:
+    """Regrava cameras.yaml. Usado pela ferramenta de calibração."""
+    import yaml
+
+    cabecalho = (
+        "# Uma entrada por câmera. A linha de contagem é escrita aqui por\n"
+        "# scripts/calibrar_linha.py — não edite as coordenadas à mão.\n"
+        "#\n"
+        "# linha: [x1, y1, x2, y2] em pixels do quadro original\n"
+        "# lado_dentro: sinal do produto vetorial correspondente ao interior\n"
+        "#              do prédio; depende de como a câmera está montada.\n\n"
+    )
+    corpo = yaml.safe_dump(
+        {"cameras": cameras}, allow_unicode=True, sort_keys=False, default_flow_style=None
+    )
+    ARQUIVO_CAMERAS.write_text(cabecalho + corpo, encoding="utf-8")
+
+
 def garantir_pastas() -> None:
     """Cria as pastas de trabalho. Chamado pelos entrypoints, não na importação."""
     for pasta in (

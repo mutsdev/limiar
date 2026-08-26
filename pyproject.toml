@@ -25,6 +25,14 @@ visao = [
     "opencv-python>=4.10",
     "supervision>=0.24",
     "numpy>=1.26",
+    # Declarados aqui, e não só como dependência transitiva do ultralytics,
+    # para poder apontá-los ao índice CUDA em [tool.uv.sources].
+    "torch>=2.5",
+    "torchvision>=0.20",
+    # O ByteTrack usa `lap` para o algoritmo húngaro. O ultralytics instala
+    # sozinho na primeira execução se faltar — o que quebraria a promessa de
+    # ambiente reproduzível. Melhor declarar.
+    "lap>=0.5.12",
 ]
 
 [dependency-groups]
@@ -44,6 +52,23 @@ dev = [
 # Em vez de lutar contra isso, `src` entra no sys.path: o pytest via
 # `pythonpath` abaixo, e os scripts via três linhas no topo de cada um.
 package = false
+
+# O uv instala por hardlink a partir do cache. Nesta máquina isso colide com o
+# filtro de sincronização em nuvem (os error 396, "operação de nuvem não pode
+# ser executada em arquivo com links físicos incompatíveis"). Copiar é um
+# pouco mais lento e sempre funciona.
+link-mode = "copy"
+
+# PyTorch da PyPI no Windows é build só de CPU. Para usar a GPU é preciso
+# pegar as wheels CUDA do índice do próprio PyTorch.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124", extra = "visao" }]
+torchvision = [{ index = "pytorch-cu124", extra = "visao" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
