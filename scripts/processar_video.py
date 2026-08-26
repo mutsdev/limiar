@@ -36,6 +36,9 @@ def main() -> None:
     p.add_argument("--limite", type=int, default=None, help="Máximo de quadros")
     p.add_argument("--sem-envio", action="store_true", help="Não entrega ao serviço")
     p.add_argument("--modelo", default=None, help="Sobrescreve o modelo do YAML")
+    p.add_argument("--dispositivo", default=None,
+                   help="'0' para GPU, 'cpu' para CPU. Duas GPUs concorrentes no "
+                        "Windows serializam: rode a segunda camera em cpu.")
     p.add_argument("--inicio", default=None,
                    help="Instante do 1o quadro (ISO). Padrão: mtime do arquivo.")
     p.add_argument("--tempo-real", action="store_true",
@@ -60,6 +63,8 @@ def main() -> None:
     cfg_visao = ConfigVisao.de_pipeline(pipeline)
     if args.modelo:
         cfg_visao.modelo = args.modelo
+    if args.dispositivo:
+        cfg_visao.dispositivo = args.dispositivo
 
     inicio = datetime.fromisoformat(args.inicio).replace(tzinfo=FUSO_LOCAL) if args.inicio else None
     inicio = processador.instante_inicial_de(fonte_str, inicio)

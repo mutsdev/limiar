@@ -33,6 +33,9 @@ visao = [
     # sozinho na primeira execução se faltar — o que quebraria a promessa de
     # ambiente reproduzível. Melhor declarar.
     "lap>=0.5.12",
+    # Baixa as sequências anotadas do MOT17 para a avaliação. Fica junto do
+    # extra `visao` porque avaliar exige rodar o detector de qualquer forma.
+    "huggingface-hub>=0.26",
 ]
 
 [dependency-groups]

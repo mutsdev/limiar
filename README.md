@@ -12,6 +12,7 @@ não há vínculo com identidade civil em nenhum ponto.
 | `docs/arquitetura.md` | camadas, idempotência, e as regras que não se quebram |
 | `docs/calibracao.md` | onde montar a câmera e onde desenhar a linha |
 | `docs/avaliacao.md` | como se prova que o número está certo |
+| `docs/resultados.md` | **os números medidos**, com as limitações declaradas |
 
 ## Instalar
 
@@ -49,7 +50,15 @@ python scripts/simular_dia.py --dias 14
 # YOLO contra a linha de base de subtração de fundo
 python scripts/comparar_detectores.py --camera entrada_a
 
-# 146 testes: sem rede, sem GPU, sem vídeo
+# avaliar contra anotação humana (MOT17)
+python scripts/baixar_mot.py --sequencias MOT17-09
+python scripts/avaliar.py --mot dados/videos/MOT17-09 --sugerir-linha
+python scripts/avaliar.py --mot dados/videos/MOT17-09 --camera mot17_09 --visibilidade 0.25
+
+# avaliar contra contagem manual, quando a gravação real existir
+python scripts/avaliar.py --camera entrada_a --ground-truth dados/ground_truth/porta.csv
+
+# 179 testes: sem rede, sem GPU, sem vídeo
 python -m pytest
 ```
 
@@ -70,7 +79,8 @@ por descuido.
 | 6 | Contagem por linha virtual | pronto |
 | 7 | Agente com fila local | pronto |
 | 8 | Análise e painel | pronto |
-| 9 | Avaliação e linha de base | máquina pronta; **falta a contagem manual** |
+| 9 | Avaliação e linha de base | pronto — ver `docs/resultados.md` |
+| 10 | Empacotamento e documentação | pronto |
 | — | Gravação da porta real e calibração | **depende de autorização** |
 | — | Etapa 2: re-identificação | não iniciada |
 
@@ -90,9 +100,31 @@ export UV_PROJECT_ENVIRONMENT="C:/Users/joaop/Documents/dados-fluxo/.venv-limiar
 
 Numa máquina sem OneDrive nada disso é necessário: `uv sync` basta.
 
-## Vídeo de amostra
+## Duas câmeras na mesma máquina
 
-`dados/videos/people-detection.mp4` vem dos vídeos de exemplo da Intel
-(`intel-iot-devkit/sample-videos`, Apache-2.0). Serve para provar que o
-software funciona; **não serve para calibrar** — o ângulo, a iluminação e o
-comportamento não são os da porta real.
+Dois processos YOLO na mesma GPU são inviáveis no Windows: caem para ~5 s por
+quadro cada, porque o driver WDDM alterna contextos CUDA entre processos. Rode
+a segunda em CPU:
+
+```bash
+python scripts/processar_video.py --camera entrada_a --dispositivo 0
+python scripts/processar_video.py --camera entrada_b --dispositivo cpu
+```
+
+Não afeta a instalação real, em que cada agente fica ao lado da sua câmera, em
+máquina separada.
+
+## Dados de terceiros
+
+Nenhum é versionado — `dados/` fica fora do git.
+
+| origem | licença | para quê |
+|---|---|---|
+| `intel-iot-devkit/sample-videos` | Apache-2.0 | provar que o software funciona |
+| MOT17 (espelho no HuggingFace) | CC BY-NC-SA 3.0, uso não comercial | avaliar contra anotação humana |
+
+**Nenhum deles serve para calibrar.** Ângulo, iluminação e comportamento não
+são os da porta real — ver `docs/calibracao.md`.
+
+O site oficial do MOTChallenge está inacessível desta rede; `scripts/baixar_mot.py`
+usa um espelho. Cite o MOTChallenge no relatório, não o espelho.

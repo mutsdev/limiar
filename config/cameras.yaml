@@ -22,7 +22,22 @@ cameras:
   entrada_b:
     nome: "Entrada Lateral"
     local: "Acesso pelo estacionamento"
-    fonte: ""
-    linha: null
-    lado_dentro: 1
+    fonte: "dados/videos/one-by-one-person-detection.mp4"
+    # x=430 é cruzado pelas 6 trajetórias do vídeo; escolhido a partir delas,
+    # não por estar no meio do quadro.
+    linha: [430, 0, 430, 432]
+    lado_dentro: -1
     ativa: true
+
+  # --- Sequências do MOT17, usadas só para avaliação -----------------------
+  # Câmera estática, anotação humana em gt/gt.txt. A linha sai de
+  #   python scripts/avaliar.py --mot <pasta> --sugerir-linha
+  mot17_09:
+    nome: "MOT17-09 (avaliação)"
+    local: "Calçada movimentada, câmera baixa e fixa"
+    fonte: "dados/videos/MOT17-09/img1/%06d.jpg"
+    # x=1385 é cruzado por 20 das 26 pessoas anotadas, e cai em calçada
+    # aberta — conferido no quadro 250, sem pilar nem poste sobre a linha.
+    linha: [1385, 0, 1385, 1080]
+    lado_dentro: -1
+    ativa: false
