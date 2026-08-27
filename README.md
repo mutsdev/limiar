@@ -35,14 +35,15 @@ python scripts/rodar_servico.py
 # painel web em http://127.0.0.1:8501
 python scripts/rodar_painel.py
 
-# contar num vídeo, gravando o vídeo anotado
-python scripts/processar_video.py --camera entrada_a --sem-envio --anotar
+# testar um vídeo qualquer: calibrar e contar
+python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"
+python scripts/processar_video.py porta --sem-envio --anotar
+
+# a mesma coisa sem clicar: o rastreador propõe a linha
+python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4" --sugerir
 
 # contar e entregar ao serviço
-python scripts/processar_video.py --camera entrada_a
-
-# desenhar a linha de contagem clicando no quadro
-python scripts/calibrar_linha.py --camera entrada_a --fonte dados/videos/porta.mp4
+python scripts/processar_video.py entrada_a
 
 # popular com 14 dias sintéticos, para desenvolver sem câmera
 python scripts/simular_dia.py --dias 14
@@ -58,7 +59,7 @@ python scripts/avaliar.py --mot dados/videos/MOT17-09 --camera mot17_09 --visibi
 # avaliar contra contagem manual, quando a gravação real existir
 python scripts/avaliar.py --camera entrada_a --ground-truth dados/ground_truth/porta.csv
 
-# 179 testes: sem rede, sem GPU, sem vídeo
+# 195 testes: sem rede, sem GPU, sem vídeo
 python -m pytest
 ```
 
@@ -99,6 +100,11 @@ export UV_PROJECT_ENVIRONMENT="C:/Users/joaop/Documents/dados-fluxo/.venv-limiar
 ```
 
 Numa máquina sem OneDrive nada disso é necessário: `uv sync` basta.
+
+**Não é preciso exportar nada para usar os scripts.** Eles detectam o ambiente
+do projeto e se reexecutam nele — `python scripts/processar_video.py elevada`
+funciona com o `python` do PATH, seja ele qual for. Entre um ambiente só com o
+núcleo e um com o extra `visao`, escolhem o segundo.
 
 ## Duas câmeras na mesma máquina
 

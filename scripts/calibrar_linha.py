@@ -27,6 +27,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from fluxo.ambiente import garantir_venv, id_de_camera
+
+# Reexecuta no ambiente do projeto se este `python` nao for o certo. Precisa
+# vir antes de qualquer import que dependa das bibliotecas pesadas.
+garantir_venv()
+
 import cv2
 
 from fluxo import config
@@ -77,7 +83,7 @@ def gravar(cameras: dict, camera_id: str, fonte: str, linha, lado_dentro: int,
 
     print(f"\nGravado em {config.ARQUIVO_CAMERAS}")
     print(f"  {camera_id}: linha={entrada['linha']} lado_dentro={lado_dentro}")
-    print(f"\nRode agora:\n  python scripts/processar_video.py --camera {camera_id} "
+    print(f"\nRode agora:\n  python scripts/processar_video.py {camera_id} "
           f"--sem-envio --anotar")
 
 
@@ -249,10 +255,11 @@ def clicar(quadro_base) -> tuple[list[int], int]:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Calibração da linha de contagem")
-    p.add_argument("--camera", required=True,
-                   help="Id da câmera. Criada em cameras.yaml se não existir.")
-    p.add_argument("--fonte", default=None,
-                   help="Vídeo, índice de webcam ou URL. Obrigatório para câmera nova.")
+    p.add_argument("video", nargs="?", default=None,
+                   help="Arquivo de vídeo, índice de webcam ou URL.")
+    p.add_argument("--camera", default=None,
+                   help="Id da câmera. Padrão: o nome do arquivo de vídeo.")
+    p.add_argument("--fonte", default=None, help="Igual a passar o vídeo solto.")
     p.add_argument("--quadro", type=int, default=0, help="Qual quadro usar de base")
     p.add_argument("--sugerir", action="store_true",
                    help="Propõe a linha a partir das trajetórias, sem cliques")
@@ -265,16 +272,27 @@ def main() -> None:
 
     config.garantir_pastas()
     cameras = config.carregar_cameras()
-    nova = args.camera not in cameras
 
-    fonte = args.fonte or (cameras.get(args.camera) or {}).get("fonte")
+    # O vídeo pode vir solto ou por --fonte; o id da câmera sai do nome do
+    # arquivo quando não for informado, para não obrigar a inventar um nome
+    # antes de ver o resultado.
+    video = args.video or args.fonte
+    camera_id = args.camera or (id_de_camera(video) if video else None)
+    if not camera_id:
+        sys.exit(
+            "Passe o vídeo:\n"
+            '  python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"'
+        )
+
+    fonte = video or (cameras.get(camera_id) or {}).get("fonte")
     if not fonte:
         sys.exit(
-            f"Câmera '{args.camera}' é nova e não tem fonte. Passe --fonte.\n"
-            f"  Exemplo: --fonte \"C:/Users/voce/Videos/porta.mp4\""
+            f"Câmera '{camera_id}' não tem fonte gravada. Passe o vídeo:\n"
+            f'  python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"'
         )
-    if nova:
-        print(f"Câmera '{args.camera}' não existia — será criada.")
+    if camera_id not in cameras:
+        print(f"Câmera '{camera_id}' não existia — será criada.")
+    args.camera = camera_id
 
     quadro_base = abrir_quadro(fonte, args.quadro)
     linha, lado_dentro = sugerir(fonte, quadro_base) if args.sugerir else clicar(quadro_base)

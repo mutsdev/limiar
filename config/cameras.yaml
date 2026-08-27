@@ -52,3 +52,11 @@ cameras:
     fonte: C:\Users\joaop\Downloads\02_camera_topo_zenital_calcada.mp4
     linha: [0, 155, 402, 155]
     lado_dentro: -1
+  01_camera_elevada_pessoas_cruzando_1:
+    nome: 01_camera_elevada_pessoas_cruzando_1
+    local: ''
+    ativa: true
+    nota: ''
+    fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando_1.mp4
+    linha: [650, 0, 650, 576]
+    lado_dentro: -1

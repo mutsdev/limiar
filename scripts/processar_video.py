@@ -16,6 +16,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from fluxo.ambiente import garantir_venv, id_de_camera
+
+# Reexecuta no ambiente do projeto se este `python` nao for o certo. Precisa
+# vir antes de qualquer import que dependa das bibliotecas pesadas.
+garantir_venv()
+
 from fluxo import config
 from fluxo.agente import processador
 from fluxo.agente.fila_local import FilaLocal
@@ -29,7 +35,9 @@ from fluxo.visao.rastreador import ConfigVisao, RastreadorPessoas
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Contagem de fluxo a partir de vídeo")
-    p.add_argument("--camera", required=True)
+    p.add_argument("alvo", nargs="?", default=None,
+                   help="Id da câmera calibrada, ou o caminho de um vídeo.")
+    p.add_argument("--camera", default=None)
     p.add_argument("--fonte", default=None, help="Sobrescreve a fonte do YAML")
     p.add_argument("--anotar", nargs="?", const="auto", default=None,
                    help="Grava o vídeo anotado (caminho, ou vazio para automático)")
@@ -50,8 +58,24 @@ def main() -> None:
     cameras = config.carregar_cameras()
     pipeline = config.carregar_pipeline()
 
+    # O alvo pode ser um id ja calibrado ou um caminho de video.
+    alvo = args.alvo or args.camera
+    if not alvo:
+        sys.exit("Passe a câmera ou o vídeo: python scripts/processar_video.py elevada")
+    if alvo in cameras:
+        args.camera = alvo
+    elif Path(str(alvo)).exists():
+        args.camera = id_de_camera(alvo)
+        args.fonte = args.fonte or alvo
+    else:
+        args.camera = alvo
+
     if args.camera not in cameras:
-        sys.exit(f"Câmera '{args.camera}' não existe em {config.ARQUIVO_CAMERAS}")
+        sys.exit(
+            f"Câmera '{args.camera}' não existe em {config.ARQUIVO_CAMERAS}.\n"
+            f"Calibre antes:\n"
+            f'  python scripts/calibrar_linha.py "{alvo}"'
+        )
     camera = cameras[args.camera]
 
     fonte_str = args.fonte or camera.get("fonte")
