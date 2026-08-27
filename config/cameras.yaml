@@ -90,8 +90,8 @@ cameras:
     ativa: true
     nota: ''
     fonte: dados\videos\02_entrada_loja_frontal_4k.mp4
-    linha: [752, 1243, 2765, 1241]
-    lado_dentro: -1
+    linha: [992, 1187, 2478, 1189]
+    lado_dentro: 1
   03_corredor_pilar_oclusao_720p:
     nome: 03_corredor_pilar_oclusao_720p
     local: ''

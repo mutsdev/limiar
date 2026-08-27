@@ -21,10 +21,15 @@ COR_FUNDO = (32, 24, 16)
 
 FONTE = cv2.FONT_HERSHEY_SIMPLEX
 
-# Altura de quadro em que os tamanhos abaixo foram escolhidos a olho. Tudo é
-# medido em relação a ela, senão o mesmo placar que cabe bem num 768x432 vira
-# uma tarja ilegível num 4K — o texto tem tamanho fixo, o quadro não.
-ALTURA_BASE = 432
+# Altura de quadro contra a qual todos os tamanhos abaixo são medidos. Sem isso,
+# o mesmo placar que cabe bem num 768x432 vira uma tarja ilegível num 4K — o
+# texto tem tamanho fixo, o quadro não.
+#
+# Vale o dobro da altura em que os tamanhos foram escolhidos a olho: medindo
+# contra 432 o painel ficava grande demais em vídeo grande, competindo com a
+# cena em vez de anotá-la. O piso de 0,9 protege o vídeo pequeno, que continua
+# do tamanho de antes.
+ALTURA_BASE = 864
 
 
 def escala_de(imagem, extra: float = 1.0) -> float:
@@ -35,7 +40,7 @@ def escala_de(imagem, extra: float = 1.0) -> float:
     `extra` compensa a redução da janela — encolher a exibição não deveria
     encolher o texto que se está tentando ler.
     """
-    return min(6.0, max(0.9, imagem.shape[0] / ALTURA_BASE) * max(0.1, extra))
+    return min(3.0, max(0.9, imagem.shape[0] / ALTURA_BASE) * max(0.1, extra))
 
 
 def desenhar_linha(imagem, linha: LinhaDeContagem, escala: float = 1.0):
