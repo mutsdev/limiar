@@ -34,6 +34,45 @@ class TestIdDeCamera:
         b = ambiente.id_de_camera(r"C:\outro\lugar\Porta.MP4")
         assert a == b == "porta"
 
+    def test_webcam_ganha_nome_legivel(self):
+        """Uma câmera chamada "0" no YAML não diz nada a quem abrir depois."""
+        assert ambiente.id_de_camera("0") == "webcam"
+        assert ambiente.id_de_camera("1") == "webcam_1"
+
+
+class TestFonte:
+    """`cv2.VideoCapture` distingue webcam de arquivo pelo TIPO do argumento.
+
+    Inteiro é dispositivo, texto é caminho. Passar "0" como texto faz ele
+    procurar um arquivo chamado `0`, e o erro não parece ter relação com webcam.
+    """
+
+    @pytest.mark.parametrize("alvo,esperado", [("0", 0), ("1", 1), ("12", 12), (0, 0)])
+    def test_indice_vira_inteiro(self, alvo, esperado):
+        fonte = ambiente.normalizar_fonte(alvo)
+        assert fonte == esperado and isinstance(fonte, int)
+
+    @pytest.mark.parametrize(
+        "alvo",
+        [
+            "video.mp4",
+            "0.mp4",                       # arquivo cujo nome é um dígito
+            "01_entrada_loja.mp4",         # o padrão dos vídeos deste projeto
+            r"C:\Users\joaop\Videos\0.mp4",
+            "rtsp://192.168.0.9/stream",
+        ],
+    )
+    def test_arquivo_e_url_ficam_como_texto(self, alvo):
+        """Confundir `01_entrada.mp4` com a webcam 1 abriria a câmera errada."""
+        fonte = ambiente.normalizar_fonte(alvo)
+        assert fonte == alvo and isinstance(fonte, str)
+
+    def test_e_webcam_so_para_digito_puro(self):
+        assert ambiente.e_webcam("0") and ambiente.e_webcam(3)
+        assert not ambiente.e_webcam("0.mp4")
+        assert not ambiente.e_webcam("porta")
+        assert not ambiente.e_webcam(None)
+
 
 class TestEscolhaDoAmbiente:
     def _montar(self, raiz, com_cv2: bool):

@@ -8,6 +8,10 @@ Dois modos:
     # automático: o rastreador olha por onde as pessoas passam e propõe a linha
     python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4" --sugerir
 
+    # webcam: --listar-cameras diz qual índice responde nesta máquina
+    python scripts/calibrar_linha.py --listar-cameras
+    python scripts/calibrar_linha.py 0
+
 No modo manual são TRÊS cliques: onde a linha começa, onde termina, e um
 ponto do lado de dentro do prédio. Só então ENTER (ou G) grava. `R` recomeça e
 `Esc` cancela.
@@ -31,7 +35,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from fluxo.ambiente import garantir_venv, id_de_camera
+from fluxo.ambiente import garantir_venv, id_de_camera, normalizar_fonte
 
 # Reexecuta no ambiente do projeto se este `python` nao for o certo. Precisa
 # vir antes de qualquer import que dependa das bibliotecas pesadas.
@@ -53,13 +57,69 @@ DESLOCAMENTO_MINIMO = 30
 RAIO_OCLUSOR = 60
 PESO_OCLUSOR = 0.5
 
+# Quadros descartados antes de capturar de uma webcam. O sensor abre o
+# diafragma e ajusta o ganho nos primeiros instantes; o quadro 1 sai escuro.
+AQUECIMENTO_WEBCAM = 10
 
-def abrir_quadro(fonte: str, indice: int):
-    cap = cv2.VideoCapture(str(fonte))
+# Teto de quadros ao analisar uma fonte ao vivo. Sem ele o `--sugerir` numa
+# webcam nunca termina, porque a fonte não acaba.
+QUADROS_SUGESTAO_AO_VIVO = 900
+
+
+def listar_cameras(ate: int = 3) -> None:
+    """Diz quais índices de webcam respondem nesta máquina.
+
+    Num notebook com câmera interna mais uma USB o índice não é adivinhável, e
+    escolher o errado falha como "não consegui abrir" — ou, pior, abre a outra
+    câmera sem avisar.
+    """
+    print("Procurando webcams...")
+
+    # Sondar índice inexistente é o funcionamento normal desta função, e o
+    # OpenCV grita "Camera index out of range" em stderr a cada tentativa.
+    # Sucesso ficaria parecendo falha.
+    from cv2.utils import logging as cvlog
+
+    nivel = cvlog.getLogLevel()
+    cvlog.setLogLevel(cvlog.LOG_LEVEL_SILENT)
+    achados = []
+    try:
+        for i in range(ate + 1):
+            cap = cv2.VideoCapture(i)
+            # Abrir não basta: um índice inexistente às vezes "abre" e nunca
+            # entrega quadro. Quem responde com uma imagem é que existe.
+            if cap.isOpened() and cap.read()[0]:
+                largura = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                altura = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                fps = cap.get(cv2.CAP_PROP_FPS) or 0
+                achados.append(i)
+                print(f"  {i}: {largura}x{altura}"
+                      + (f"  {fps:.0f} fps" if fps > 0 else "  fps não informado"))
+            cap.release()
+    finally:
+        cvlog.setLogLevel(nivel)
+
+    if not achados:
+        print(f"  Nenhuma webcam respondeu nos índices 0 a {ate}.")
+        print("  Verifique se outro programa está usando a câmera.")
+        return
+    print(f"\nCalibre com:  python scripts/calibrar_linha.py {achados[0]}")
+
+
+def abrir_quadro(fonte, indice: int):
+    cap = cv2.VideoCapture(fonte if isinstance(fonte, int) else str(fonte))
     if not cap.isOpened():
         sys.exit(f"Não consegui abrir: {fonte}")
-    if indice:
+
+    if isinstance(fonte, int):
+        # O primeiro quadro de uma webcam sai escuro: o sensor ainda está
+        # ajustando exposição e ganho. Calibrar sobre ele é calibrar no escuro.
+        print("Aquecendo a câmera...")
+        for _ in range(AQUECIMENTO_WEBCAM):
+            cap.read()
+    elif indice:
         cap.set(cv2.CAP_PROP_POS_FRAMES, indice)
+
     ok, quadro = cap.read()
     cap.release()
     if not ok:
@@ -80,7 +140,9 @@ def gravar(cameras: dict, camera_id: str, fonte: str, linha, lado_dentro: int,
         entrada["nota"] = nota
     else:
         entrada.setdefault("nota", "")
-    entrada["fonte"] = str(fonte)
+    # Índice de webcam é gravado como INTEIRO. Virasse texto, voltaria do YAML
+    # como "0", e `cv2.VideoCapture("0")` procura um arquivo chamado 0.
+    entrada["fonte"] = fonte if isinstance(fonte, int) else str(fonte)
     entrada["linha"] = [int(v) for v in linha]
     entrada["lado_dentro"] = int(lado_dentro)
     config.salvar_cameras(cameras)
@@ -194,7 +256,13 @@ def sugerir(fonte: str, quadro_base) -> tuple[list[int], int]:
     pontas: list[float] = []
     primeiro: dict[int, float] = {}
     ultimo: dict[int, float] = {}
+    # Fonte ao vivo não acaba: sem teto, este laço nunca retorna.
+    teto = QUADROS_SUGESTAO_AO_VIVO if video.ao_vivo else None
+    if teto:
+        print(f"  Fonte ao vivo: analisando {teto} quadros. Circule pela cena.")
     for q in video:
+        if teto is not None and q.indice >= teto:
+            break
         for r in rastreador.atualizar(q.imagem):
             x, y = r.ponto_base
             faixa = faixas.setdefault(r.id_local, [x, x])
@@ -375,7 +443,13 @@ def main() -> None:
                         "vários vídeos de uma vez.")
     p.add_argument("--quadros-conferencia", type=int, default=QUADROS_CONFERENCIA,
                    help=f"Quadros da conferência (padrão {QUADROS_CONFERENCIA}).")
+    p.add_argument("--listar-cameras", action="store_true",
+                   help="Diz quais índices de webcam respondem nesta máquina.")
     args = p.parse_args()
+
+    if args.listar_cameras:
+        listar_cameras()
+        return
 
     config.garantir_pastas()
     cameras = config.carregar_cameras()
@@ -392,11 +466,15 @@ def main() -> None:
         )
 
     fonte = video or (cameras.get(camera_id) or {}).get("fonte")
-    if not fonte:
+    if fonte is None or fonte == "":
         sys.exit(
             f"Câmera '{camera_id}' não tem fonte gravada. Passe o vídeo:\n"
-            f'  python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"'
+            f'  python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"\n'
+            f"  python scripts/calibrar_linha.py 0        # webcam"
         )
+    # "0" da linha de comando precisa virar o inteiro 0: o VideoCapture separa
+    # dispositivo de arquivo pelo tipo do argumento, não pelo valor.
+    fonte = normalizar_fonte(fonte)
     if camera_id not in cameras:
         print(f"Câmera '{camera_id}' não existia — será criada.")
     args.camera = camera_id

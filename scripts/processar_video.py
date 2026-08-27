@@ -6,6 +6,9 @@
     # ver e gravar ao mesmo tempo
     python scripts/processar_video.py porta --sem-envio --ao-vivo --anotar
 
+    # a webcam desta máquina (a janela abre sozinha: fonte ao vivo não acaba)
+    python scripts/processar_video.py webcam --sem-envio
+
     # contar e entregar ao serviço central
     python scripts/processar_video.py porta
 
@@ -22,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from fluxo.ambiente import garantir_venv, id_de_camera
+from fluxo.ambiente import e_webcam, garantir_venv, id_de_camera, normalizar_fonte
 
 # Reexecuta no ambiente do projeto se este `python` nao for o certo. Precisa
 # vir antes de qualquer import que dependa das bibliotecas pesadas.
@@ -82,6 +85,11 @@ def main() -> None:
         sys.exit("Passe a câmera ou o vídeo: python scripts/processar_video.py elevada")
     if alvo in cameras:
         args.camera = alvo
+    elif e_webcam(alvo):
+        # `Path("0").exists()` é falso, então sem este ramo o índice de webcam
+        # seria tratado como id de câmera e o script sairia com erro.
+        args.camera = id_de_camera(alvo)
+        args.fonte = args.fonte or alvo
     elif Path(str(alvo)).exists():
         args.camera = id_de_camera(alvo)
         args.fonte = args.fonte or alvo
@@ -96,9 +104,11 @@ def main() -> None:
         )
     camera = cameras[args.camera]
 
-    fonte_str = args.fonte or camera.get("fonte")
-    if not fonte_str:
+    # `or` não serve aqui: a webcam 0 é um valor falso, e cairia para o YAML.
+    fonte_str = args.fonte if args.fonte is not None else camera.get("fonte")
+    if fonte_str is None or fonte_str == "":
         sys.exit(f"Câmera '{args.camera}' não tem fonte. Passe --fonte.")
+    fonte_str = normalizar_fonte(fonte_str)
 
     linha = LinhaDeContagem.de_config(args.camera, camera, pipeline)
 
@@ -152,13 +162,20 @@ def main() -> None:
             versao=processador.versao_do_codigo(),
         )
 
+    # Câmera ao vivo não acaba. Sem janela e sem arquivo, o laço rodaria para
+    # sempre sem nada na tela, e a única saída seria matar o processo.
+    ao_vivo = args.ao_vivo
+    if fonte.ao_vivo and not ao_vivo and not args.anotar:
+        print("Fonte ao vivo: abrindo a janela (q encerra).")
+        ao_vivo = True
+
     # Encolher a janela não deve encolher o que se está tentando ler nela.
     escala_placar = args.placar if args.placar else (
-        1.0 / args.escala if args.ao_vivo and args.escala < 1.0 else 1.0
+        1.0 / args.escala if ao_vivo and args.escala < 1.0 else 1.0
     )
 
     janela = None
-    if args.ao_vivo:
+    if ao_vivo:
         janela = JanelaAoVivo(
             f"Limiar - {args.camera}", fonte.fps, args.velocidade, args.escala
         )

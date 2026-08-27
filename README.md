@@ -44,6 +44,11 @@ python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"
 # a mesma coisa sem clicar: o rastreador propõe a linha
 python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4" --sugerir
 
+# a webcam desta máquina, para ver a contagem acontecer ao vivo
+python scripts/calibrar_linha.py --listar-cameras
+python scripts/calibrar_linha.py 0
+python scripts/processar_video.py webcam --sem-envio
+
 # depois, o vídeo inteiro
 python scripts/processar_video.py porta --sem-envio --ao-vivo
 #   --escala 1.5 aumenta, --velocidade 2 acelera, --anotar também grava
@@ -70,7 +75,7 @@ python scripts/avaliar.py --camera entrada_a --ground-truth dados/ground_truth/p
 python scripts/processar_video.py entrada_a --sem-envio --gravar-trilhas
 python scripts/reprocessar.py entrada_a --varredura
 
-# 213 testes: sem rede, sem GPU, sem vídeo
+# 224 testes: sem rede, sem GPU, sem vídeo
 python -m pytest
 ```
 

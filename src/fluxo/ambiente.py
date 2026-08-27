@@ -84,8 +84,33 @@ def garantir_venv(exigir_visao: bool = True) -> None:
     os.execv(str(executavel), [str(executavel), *sys.argv])
 
 
+def e_webcam(alvo: str | int | Path | None) -> bool:
+    """O alvo é um índice de webcam?
+
+    Só dígitos puros contam. `"0"` é webcam; `"0.mp4"` e `"01_entrada.mp4"` são
+    arquivos — e essa distinção não é teórica, porque os vídeos deste projeto se
+    chamam exatamente `01_`, `02_`, `03_`.
+    """
+    if isinstance(alvo, int):
+        return True
+    return isinstance(alvo, str) and alvo.isdigit()
+
+
+def normalizar_fonte(alvo: str | int | Path) -> str | int:
+    """Converte o que veio da linha de comando na fonte que o OpenCV entende.
+
+    `cv2.VideoCapture` distingue os dois casos pelo TIPO, não pelo valor:
+    inteiro é dispositivo de captura, texto é caminho ou URL. Passar `"0"` como
+    texto faz ele procurar um arquivo chamado `0` e falhar com uma mensagem que
+    não parece ter nada a ver com webcam.
+    """
+    if e_webcam(alvo):
+        return int(alvo)
+    return alvo if isinstance(alvo, str) else str(alvo)
+
+
 def id_de_camera(caminho: str | Path) -> str:
-    """Nome de câmera a partir do arquivo de vídeo.
+    """Nome de câmera a partir do arquivo de vídeo, ou do índice da webcam.
 
     Serve para `python scripts/calibrar_linha.py video.mp4` funcionar sem
     obrigar a inventar um identificador antes de ver o resultado.
@@ -96,6 +121,11 @@ def id_de_camera(caminho: str | Path) -> str:
     já aconteceu duas vezes neste projeto.
     """
     import unicodedata
+
+    # Uma câmera chamada "0" no YAML não diz nada a quem abrir o arquivo depois.
+    if e_webcam(caminho):
+        indice = int(caminho)
+        return "webcam" if indice == 0 else f"webcam_{indice}"
 
     bruto = Path(str(caminho)).stem.lower()
     sem_acento = "".join(
