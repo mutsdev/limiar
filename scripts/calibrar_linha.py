@@ -12,6 +12,9 @@ No modo manual são TRÊS cliques: onde a linha começa, onde termina, e um
 ponto do lado de dentro do prédio. Só então ENTER (ou G) grava. `R` recomeça e
 `Esc` cancela.
 
+Gravada a linha, **a contagem roda na hora** numa janela, para você ver se
+acertou. `--sem-conferir` pula esse passo.
+
 A câmera é criada em config/cameras.yaml se ainda não existir — para testar um
 vídeo qualquer não é preciso editar YAML à mão.
 
@@ -84,8 +87,6 @@ def gravar(cameras: dict, camera_id: str, fonte: str, linha, lado_dentro: int,
 
     print(f"\nGravado em {config.ARQUIVO_CAMERAS}")
     print(f"  {camera_id}: linha={entrada['linha']} lado_dentro={lado_dentro}")
-    print(f"\nRode agora:\n  python scripts/processar_video.py {camera_id} "
-          f"--sem-envio --anotar")
 
 
 def prever(quadro, linha, destino: Path) -> None:
@@ -101,6 +102,67 @@ def prever(quadro, linha, destino: Path) -> None:
     cv2.imwrite(str(destino), tela)
     print(f"Prévia da linha: {destino}")
     print("  Confira: há pilar, poste ou muro em cima dela? Se houver, mova.")
+
+
+# Quadros da conferência. É uma olhada para ver se a linha ficou no lugar, não
+# a medição — para medir existe scripts/avaliar.py.
+QUADROS_CONFERENCIA = 600
+
+# Altura de tela que uma janela pode ocupar sem sair dela. 4K e 1440p não cabem,
+# e ter de lembrar de passar --escala é o tipo de passo que se esquece.
+ALTURA_CONFORTAVEL = 760
+
+
+def escala_para(altura: int) -> float:
+    """Quanto reduzir a janela para o quadro caber na tela."""
+    return round(min(1.0, ALTURA_CONFORTAVEL / max(1, altura)), 2)
+
+
+def conferir(camera_id: str, fonte: str, limite: int = QUADROS_CONFERENCIA) -> None:
+    """Roda a contagem na janela, logo depois de gravar a linha.
+
+    O laço se fecha onde a decisão foi tomada. Sem isto, a única saída da
+    calibração é um quadro estático e um "rode agora" que some com a janela —
+    e uma linha errada só se revela quando alguém digita o segundo comando.
+    Uma linha vertical numa cena frontal, por exemplo, parece perfeita na
+    prévia e conta zero.
+    """
+    from fluxo.agente import processador
+    from fluxo.contagem.linha import LinhaDeContagem
+    from fluxo.visao.anotador import JanelaAoVivo
+    from fluxo.visao.fonte import FonteDeVideo
+    from fluxo.visao.rastreador import ConfigVisao, RastreadorPessoas
+
+    cameras = config.carregar_cameras()
+    pipeline = config.carregar_pipeline()
+    linha = LinhaDeContagem.de_config(camera_id, cameras[camera_id], pipeline)
+
+    video = FonteDeVideo(fonte)
+    escala = escala_para(video.altura)
+    janela = JanelaAoVivo(f"Limiar - {camera_id}", video.fps, 1.0, escala)
+
+    print(f"\nConferindo {limite} quadros — q sai, espaço pausa.")
+    if escala < 1.0:
+        print(f"  Janela reduzida a {escala:.0%} para caber na tela "
+              f"({video.largura}x{video.altura}).")
+    try:
+        resultado = processador.processar(
+            video, RastreadorPessoas(ConfigVisao.de_pipeline(pipeline)), linha,
+            None, None, limite, janela=janela,
+            # A janela encolheu; o placar não deve encolher junto.
+            escala_placar=1.0 / escala,
+        )
+    finally:
+        video.fechar()
+        janela.fechar()
+
+    print(f"\n  ENTRADAS {resultado.entradas}   SAIDAS {resultado.saidas}   "
+          f"saldo {resultado.entradas - resultado.saidas}")
+    if not resultado.eventos:
+        print("  Ninguém cruzou. Ou a linha está fora do caminho das pessoas,")
+        print("  ou está no eixo errado — numa cena frontal a linha é horizontal.")
+    print(f"\nPara rodar por inteiro:\n  python scripts/processar_video.py "
+          f"{camera_id} --sem-envio --ao-vivo")
 
 
 # --------------------------------------------------------------------------
@@ -308,6 +370,11 @@ def main() -> None:
     p.add_argument("--inverter", action="store_true",
                    help="Troca qual lado é 'dentro'. Use se entradas e saídas "
                         "saírem trocadas.")
+    p.add_argument("--sem-conferir", action="store_true",
+                   help="Só grava a linha, sem abrir a contagem. Use ao calibrar "
+                        "vários vídeos de uma vez.")
+    p.add_argument("--quadros-conferencia", type=int, default=QUADROS_CONFERENCIA,
+                   help=f"Quadros da conferência (padrão {QUADROS_CONFERENCIA}).")
     args = p.parse_args()
 
     config.garantir_pastas()
@@ -342,6 +409,18 @@ def main() -> None:
 
     gravar(cameras, args.camera, fonte, linha, lado_dentro, args.nota)
     prever(quadro_base, linha, config.CAMINHO_SAIDAS / f"{args.camera}_linha.png")
+
+    if args.sem_conferir:
+        print(f"\nPara ver a contagem:\n  python scripts/processar_video.py "
+              f"{args.camera} --sem-envio --ao-vivo")
+        return
+
+    try:
+        conferir(args.camera, fonte, args.quadros_conferencia)
+    except ImportError as erro:
+        # A calibração em si não depende do rastreador; só a conferência.
+        print(f"\nLinha gravada, mas não dá para conferir aqui: {erro}")
+        print("  Instale o extra de visão:  uv sync --extra visao")
 
 
 if __name__ == "__main__":
