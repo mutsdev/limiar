@@ -31,3 +31,20 @@ contagem:
 
   # Um track sem detecção por este número de quadros é esquecido.
   quadros_ate_esquecer: 60
+
+  # Costura de rastro quebrado: quando o rastreador perde a pessoa atrás de um
+  # oclusor e a devolve com id novo, o estado do track antigo é herdado pelo
+  # novo se a lacuna for curta e o reaparecimento for perto.
+  #
+  # DESLIGADA por medição, não por precaução. Ver docs/resultados.md §2: nas
+  # duas sequências disponíveis ela não recupera travessia nenhuma (o que se
+  # perde é oclusão total, e ninguém rastreia quem não foi detectado) e no
+  # vídeo elevado abre o saldo de 0 para 2. O mecanismo existe e está travado
+  # por teste; a porta real pode ser o caso em que ele ajuda — a batente de
+  # porta é o oclusor que ela trata, e a calçada aberta do MOT17 não tem um.
+  #
+  # Para decidir na porta real, sem palpite:
+  #   python scripts/processar_video.py <camera> --sem-envio --gravar-trilhas
+  #   python scripts/reprocessar.py <camera> --varredura
+  costura_quadros: 0       # 15 = 0,5 s a 30 fps; 0 desliga
+  costura_raio_px: 80      # o quanto ela pode ter andado enquanto sumiu

@@ -62,7 +62,12 @@ python scripts/avaliar.py --mot dados/videos/MOT17-09 --camera mot17_09 --visibi
 # avaliar contra contagem manual, quando a gravação real existir
 python scripts/avaliar.py --camera entrada_a --ground-truth dados/ground_truth/porta.csv
 
-# 195 testes: sem rede, sem GPU, sem vídeo
+# calibrar por medição: a visão roda UMA vez e grava o que enxergou;
+# a contagem recorre a trilha quantas vezes for preciso, sem GPU
+python scripts/processar_video.py entrada_a --sem-envio --gravar-trilhas
+python scripts/reprocessar.py entrada_a --varredura
+
+# 213 testes: sem rede, sem GPU, sem vídeo
 python -m pytest
 ```
 
@@ -85,11 +90,17 @@ por descuido.
 | 8 | Análise e painel | pronto |
 | 9 | Avaliação e linha de base | pronto — ver `docs/resultados.md` |
 | 10 | Empacotamento e documentação | pronto |
+| 11 | Trilhas: recontar sem GPU | pronto — `docs/resultados.md` §8 |
 | — | Gravação da porta real e calibração | **depende de autorização** |
 | — | Etapa 2: re-identificação | não iniciada |
 
 O que falta para fechar a etapa "Uno" não é código: é a gravação das duas
 entradas e a contagem manual de referência. Ver `docs/avaliacao.md`.
+
+Quando ela existir, a calibração da porta real é medição e não palpite: grave a
+trilha uma vez e rode `scripts/reprocessar.py <camera> --varredura`. Foi assim
+que a costura de rastro quebrado — construída para tratar oclusão no batente da
+porta — acabou **desligada por medição**, e não por precaução (`§2b`).
 
 ## Ambiente
 

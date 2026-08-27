@@ -45,11 +45,22 @@ class LinhaDeContagem:
     zona_morta_px: float = 15.0
     cooldown_segundos: float = 1.5
     quadros_ate_esquecer: int = 60
+    # Costura de rastro quebrado. O rastreador encerra o track quando a pessoa
+    # é ocluída e abre outro com id novo do outro lado do oclusor; sem costurar,
+    # isso perde a travessia (o track novo nasce sem lado confirmado) ou a conta
+    # duas vezes (o cooldown do track antigo foi embora com ele).
+    #
+    # Nasce DESLIGADA: nas sequências medidas até aqui ela não melhora o número
+    # (docs/resultados.md §2). O padrão acompanha a medição, e não a intenção do
+    # mecanismo. `scripts/reprocessar.py --varredura` decide isso por câmera.
+    costura_quadros: int = 0
+    costura_raio_px: float = 80.0
     origem: Origem = Origem.VISAO
 
     _estados: dict[int, _EstadoTrack] = field(default_factory=dict, init=False)
     entradas: int = field(default=0, init=False)
     saidas: int = field(default=0, init=False)
+    costuras: int = field(default=0, init=False)
 
     def processar(
         self, quadro: int, instante: datetime, rastros: list[Rastro]
@@ -57,20 +68,63 @@ class LinhaDeContagem:
         """Atualiza o estado com os rastros do quadro e devolve o que cruzou."""
         eventos: list[EventoCruzamento] = []
 
+        # Quem está no quadro agora não pode ser adotado por outro id: o track
+        # continua vivo, e roubar o estado dele criaria dois erros de uma vez.
+        presentes = {r.id_local for r in rastros}
+
         for rastro in rastros:
-            evento = self._processar_rastro(quadro, instante, rastro)
+            evento = self._processar_rastro(quadro, instante, rastro, presentes)
             if evento is not None:
                 eventos.append(evento)
 
         self._esquecer_antigos(quadro)
         return eventos
 
+    def _adotar(
+        self, rastro: Rastro, quadro: int, presentes: set[int]
+    ) -> _EstadoTrack | None:
+        """Procura o track recém-morto que este id novo continua.
+
+        Três condições, e nenhuma delas é opcional: a lacuna precisa ser curta,
+        o reaparecimento precisa ser perto, e cada órfão só pode ser adotado uma
+        vez. Sem a terceira, uma pessoa parada perto da linha adotaria o mesmo
+        estado várias vezes; sem as duas primeiras, duas pessoas diferentes que
+        se cruzam viram uma só.
+        """
+        if self.costura_quadros <= 0:
+            return None
+
+        nascimento = rastro.ponto_base
+        melhor_id, melhor_distancia = None, self.costura_raio_px
+        for tid, estado in self._estados.items():
+            if tid in presentes:
+                continue
+            lacuna = quadro - estado.trajetoria.ultimo_quadro
+            if lacuna <= 0 or lacuna > self.costura_quadros:
+                continue
+            d = geometria.distancia(estado.trajetoria.suavizado(), nascimento)
+            if d <= melhor_distancia:
+                melhor_id, melhor_distancia = tid, d
+
+        if melhor_id is None:
+            return None
+
+        # Sai do dicionário sob o id antigo e entra sob o novo: é isso que torna
+        # a adoção um-para-um, sem precisar de uma marca separada.
+        self.costuras += 1
+        return self._estados.pop(melhor_id)
+
     def _processar_rastro(
-        self, quadro: int, instante: datetime, rastro: Rastro
+        self, quadro: int, instante: datetime, rastro: Rastro, presentes: set[int]
     ) -> EventoCruzamento | None:
         estado = self._estados.get(rastro.id_local)
         if estado is None:
-            estado = _EstadoTrack(Trajetoria(self.janela_suavizacao))
+            # Herda trajetória, lado confirmado, âncora e o instante da última
+            # contagem. Os dois primeiros recuperam a travessia partida no meio;
+            # o último mantém o cooldown de pé e mata a contagem dupla.
+            estado = self._adotar(rastro, quadro, presentes) or _EstadoTrack(
+                Trajetoria(self.janela_suavizacao)
+            )
             self._estados[rastro.id_local] = estado
 
         estado.trajetoria.adicionar(rastro.ponto_base, quadro)
@@ -134,10 +188,13 @@ class LinhaDeContagem:
         return (instante - estado.contou_em).total_seconds() < self.cooldown_segundos
 
     def _esquecer_antigos(self, quadro: int) -> None:
+        # Um estado esquecido cedo demais deixa de estar disponível para
+        # adoção, e a costura para de funcionar sem dizer por quê.
+        limite = max(self.quadros_ate_esquecer, self.costura_quadros)
         mortos = [
             tid
             for tid, e in self._estados.items()
-            if quadro - e.trajetoria.ultimo_quadro > self.quadros_ate_esquecer
+            if quadro - e.trajetoria.ultimo_quadro > limite
         ]
         for tid in mortos:
             del self._estados[tid]
@@ -168,5 +225,7 @@ class LinhaDeContagem:
             zona_morta_px=float(c.get("zona_morta_px", 15)),
             cooldown_segundos=float(c.get("cooldown_segundos", 1.5)),
             quadros_ate_esquecer=int(c.get("quadros_ate_esquecer", 60)),
+            costura_quadros=int(c.get("costura_quadros", 0)),
+            costura_raio_px=float(c.get("costura_raio_px", 80)),
             origem=origem,
         )

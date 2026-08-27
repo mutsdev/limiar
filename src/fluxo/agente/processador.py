@@ -41,6 +41,7 @@ def processar(
     limite_quadros: int | None = None,
     mostrar_progresso: bool = True,
     janela=None,
+    trilha=None,
 ) -> Resultado:
     """Roda o pipeline inteiro sobre uma fonte de vídeo."""
     import time
@@ -65,6 +66,13 @@ def processar(
                 break
 
             rastros = rastreador.atualizar(quadro.imagem)
+
+            # Grava ANTES de contar: a trilha registra o que a visão enxergou,
+            # e precisa ser independente dos parâmetros de contagem para que o
+            # replay possa variá-los.
+            if trilha is not None:
+                trilha.gravar(quadro.indice, quadro.instante, rastros)
+
             novos = linha.processar(quadro.indice, quadro.instante, rastros)
 
             if novos:

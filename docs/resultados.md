@@ -89,6 +89,81 @@ travessia. É o argumento por que "usei YOLO" virou "escolhi YOLO".
 
 ---
 
+## 2b. Costura de rastro quebrado — medida, e desligada
+
+Medição de 27/08/2026.
+
+**A hipótese.** Os três números da seção 1 apontavam para o mesmo suspeito: o
+viés de −5 (perde travessia), 1,38 cruzamento por pessoa no vídeo elevado (conta
+duas vezes) e o modelo maior piorando (o gargalo não é enxergar). Todos são
+explicáveis por **fragmentação de track**: o rastreador encerra o track quando a
+pessoa é ocluída e abre outro com id novo. O fragmento novo nasce sem lado
+confirmado — e a travessia some — ou nasce sem o `contou_em` do antigo — e o
+cooldown não segura a segunda contagem.
+
+**O mecanismo.** `LinhaDeContagem` passou a poder adotar o estado de um track
+recém-morto quando um id novo aparece perto dele, sob três condições: lacuna de
+no máximo `costura_quadros`, distância de no máximo `costura_raio_px`, e cada
+órfão adotado **uma única vez**. As duas primeiras impedem fundir duas pessoas
+que se cruzam; a terceira impede que um mesmo órfão seja herdado em série.
+
+### O que a medição disse
+
+Com as trilhas gravadas (seção 8), a mesma visão foi recontada sob dez
+combinações de parâmetros. Só a contagem muda entre as linhas da tabela.
+
+**MOT17-09** — a costura é inerte:
+
+| costura (quadros) | raio (px) | rastros costurados | entradas | referência | erro |
+|---|---|---|---|---|---|
+| 0 (desligada) | — | 0 | 11 | 16 | 31,2% |
+| 15 | 80 | 14 | 11 | 16 | 31,2% |
+| 30 | 160 | 34 | 12 | 16 | 25,0% |
+
+Costurou 14 rastros e **não recuperou uma única travessia**. Faz sentido com o
+que a tabela de visibilidade já dizia: o que se perde numa calçada cheia não é
+track que quebra e volta, é gente que **nunca foi detectada**. Não há o que
+costurar quando não há fragmento do outro lado.
+
+**Vídeo elevado** — a costura piora:
+
+| costura | raio | rastros costurados | entradas | saídas | \|saldo\| | cruz/pessoa |
+|---|---|---|---|---|---|---|
+| **0 (desligada)** | — | 0 | 11 | 11 | **0** | 1,38 |
+| 15 | 80 | 15 | 10 | 14 | 4 | 1,33 |
+| 30 | 160 | 19 | 10 | 15 | 5 | 1,39 |
+
+O saldo fechava em 11/11 e passou a abrir em 4. A costura estava afirmando
+travessias que **ninguém observou**: ao herdar a âncora de uma posição anterior à
+lacuna, uma mudança de lado que aconteceu no escuro vira evento.
+
+Uma variante conservadora — herdar só o `contou_em`, nunca o lado — reduz o dano
+mas não o elimina (saldo 2, cruz/pessoa 1,29). Continua pior que desligada.
+
+### A decisão
+
+**`costura_quadros: 0` no `config/pipeline.yaml`.** O padrão acompanha a
+medição, não a elegância do mecanismo.
+
+O código e os sete testes ficam: eles provam que os dois modos de falha existem
+e que a costura os corrige **isoladamente**. O que a medição mostrou é que esses
+não são os modos de falha dominantes *nestes* vídeos — uma calçada aberta não
+tem oclusor fixo, e é justamente o batente de porta que a costura trataria. Na
+porta da faculdade a resposta pode ser outra, e agora custa um comando:
+
+```bash
+python scripts/processar_video.py <camera> --sem-envio --gravar-trilhas
+python scripts/reprocessar.py <camera> --varredura
+```
+
+**O achado que sobrevive:** a hipótese da fragmentação estava errada, e o custo
+medido continua sendo **oclusão total**. Isso reforça, por um terceiro caminho
+independente, a mesma conclusão da seção 1 — e é um argumento a favor de montar
+a câmera num ângulo que reduza oclusão, que é a decisão de hardware ainda em
+aberto em `docs/calibracao.md`.
+
+---
+
 ## 3. Desempenho
 
 | cenário | quadros/s |
@@ -144,9 +219,12 @@ Declaradas, não escondidas. Cada uma tem um teste que a trava em
 2. **Linha atrás de oclusor perde travessia.** Aconteceu no primeiro teste
    deste projeto: a linha caiu sobre um pilar, uma pessoa foi ocluída ao
    atravessar, o track quebrou e o cruzamento sumiu. Movê-la resolveu. Virou a
-   primeira regra de `docs/calibracao.md`.
+   primeira regra de `docs/calibracao.md`. A costura de rastro (§2b) foi
+   construída para tratar isto e **medida como pior que a alternativa** nos
+   vídeos disponíveis; mover a linha continua sendo a correção certa.
 3. **Track que nasce dentro da zona morta não conta.** Quem aparece pela
-   primeira vez em cima da linha nunca foi visto de um dos lados.
+   primeira vez em cima da linha nunca foi visto de um dos lados. Vale também
+   para o fragmento que nasce depois de uma oclusão — ver §2b.
 4. **Cooldown de 1,5 s engole ida-e-volta legítima.** Quem realmente entra e
    sai em menos de um segundo e meio conta uma vez. Escolha deliberada: quem
    hesita na porta é muito mais comum que quem faz isso de verdade.
@@ -171,3 +249,28 @@ python scripts/avaliar.py --camera entrada_a --ground-truth dados/ground_truth/p
 ```
 
 O que falta é a gravação, e ela depende de autorização da coordenação.
+
+---
+
+## 8. Recontar sem GPU: as trilhas
+
+A visão roda uma vez e grava o que enxergou em `dados/trilhas/<camera>.jsonl`
+(JSON Lines, um quadro por linha, quadros vazios inclusive). A contagem recorre
+esse arquivo quantas vezes for preciso, **sem GPU, sem vídeo e sem o extra
+`visao` instalado**.
+
+| | antes | agora |
+|---|---|---|
+| Testar um parâmetro no MOT17-09 | ~21 s (passada de YOLO) | < 1 s |
+| Varredura de 10 combinações | ~3,5 min | ~4 s |
+| Precisa de GPU | sim | não |
+
+O replay alimenta a **mesma** `LinhaDeContagem` do agente ao vivo — não há um
+segundo contador. `tests/test_trilhas.py` trava essa equivalência, inclusive a
+igualdade dos `id_evento`: se o replay gerasse ids diferentes, reprocessar uma
+trilha e enviar o resultado duplicaria tudo no banco em vez de ser reconhecido
+como repetido.
+
+Sem contagem manual, a métrica que ainda diz algo é **cruzamentos por pessoa**
+(eventos ÷ tracks que geraram evento). O ideal é 1,00; acima disso é a mesma
+pessoa contada mais de uma vez, e isso é visível sem referência nenhuma.

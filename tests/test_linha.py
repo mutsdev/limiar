@@ -228,3 +228,110 @@ class TestConfiguracao:
         assert linha.lado_dentro == -1
         assert linha.zona_morta_px == 8.0
         assert linha.cooldown_segundos == 2.0
+
+
+class TestCosturaDeRastroQuebrado:
+    """O rastreador perde a pessoa atrás de um oclusor e a devolve com id novo.
+
+    É o modo de falha mais caro do projeto, e aparece nas duas direções: some
+    a travessia quando o fragmento nasce do outro lado sem lado confirmado, e
+    conta duas vezes quando o cooldown vai embora junto com o track antigo.
+
+    As posições destes testes são as mesmas com e sem costura — o que muda é só
+    o parâmetro. Sem isso o antes/depois não compararia nada.
+    """
+
+    # Alguem indo da esquerda para a direita, ocluida bem em cima da linha:
+    # o track 1 morre em x=420 e o track 2 nasce em x=460, quatro quadros depois.
+    IDA_ANTES = [300, 330, 360, 390, 420]
+    IDA_DEPOIS = [460, 490, 520, 550]
+    QUADRO_REAPARECE = 8
+
+    def _travessia_partida(self, linha, quadro_reaparece=None, xs_depois=None):
+        eventos = percorrer(linha, self.IDA_ANTES, track=1, quadro0=0)
+        eventos += percorrer(
+            linha,
+            xs_depois or self.IDA_DEPOIS,
+            track=2,
+            quadro0=quadro_reaparece or self.QUADRO_REAPARECE,
+        )
+        return eventos
+
+    def test_travessia_partida_no_meio_conta_uma_vez(self):
+        linha = nova_linha(costura_quadros=15)
+        eventos = self._travessia_partida(linha)
+        assert len(eventos) == 1
+        assert eventos[0].direcao is Direcao.ENTRADA
+        assert linha.costuras == 1
+
+    def test_sem_costura_a_travessia_partida_desaparece(self):
+        """O comportamento anterior, preservado como referência do ganho."""
+        linha = nova_linha()  # o padrao de fabrica: desligada
+        assert self._travessia_partida(linha) == []
+        assert linha.costuras == 0
+
+    def test_lacuna_longa_demais_nao_costura(self):
+        """Quem sumiu por dois segundos pode ser outra pessoa."""
+        linha = nova_linha(costura_quadros=15)
+        assert self._travessia_partida(linha, quadro_reaparece=40) == []
+        assert linha.costuras == 0
+
+    def test_reaparecimento_longe_demais_nao_costura(self):
+        """Ninguem anda meia tela em quatro quadros."""
+        linha = nova_linha(costura_quadros=15)
+        assert self._travessia_partida(linha, xs_depois=[700, 730, 760, 790]) == []
+        assert linha.costuras == 0
+
+    def test_id_novo_apos_contar_nao_conta_de_novo(self):
+        """Hesitacao na porta com troca de id: o cooldown precisa sobreviver.
+
+        Sem herdar `contou_em`, o fragmento novo chega sem memoria de que aquela
+        pessoa acabou de ser contada, e a volta dela vira uma segunda contagem.
+        """
+        posicoes_ida = [380, 410, 440, 470, 500]
+        posicoes_volta = [490, 500, 510, 490, 460, 430, 400, 370, 340]
+
+        com = nova_linha(costura_quadros=15)
+        eventos = percorrer(com, posicoes_ida, track=1, quadro0=0)
+        eventos += percorrer(com, posicoes_volta, track=2, quadro0=6)
+        assert len(eventos) == 1
+        assert eventos[0].direcao is Direcao.ENTRADA
+        assert com.costuras == 1
+
+        sem = nova_linha()
+        eventos_sem = percorrer(sem, posicoes_ida, track=1, quadro0=0)
+        eventos_sem += percorrer(sem, posicoes_volta, track=2, quadro0=6)
+        assert len(eventos_sem) == 2  # a mesma pessoa, contada duas vezes
+
+    def test_nao_rouba_o_estado_de_um_track_vivo(self):
+        """Duas pessoas lado a lado, e uma terceira nasce em cima de uma delas.
+
+        Este e o modo de falha da costura: adotar o estado de quem ainda esta
+        no quadro fundiria duas pessoas numa so. O track vivo esta protegido
+        por estar presente no quadro; o morto, por estar longe.
+        """
+        linha = nova_linha(costura_quadros=15)
+        for i, x in enumerate([300, 330, 360, 390, 420, 450]):
+            instante = INICIO + timedelta(seconds=i / FPS)
+            linha.processar(i, instante, [
+                rastro_em(x, 135.0, track=1),        # some depois do quadro 5
+                rastro_em(900.0, 135.0, track=2),    # parada, longe, e continua viva
+            ])
+
+        # O track 3 nasce em cima do 2, que esta vivo, e longe do 1, que morreu.
+        linha.processar(6, INICIO + timedelta(seconds=6 / FPS), [
+            rastro_em(900.0, 135.0, track=2),
+            rastro_em(905.0, 135.0, track=3),
+        ])
+        assert linha.costuras == 0
+
+    def test_cada_orfao_e_adotado_uma_vez_so(self):
+        """Dois ids novos perto do mesmo morto: o segundo comeca do zero."""
+        linha = nova_linha(costura_quadros=15)
+        percorrer(linha, self.IDA_ANTES, track=1, quadro0=0)
+        instante = INICIO + timedelta(seconds=8 / FPS)
+        linha.processar(8, instante, [
+            rastro_em(460.0, 135.0, track=2),
+            rastro_em(465.0, 135.0, track=3),
+        ])
+        assert linha.costuras == 1

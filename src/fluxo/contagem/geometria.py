@@ -86,3 +86,12 @@ def ponto_base(caixa: Caixa) -> Ponto:
     """Centro da base da caixa. Ver Rastro.ponto_base para o porquê."""
     x1, _, x2, y2 = caixa
     return ((x1 + x2) / 2.0, y2)
+
+
+def distancia(p: Ponto, q: Ponto) -> float:
+    """Distância euclidiana entre dois pontos, em pixels.
+
+    Usada pela costura de rastros: o quanto a pessoa pode ter andado enquanto
+    esteve sem detecção.
+    """
+    return hypot(q[0] - p[0], q[1] - p[1])

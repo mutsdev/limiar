@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from fluxo import config
 from fluxo.avaliacao import ground_truth as gt
-from fluxo.avaliacao import metricas
+from fluxo.avaliacao import metricas, trilhas
 from fluxo.contagem.linha import LinhaDeContagem
 from fluxo.dominio.evento import FUSO_LOCAL, Direcao
 
@@ -98,7 +98,7 @@ def sugerir_linha(sequencia: gt.SequenciaMOT) -> None:
 
 def avaliar_mot(
     caminho: Path, camera_id: str, limite: int | None, sem_baseline: bool,
-    visibilidade: float = 0.0,
+    visibilidade: float = 0.0, gravar_trilhas: bool = False,
 ) -> int:
     from fluxo.agente import processador
     from fluxo.visao.fonte import FonteDeVideo
@@ -125,10 +125,24 @@ def avaliar_mot(
     print(f"Modelo    : {rastreador.config.modelo} em {rastreador.dispositivo}")
     print()
 
+    trilha = None
+    if gravar_trilhas:
+        trilha = trilhas.Gravador(
+            config.CAMINHO_DADOS / "trilhas" / f"{camera_id}.jsonl",
+            camera=camera_id, fonte=sequencia.padrao_imagens, fps=sequencia.fps,
+            largura=sequencia.largura, altura=sequencia.altura,
+            modelo=rastreador.config.modelo, tracker=rastreador.config.tracker,
+            confianca_minima=rastreador.config.confianca_minima,
+        )
+
     resultado = processador.processar(
-        fonte, rastreador, linha_medida, None, None, limite, mostrar_progresso=True
+        fonte, rastreador, linha_medida, None, None, limite,
+        mostrar_progresso=True, trilha=trilha,
     )
     fonte.fechar()
+    if trilha is not None:
+        trilha.fechar()
+        print(f"Trilha    : {trilha.caminho}  ({trilha.quadros} quadros)")
 
     entradas_gt = sum(1 for e in eventos_gt if e.direcao is Direcao.ENTRADA)
     saidas_gt = sum(1 for e in eventos_gt if e.direcao is Direcao.SAIDA)
@@ -227,6 +241,8 @@ def main() -> None:
     p.add_argument("--limite", type=int, default=None, help="Máximo de quadros")
     p.add_argument("--sem-baseline", action="store_true",
                    help="Pula a comparação com a subtração de fundo")
+    p.add_argument("--gravar-trilhas", action="store_true",
+                   help="Grava o que a visao enxergou, para reprocessar sem GPU")
     p.add_argument("--visibilidade", type=float, default=0.0,
                    help="Fração mínima de visibilidade para a pessoa entrar na "
                         "referência. O MOT17 anota gente quase toda ocluída, e "
@@ -242,7 +258,8 @@ def main() -> None:
             sys.exit("--mot precisa de --camera para saber onde está a linha calibrada.\n"
                      "Rode antes: --mot <pasta> --sugerir-linha")
         sys.exit(avaliar_mot(Path(args.mot), args.camera, args.limite,
-                             args.sem_baseline, args.visibilidade))
+                             args.sem_baseline, args.visibilidade,
+                             args.gravar_trilhas))
 
     if args.ground_truth:
         if not args.camera:

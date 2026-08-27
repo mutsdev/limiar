@@ -32,6 +32,7 @@ from fluxo import config
 from fluxo.agente import processador
 from fluxo.agente.fila_local import FilaLocal
 from fluxo.agente.remetente import Remetente
+from fluxo.avaliacao import trilhas
 from fluxo.contagem.linha import LinhaDeContagem
 from fluxo.dominio.evento import FUSO_LOCAL
 from fluxo.visao.anotador import GravadorDeVideo, JanelaAoVivo
@@ -59,6 +60,9 @@ def main() -> None:
                    help="Abre uma janela e mostra a contagem acontecendo.")
     p.add_argument("--escala", type=float, default=1.0,
                    help="Aumenta ou reduz a janela (ex.: 1.5). Só afeta a exibição.")
+    p.add_argument("--gravar-trilhas", action="store_true",
+                   help="Grava o que a visão enxergou em dados/trilhas/<camera>.jsonl, "
+                        "para reprocessar depois sem GPU (scripts/reprocessar.py).")
     p.add_argument("--tempo-real", action="store_true",
                    help="Respeita o relógio na LEITURA (para simular câmera ao vivo)")
     p.add_argument("--velocidade", type=float, default=1.0)
@@ -129,6 +133,21 @@ def main() -> None:
         )
         gravador = GravadorDeVideo(destino, fonte.largura, fonte.altura, fonte.fps)
 
+    trilha = None
+    if args.gravar_trilhas:
+        trilha = trilhas.Gravador(
+            config.CAMINHO_DADOS / "trilhas" / f"{args.camera}.jsonl",
+            camera=args.camera,
+            fonte=str(fonte_str),
+            fps=fonte.fps,
+            largura=fonte.largura,
+            altura=fonte.altura,
+            modelo=cfg_visao.modelo,
+            tracker=cfg_visao.tracker,
+            confianca_minima=cfg_visao.confianca_minima,
+            versao=processador.versao_do_codigo(),
+        )
+
     janela = None
     if args.ao_vivo:
         janela = JanelaAoVivo(
@@ -154,7 +173,7 @@ def main() -> None:
     try:
         resultado = processador.processar(
             fonte, rastreador, linha, remetente, gravador, args.limite,
-            janela=janela,
+            janela=janela, trilha=trilha,
         )
     finally:
         fonte.fechar()
@@ -162,6 +181,8 @@ def main() -> None:
             gravador.fechar()
         if janela is not None:
             janela.fechar()
+        if trilha is not None:
+            trilha.fechar()
 
     if remetente is not None and execucao_id is not None:
         remetente.fechar_execucao(
@@ -177,6 +198,9 @@ def main() -> None:
         print(f"Enviados : {remetente.enviados}  | em fila: {remetente.fila.tamanho}")
     if gravador is not None:
         print(f"Vídeo    : {gravador.caminho}")
+    if trilha is not None:
+        print(f"Trilha   : {trilha.caminho}  ({trilha.quadros} quadros)")
+        print(f"           reprocesse sem GPU: python scripts/reprocessar.py {args.camera}")
 
 
 if __name__ == "__main__":
