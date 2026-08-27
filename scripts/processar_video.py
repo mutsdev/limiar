@@ -60,6 +60,10 @@ def main() -> None:
                    help="Abre uma janela e mostra a contagem acontecendo.")
     p.add_argument("--escala", type=float, default=1.0,
                    help="Aumenta ou reduz a janela (ex.: 1.5). Só afeta a exibição.")
+    p.add_argument("--placar", type=float, default=None,
+                   help="Tamanho do placar e das caixas. Por padrão compensa a "
+                        "--escala, para o texto não encolher junto com a janela. "
+                        "Com --anotar junto, vale também para o arquivo gravado.")
     p.add_argument("--gravar-trilhas", action="store_true",
                    help="Grava o que a visão enxergou em dados/trilhas/<camera>.jsonl, "
                         "para reprocessar depois sem GPU (scripts/reprocessar.py).")
@@ -148,6 +152,11 @@ def main() -> None:
             versao=processador.versao_do_codigo(),
         )
 
+    # Encolher a janela não deve encolher o que se está tentando ler nela.
+    escala_placar = args.placar if args.placar else (
+        1.0 / args.escala if args.ao_vivo and args.escala < 1.0 else 1.0
+    )
+
     janela = None
     if args.ao_vivo:
         janela = JanelaAoVivo(
@@ -173,7 +182,7 @@ def main() -> None:
     try:
         resultado = processador.processar(
             fonte, rastreador, linha, remetente, gravador, args.limite,
-            janela=janela, trilha=trilha,
+            janela=janela, trilha=trilha, escala_placar=escala_placar,
         )
     finally:
         fonte.fechar()

@@ -68,3 +68,35 @@ cameras:
     fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando.mp4
     linha: [200, 268, 702, 212]
     lado_dentro: 1
+  03_corredor_loja_camera_alta:
+    nome: 03_corredor_loja_camera_alta
+    local: ''
+    ativa: true
+    nota: ''
+    fonte: C:\Users\joaop\Downloads\03_corredor_loja_camera_alta.mp4
+    linha: [178, 218, 482, 210]
+    lado_dentro: 1
+  01_entrada_loja_portas_automaticas_1440p:
+    nome: 01_entrada_loja_portas_automaticas_1440p
+    local: ''
+    ativa: true
+    nota: ''
+    fonte: dados/videos/01_entrada_loja_portas_automaticas_1440p.mp4
+    linha: [170, 0, 170, 1440]
+    lado_dentro: -1
+  02_entrada_loja_frontal_4k:
+    nome: 02_entrada_loja_frontal_4k
+    local: ''
+    ativa: true
+    nota: ''
+    fonte: dados\videos\02_entrada_loja_frontal_4k.mp4
+    linha: [752, 1243, 2765, 1241]
+    lado_dentro: -1
+  03_corredor_pilar_oclusao_720p:
+    nome: 03_corredor_pilar_oclusao_720p
+    local: ''
+    ativa: true
+    nota: ''
+    fonte: dados/videos/03_corredor_pilar_oclusao_720p.mp4
+    linha: [770, 0, 770, 720]
+    lado_dentro: -1

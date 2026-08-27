@@ -21,35 +21,59 @@ COR_FUNDO = (32, 24, 16)
 
 FONTE = cv2.FONT_HERSHEY_SIMPLEX
 
+# Altura de quadro em que os tamanhos abaixo foram escolhidos a olho. Tudo é
+# medido em relação a ela, senão o mesmo placar que cabe bem num 768x432 vira
+# uma tarja ilegível num 4K — o texto tem tamanho fixo, o quadro não.
+ALTURA_BASE = 432
 
-def desenhar_linha(imagem, linha: LinhaDeContagem):
+
+def escala_de(imagem, extra: float = 1.0) -> float:
+    """Quanto ampliar o desenho para este quadro.
+
+    Limitada embaixo para não sumir em vídeo pequeno, e em cima para não virar
+    outdoor em 4K: o overlay é instrumento de leitura, não o assunto da tela.
+    `extra` compensa a redução da janela — encolher a exibição não deveria
+    encolher o texto que se está tentando ler.
+    """
+    return min(6.0, max(0.9, imagem.shape[0] / ALTURA_BASE) * max(0.1, extra))
+
+
+def desenhar_linha(imagem, linha: LinhaDeContagem, escala: float = 1.0):
+    e = escala_de(imagem, escala)
     a = (int(linha.a[0]), int(linha.a[1]))
     b = (int(linha.b[0]), int(linha.b[1]))
-    cv2.line(imagem, a, b, COR_LINHA, 2)
+    cv2.line(imagem, a, b, COR_LINHA, max(2, int(2 * e)))
     for p in (a, b):
-        cv2.circle(imagem, p, 5, COR_LINHA, -1)
+        cv2.circle(imagem, p, max(5, int(5 * e)), COR_LINHA, -1)
     return imagem
 
 
-def desenhar_rastros(imagem, rastros: list[Rastro]):
+def desenhar_rastros(imagem, rastros: list[Rastro], escala: float = 1.0):
+    e = escala_de(imagem, escala)
+    fonte = 0.45 * e
+    grossura = max(1, int(e))
     for r in rastros:
         x1, y1, x2, y2 = (int(v) for v in r.caixa)
-        cv2.rectangle(imagem, (x1, y1), (x2, y2), COR_CAIXA, 1)
+        cv2.rectangle(imagem, (x1, y1), (x2, y2), COR_CAIXA, grossura)
 
         # O ponto do pé é o que realmente decide o lado da linha. Vê-lo é o
         # que permite entender uma contagem errada.
         px, py = r.ponto_base
-        cv2.circle(imagem, (int(px), int(py)), 4, COR_PE, -1)
+        cv2.circle(imagem, (int(px), int(py)), max(4, int(4 * e)), COR_PE, -1)
 
         etiqueta = f"{r.id_local} {r.confianca:.2f}"
-        (lt, at), _ = cv2.getTextSize(etiqueta, FONTE, 0.45, 1)
-        cv2.rectangle(imagem, (x1, y1 - at - 6), (x1 + lt + 6, y1), COR_FUNDO, -1)
-        cv2.putText(imagem, etiqueta, (x1 + 3, y1 - 4), FONTE, 0.45, COR_TEXTO, 1)
+        (lt, at), _ = cv2.getTextSize(etiqueta, FONTE, fonte, grossura)
+        margem = int(6 * e)
+        cv2.rectangle(imagem, (x1, y1 - at - margem), (x1 + lt + margem, y1),
+                      COR_FUNDO, -1)
+        cv2.putText(imagem, etiqueta, (x1 + int(3 * e), y1 - int(4 * e)), FONTE,
+                    fonte, COR_TEXTO, grossura)
     return imagem
 
 
 def desenhar_placar(
-    imagem, linha: LinhaDeContagem, quadro: int, visiveis: int = 0, extra: str = ""
+    imagem, linha: LinhaDeContagem, quadro: int, visiveis: int = 0, extra: str = "",
+    escala: float = 1.0,
 ):
     # "visiveis" é quem está no quadro agora; "memoria" inclui os tracks ainda
     # não esquecidos. Confundir os dois faz o placar parecer errado quando a
@@ -63,24 +87,38 @@ def desenhar_placar(
     if extra:
         linhas.append(extra)
 
-    largura = max(cv2.getTextSize(t, FONTE, 0.55, 1)[0][0] for t in linhas) + 20
-    altura = 24 * len(linhas) + 12
+    e = escala_de(imagem, escala)
+    fonte = 0.55 * e
+    grossura = max(1, int(1.5 * e))
+    passo = int(24 * e)
+    borda = int(8 * e)
 
-    painel = imagem[8 : 8 + altura, 8 : 8 + largura].copy()
+    largura = max(
+        cv2.getTextSize(t, FONTE, fonte, grossura)[0][0] for t in linhas
+    ) + int(20 * e)
+    altura = passo * len(linhas) + int(12 * e)
+    # Um painel maior que o quadro estouraria a fatia e o addWeighted daria erro
+    # de forma — acontece em vídeo pequeno com texto grande.
+    largura = min(largura, imagem.shape[1] - 2 * borda)
+    altura = min(altura, imagem.shape[0] - 2 * borda)
+
+    fatia = imagem[borda : borda + altura, borda : borda + largura]
+    painel = fatia.copy()
     cv2.rectangle(painel, (0, 0), (largura, altura), COR_FUNDO, -1)
-    cv2.addWeighted(painel, 0.75, imagem[8 : 8 + altura, 8 : 8 + largura], 0.25, 0,
-                    imagem[8 : 8 + altura, 8 : 8 + largura])
+    cv2.addWeighted(painel, 0.75, fatia, 0.25, 0, fatia)
 
     for i, texto in enumerate(linhas):
         cor = COR_LINHA if i == 1 else (COR_PE if i == 2 else COR_TEXTO)
-        cv2.putText(imagem, texto, (18, 32 + i * 24), FONTE, 0.55, cor, 1, cv2.LINE_AA)
+        cv2.putText(imagem, texto, (borda + int(10 * e), borda + int(24 * e) + i * passo),
+                    FONTE, fonte, cor, grossura, cv2.LINE_AA)
     return imagem
 
 
-def anotar(imagem, linha: LinhaDeContagem, rastros: list[Rastro], quadro: int, extra=""):
-    desenhar_linha(imagem, linha)
-    desenhar_rastros(imagem, rastros)
-    desenhar_placar(imagem, linha, quadro, len(rastros), extra)
+def anotar(imagem, linha: LinhaDeContagem, rastros: list[Rastro], quadro: int,
+           extra="", escala: float = 1.0):
+    desenhar_linha(imagem, linha, escala)
+    desenhar_rastros(imagem, rastros, escala)
+    desenhar_placar(imagem, linha, quadro, len(rastros), extra, escala)
     return imagem
 
 
@@ -106,17 +144,20 @@ class JanelaAoVivo:
 
     def _desenhar_estado(self, imagem):
         if self.pausado:
+            e = escala_de(imagem)
             texto = "PAUSADO - espaco continua"
-            (largura, altura), _ = cv2.getTextSize(texto, FONTE, 0.7, 2)
+            (largura, altura), _ = cv2.getTextSize(texto, FONTE, 0.7 * e, max(2, int(2 * e)))
             x = (imagem.shape[1] - largura) // 2
             y = imagem.shape[0] - 24
             cv2.rectangle(imagem, (x - 10, y - altura - 10), (x + largura + 10, y + 10),
                           COR_FUNDO, -1)
-            cv2.putText(imagem, texto, (x, y), FONTE, 0.7, COR_LINHA, 2, cv2.LINE_AA)
+            cv2.putText(imagem, texto, (x, y), FONTE, 0.7 * e, COR_LINHA,
+                        max(2, int(2 * e)), cv2.LINE_AA)
         else:
+            e = escala_de(imagem)
             cv2.putText(imagem, "q sai  |  espaco pausa",
-                        (12, imagem.shape[0] - 12), FONTE, 0.45, (150, 150, 150), 1,
-                        cv2.LINE_AA)
+                        (int(12 * e), imagem.shape[0] - int(12 * e)), FONTE,
+                        0.45 * e, (150, 150, 150), max(1, int(e)), cv2.LINE_AA)
         return imagem
 
     def mostrar(self, imagem) -> bool:

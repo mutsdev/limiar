@@ -42,6 +42,7 @@ def processar(
     mostrar_progresso: bool = True,
     janela=None,
     trilha=None,
+    escala_placar: float = 1.0,
 ) -> Resultado:
     """Roda o pipeline inteiro sobre uma fonte de vídeo."""
     import time
@@ -90,7 +91,8 @@ def processar(
 
             # Anota uma vez só, e reaproveita o mesmo quadro nos dois destinos.
             if gravador is not None or janela is not None:
-                anotador.anotar(quadro.imagem, linha, rastros, quadro.indice)
+                anotador.anotar(quadro.imagem, linha, rastros, quadro.indice,
+                                escala=escala_placar)
             if gravador is not None:
                 gravador.escrever(quadro.imagem)
             if janela is not None and not janela.mostrar(quadro.imagem):
