@@ -33,3 +33,22 @@ cameras:
     ativa: false
     nota: x=1385 e cruzado por 20 das 26 pessoas anotadas e cai em calcada aberta
       - conferido no quadro 250, sem pilar nem poste sobre a linha.
+  elevada:
+    nome: elevada
+    local: ''
+    ativa: true
+    nota: 'x=420 no meio do caminho. Mais a direita (500-650) a linha cai na area
+      de estacionamento, onde gente circula em vez de passar: travessias por pessoa
+      sobem de 1,40 para 1,63 e o balanco deixa de fechar (11/11 -> 14/18).'
+    fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando.mp4
+    linha: [420, 0, 420, 576]
+    lado_dentro: -1
+  zenital:
+    nome: zenital
+    local: ''
+    ativa: true
+    nota: 'Camera zenital 402x300. Conta, mas inviabiliza a etapa 2: de cima nao ha
+      aparencia.'
+    fonte: C:\Users\joaop\Downloads\02_camera_topo_zenital_calcada.mp4
+    linha: [0, 155, 402, 155]
+    lado_dentro: -1

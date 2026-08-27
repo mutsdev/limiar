@@ -117,6 +117,7 @@ def sugerir(fonte: str, quadro_base) -> tuple[list[int], int]:
 
     print(f"Analisando {video} ...")
     faixas: dict[int, list[float]] = {}
+    faixas_y: dict[int, list[float]] = {}
     vistos: dict[int, int] = {}
     # Onde cada trajetória começou e terminou. Track que nasce ou morre sempre
     # no mesmo lugar denuncia um oclusor ali — é o sinal que permite evitar
@@ -126,50 +127,75 @@ def sugerir(fonte: str, quadro_base) -> tuple[list[int], int]:
     ultimo: dict[int, float] = {}
     for q in video:
         for r in rastreador.atualizar(q.imagem):
-            x, _ = r.ponto_base
+            x, y = r.ponto_base
             faixa = faixas.setdefault(r.id_local, [x, x])
             faixa[0], faixa[1] = min(faixa[0], x), max(faixa[1], x)
+            faixa_y = faixas_y.setdefault(r.id_local, [y, y])
+            faixa_y[0], faixa_y[1] = min(faixa_y[0], y), max(faixa_y[1], y)
             vistos[r.id_local] = vistos.get(r.id_local, 0) + 1
-            primeiro.setdefault(r.id_local, x)
-            ultimo[r.id_local] = x
+            primeiro.setdefault(r.id_local, (x, y))
+            ultimo[r.id_local] = (x, y)
     video.fechar()
     pontas = list(primeiro.values()) + list(ultimo.values())
 
-    uteis = {
+    longos = {i for i, n in vistos.items() if n >= 5}
+    uteis_x = {
         i: f for i, f in faixas.items()
-        if f[1] - f[0] > DESLOCAMENTO_MINIMO and vistos.get(i, 0) >= 5
+        if i in longos and f[1] - f[0] > DESLOCAMENTO_MINIMO
     }
-    if not uteis:
+    uteis_y = {
+        i: f for i, f in faixas_y.items()
+        if i in longos and f[1] - f[0] > DESLOCAMENTO_MINIMO
+    }
+    if not uteis_x and not uteis_y:
         sys.exit(
             "Ninguém atravessa o quadro neste vídeo — não dá para propor uma linha.\n"
             "Use o modo manual (sem --sugerir) e clique onde a passagem acontece."
         )
 
-    # Pontas que não são a borda do quadro: entrar e sair de cena é normal nas
-    # laterais, mas nascer no meio do quadro é sintoma de oclusão.
     altura, largura = quadro_base.shape[:2]
-    margem = largura * 0.12
-    suspeitas = [x for x in pontas if margem < x < largura - margem]
 
-    melhor_x, melhor_nota, melhor_n = 0, -1e9, 0
-    for x in range(20, largura - 20, 5):
-        n = sum(1 for menor, maior in uteis.values() if menor < x < maior)
-        # Cada track que nasce ou morre perto daqui custa caro: é provável
-        # oclusor, e linha atrás de oclusor perde travessia.
-        perto = sum(1 for p in suspeitas if abs(p - x) < RAIO_OCLUSOR)
-        nota = n - PESO_OCLUSOR * perto
-        if nota > melhor_nota:
-            melhor_x, melhor_nota, melhor_n = x, nota, n
+    def avaliar(faixas_uteis, pontas_1d, limite, margem_frac=0.12):
+        """Melhor corte perpendicular a um eixo, penalizando oclusor.
 
-    print(f"  {len(faixas)} pessoas rastreadas, {len(uteis)} com deslocamento útil")
-    if suspeitas:
-        print(f"  {len(suspeitas)} trajetórias começam ou terminam no meio do quadro "
-              f"— possíveis oclusores, evitados na escolha")
-    print(f"  Melhor vertical: x = {melhor_x}, cruzada por {melhor_n} delas")
+        Ponta de trajetória no meio do quadro é sintoma de oclusão: ali o
+        track quebrou. Perto da borda é normal — a pessoa entrou ou saiu de
+        cena.
+        """
+        margem = limite * margem_frac
+        suspeitas = [p for p in pontas_1d if margem < p < limite - margem]
+        melhor, melhor_nota, melhor_n = 0, -1e9, 0
+        for c in range(20, limite - 20, 5):
+            n = sum(1 for menor, maior in faixas_uteis.values() if menor < c < maior)
+            perto = sum(1 for p in suspeitas if abs(p - c) < RAIO_OCLUSOR)
+            nota = n - PESO_OCLUSOR * perto
+            if nota > melhor_nota:
+                melhor, melhor_nota, melhor_n = c, nota, n
+        return melhor, melhor_n, len(suspeitas)
 
-    # Convenção: o lado direito do quadro é o "dentro". Com a linha de cima
-    # para baixo, esse lado dá sinal -1.
-    return [melhor_x, 0, melhor_x, altura], -1
+    x_corte, n_x, susp_x = avaliar(uteis_x, [p[0] for p in pontas], largura)
+    y_corte, n_y, susp_y = avaliar(uteis_y, [p[1] for p in pontas], altura)
+
+    print(f"  {len(faixas)} pessoas rastreadas, {len(longos)} vistas por tempo bastante")
+    print(f"  Linha vertical  em x={x_corte}: cruzada por {n_x}")
+    print(f"  Linha horizontal em y={y_corte}: cruzada por {n_y}")
+
+    # A orientação certa é a que mais gente atravessa. Numa câmera zenital,
+    # com as pessoas subindo o quadro, a linha tem que ser horizontal — e
+    # testar só verticais daria a resposta errada com cara de resposta.
+    if n_y > n_x:
+        if susp_y:
+            print(f"  ({susp_y} pontas de trajetória no meio do quadro, evitadas)")
+        print(f"  Escolhida: HORIZONTAL em y = {y_corte}, cruzada por {n_y}")
+        # Linha da esquerda para a direita: o lado de cima do quadro dá -1.
+        # Quem anda para longe da câmera (sobe) é contado como ENTRADA.
+        return [0, y_corte, largura, y_corte], -1
+
+    if susp_x:
+        print(f"  ({susp_x} pontas de trajetória no meio do quadro, evitadas)")
+    print(f"  Escolhida: VERTICAL em x = {x_corte}, cruzada por {n_x}")
+    # Linha de cima para baixo: o lado direito do quadro dá -1.
+    return [x_corte, 0, x_corte, altura], -1
 
 
 # --------------------------------------------------------------------------
@@ -232,6 +258,9 @@ def main() -> None:
                    help="Propõe a linha a partir das trajetórias, sem cliques")
     p.add_argument("--nota", default="",
                    help="Por que a linha ficou aqui. Sobrevive à recalibração.")
+    p.add_argument("--inverter", action="store_true",
+                   help="Troca qual lado é 'dentro'. Use se entradas e saídas "
+                        "saírem trocadas.")
     args = p.parse_args()
 
     config.garantir_pastas()
@@ -249,6 +278,9 @@ def main() -> None:
 
     quadro_base = abrir_quadro(fonte, args.quadro)
     linha, lado_dentro = sugerir(fonte, quadro_base) if args.sugerir else clicar(quadro_base)
+    if args.inverter:
+        lado_dentro = -lado_dentro
+        print(f"  lado 'dentro' invertido para {lado_dentro}")
 
     gravar(cameras, args.camera, fonte, linha, lado_dentro, args.nota)
     prever(quadro_base, linha, config.CAMINHO_SAIDAS / f"{args.camera}_linha.png")
