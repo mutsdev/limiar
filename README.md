@@ -8,7 +8,7 @@ não há vínculo com identidade civil em nenhum ponto.
 | documento | o que é |
 |---|---|
 | `PROJETO.txt` | escopo, decisões justificadas, 111 micro-etapas com critério de aceite |
-| `deck.html` | apresentação em 19 slides (abre direto no navegador) |
+| `deck.html` | apresentação em 10 slides (abre direto no navegador) |
 | `docs/arquitetura.md` | camadas, idempotência, e as regras que não se quebram |
 | `docs/calibracao.md` | onde montar a câmera e onde desenhar a linha |
 | `docs/avaliacao.md` | como se prova que o número está certo |
