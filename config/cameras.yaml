@@ -2,42 +2,34 @@
 # scripts/calibrar_linha.py — não edite as coordenadas à mão.
 #
 # linha: [x1, y1, x2, y2] em pixels do quadro original
-# lado_dentro: sinal do produto vetorial que corresponde ao lado "dentro" do
-#              prédio. Depende de como a câmera está montada; a ferramenta de
-#              calibração pergunta e grava.
+# lado_dentro: sinal do produto vetorial correspondente ao interior
+#              do prédio; depende de como a câmera está montada.
 
 cameras:
   entrada_a:
-    nome: "Entrada Principal"
-    local: "Portaria da frente"
-    # Vídeo público de amostra (Intel, Apache-2.0), usado enquanto não há
-    # gravação da porta real. Trocar pela fonte da câmera quando existir.
-    fonte: "dados/videos/people-detection.mp4"
-    # Longe do pilar da sala (x ~420-440): linha atrás de oclusor quebra o
-    # track no momento exato da passagem, e o cruzamento se perde.
+    nome: Entrada Principal
+    local: Portaria da frente
+    fonte: dados/videos/people-detection.mp4
     linha: [330, 120, 330, 432]
-    lado_dentro: -1      # o lado direito do quadro é o "dentro"
-    ativa: true
-
-  entrada_b:
-    nome: "Entrada Lateral"
-    local: "Acesso pelo estacionamento"
-    fonte: "dados/videos/one-by-one-person-detection.mp4"
-    # x=430 é cruzado pelas 6 trajetórias do vídeo; escolhido a partir delas,
-    # não por estar no meio do quadro.
-    linha: [430, 0, 430, 432]
     lado_dentro: -1
     ativa: true
-
-  # --- Sequências do MOT17, usadas só para avaliação -----------------------
-  # Câmera estática, anotação humana em gt/gt.txt. A linha sai de
-  #   python scripts/avaliar.py --mot <pasta> --sugerir-linha
+    nota: 'Linha longe do pilar da sala (x ~420-440). Atras de oclusor o track quebra
+      no momento da passagem e o cruzamento se perde: aconteceu, e custou uma travessia.'
+  entrada_b:
+    nome: Entrada Lateral
+    local: Acesso pelo estacionamento
+    fonte: dados/videos/one-by-one-person-detection.mp4
+    linha: [490, 0, 490, 432]
+    lado_dentro: -1
+    ativa: true
+    nota: 'Longe da mesa de apoio: em x=430 o pe da mesa oclui a passagem e custou
+      uma travessia (5 em vez de 6).'
   mot17_09:
-    nome: "MOT17-09 (avaliação)"
-    local: "Calçada movimentada, câmera baixa e fixa"
-    fonte: "dados/videos/MOT17-09/img1/%06d.jpg"
-    # x=1385 é cruzado por 20 das 26 pessoas anotadas, e cai em calçada
-    # aberta — conferido no quadro 250, sem pilar nem poste sobre a linha.
+    nome: MOT17-09 (avaliação)
+    local: Calçada movimentada, câmera baixa e fixa
+    fonte: dados/videos/MOT17-09/img1/%06d.jpg
     linha: [1385, 0, 1385, 1080]
     lado_dentro: -1
     ativa: false
+    nota: x=1385 e cruzado por 20 das 26 pessoas anotadas e cai em calcada aberta
+      - conferido no quadro 250, sem pilar nem poste sobre a linha.

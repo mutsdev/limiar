@@ -1,13 +1,22 @@
-"""Desenha a linha de contagem clicando no primeiro quadro do vídeo.
+"""Define a linha de contagem de uma câmera.
 
-    python scripts/calibrar_linha.py --camera entrada_a --fonte dados/videos/porta.mp4
+Dois modos:
 
-Clique dois pontos. Depois clique um terceiro, do lado DE DENTRO do prédio, e
-o script deduz o sinal. Tecla `r` recomeça, `Enter` grava, `Esc` cancela.
+    # automático: o rastreador olha por onde as pessoas passam e propõe a linha
+    python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4 --sugerir
 
-Isto é um passo próprio, e não um número editado à mão no código, porque sem
-ferramenta ninguém recalibra — e recalibrar é a primeira coisa a fazer quando
-a contagem erra.
+    # manual: você clica os pontos no quadro
+    python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4
+
+No modo manual: dois cliques definem a linha, o terceiro marca o lado DE DENTRO
+do prédio. Tecla `r` recomeça, `Enter` grava, `Esc` cancela.
+
+A câmera é criada em config/cameras.yaml se ainda não existir — para testar um
+vídeo qualquer não é preciso editar YAML à mão.
+
+Isto é um passo próprio, e não um número no código, porque sem ferramenta
+ninguém recalibra — e recalibrar é a primeira coisa a fazer quando a contagem
+erra.
 """
 
 from __future__ import annotations
@@ -25,32 +34,150 @@ from fluxo.contagem import geometria
 
 JANELA = "Calibrar linha  |  2 cliques = linha, 3o clique = lado DE DENTRO"
 
+# Deslocamento mínimo em pixels para a trajetória valer como "atravessou".
+# Abaixo disso é gente parada, e gente parada não define onde fica a porta.
+DESLOCAMENTO_MINIMO = 30
 
-def main() -> None:
-    p = argparse.ArgumentParser(description="Calibração da linha de contagem")
-    p.add_argument("--camera", required=True)
-    p.add_argument("--fonte", default=None, help="Sobrescreve a fonte do YAML")
-    p.add_argument("--quadro", type=int, default=0, help="Qual quadro usar de base")
-    args = p.parse_args()
+# Quanto perto de uma ponta de trajetoria a linha ainda e considerada
+# suspeita de oclusor, e quanto isso pesa contra ela.
+RAIO_OCLUSOR = 60
+PESO_OCLUSOR = 0.5
 
-    cameras = config.carregar_cameras()
-    if args.camera not in cameras:
-        sys.exit(f"Câmera '{args.camera}' não existe em {config.ARQUIVO_CAMERAS}")
 
-    fonte = args.fonte or cameras[args.camera].get("fonte")
-    if not fonte:
-        sys.exit(f"Câmera '{args.camera}' não tem fonte. Passe --fonte.")
-
+def abrir_quadro(fonte: str, indice: int):
     cap = cv2.VideoCapture(str(fonte))
     if not cap.isOpened():
         sys.exit(f"Não consegui abrir: {fonte}")
-    if args.quadro:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, args.quadro)
-    ok, base = cap.read()
+    if indice:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, indice)
+    ok, quadro = cap.read()
     cap.release()
     if not ok:
-        sys.exit("Não consegui ler o quadro.")
+        sys.exit(f"Não consegui ler o quadro {indice} de {fonte}")
+    return quadro
 
+
+def gravar(cameras: dict, camera_id: str, fonte: str, linha, lado_dentro: int,
+           nota: str = "") -> None:
+    entrada = cameras.setdefault(camera_id, {})
+    entrada.setdefault("nome", camera_id)
+    entrada.setdefault("local", "")
+    entrada.setdefault("ativa", True)
+    # `nota` é campo de dado, e não comentário, porque este arquivo é
+    # regravado por programa — e yaml.safe_dump não preserva comentário.
+    # A lição de calibração precisa sobreviver à próxima recalibração.
+    if nota:
+        entrada["nota"] = nota
+    else:
+        entrada.setdefault("nota", "")
+    entrada["fonte"] = str(fonte)
+    entrada["linha"] = [int(v) for v in linha]
+    entrada["lado_dentro"] = int(lado_dentro)
+    config.salvar_cameras(cameras)
+
+    print(f"\nGravado em {config.ARQUIVO_CAMERAS}")
+    print(f"  {camera_id}: linha={entrada['linha']} lado_dentro={lado_dentro}")
+    print(f"\nRode agora:\n  python scripts/processar_video.py --camera {camera_id} "
+          f"--sem-envio --anotar")
+
+
+def prever(quadro, linha, destino: Path) -> None:
+    """Desenha a linha sobre o quadro e grava, para conferência.
+
+    A regra do docs/calibracao.md é olhar antes de aceitar: oclusor não aparece
+    na trajetória, e linha atrás de pilar perde travessia.
+    """
+    tela = quadro.copy()
+    cv2.line(tela, (int(linha[0]), int(linha[1])), (int(linha[2]), int(linha[3])),
+             (59, 169, 242), 3)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(destino), tela)
+    print(f"Prévia da linha: {destino}")
+    print("  Confira: há pilar, poste ou muro em cima dela? Se houver, mova.")
+
+
+# --------------------------------------------------------------------------
+# Modo automático
+# --------------------------------------------------------------------------
+
+
+def sugerir(fonte: str, quadro_base) -> tuple[list[int], int]:
+    """Roda o rastreador no vídeo e propõe a vertical mais cruzada.
+
+    O mesmo raciocínio da sugestão a partir do MOTChallenge, só que sem
+    anotação: aqui as trajetórias vêm do próprio detector. Menos confiável, e
+    por isso a prévia em imagem não é opcional.
+    """
+    from fluxo.visao.fonte import FonteDeVideo
+    from fluxo.visao.rastreador import ConfigVisao, RastreadorPessoas
+
+    pipeline = config.carregar_pipeline()
+    video = FonteDeVideo(fonte)
+    rastreador = RastreadorPessoas(ConfigVisao.de_pipeline(pipeline))
+
+    print(f"Analisando {video} ...")
+    faixas: dict[int, list[float]] = {}
+    vistos: dict[int, int] = {}
+    # Onde cada trajetória começou e terminou. Track que nasce ou morre sempre
+    # no mesmo lugar denuncia um oclusor ali — é o sinal que permite evitar
+    # pilar, poste e mesa sem enxergá-los.
+    pontas: list[float] = []
+    primeiro: dict[int, float] = {}
+    ultimo: dict[int, float] = {}
+    for q in video:
+        for r in rastreador.atualizar(q.imagem):
+            x, _ = r.ponto_base
+            faixa = faixas.setdefault(r.id_local, [x, x])
+            faixa[0], faixa[1] = min(faixa[0], x), max(faixa[1], x)
+            vistos[r.id_local] = vistos.get(r.id_local, 0) + 1
+            primeiro.setdefault(r.id_local, x)
+            ultimo[r.id_local] = x
+    video.fechar()
+    pontas = list(primeiro.values()) + list(ultimo.values())
+
+    uteis = {
+        i: f for i, f in faixas.items()
+        if f[1] - f[0] > DESLOCAMENTO_MINIMO and vistos.get(i, 0) >= 5
+    }
+    if not uteis:
+        sys.exit(
+            "Ninguém atravessa o quadro neste vídeo — não dá para propor uma linha.\n"
+            "Use o modo manual (sem --sugerir) e clique onde a passagem acontece."
+        )
+
+    # Pontas que não são a borda do quadro: entrar e sair de cena é normal nas
+    # laterais, mas nascer no meio do quadro é sintoma de oclusão.
+    altura, largura = quadro_base.shape[:2]
+    margem = largura * 0.12
+    suspeitas = [x for x in pontas if margem < x < largura - margem]
+
+    melhor_x, melhor_nota, melhor_n = 0, -1e9, 0
+    for x in range(20, largura - 20, 5):
+        n = sum(1 for menor, maior in uteis.values() if menor < x < maior)
+        # Cada track que nasce ou morre perto daqui custa caro: é provável
+        # oclusor, e linha atrás de oclusor perde travessia.
+        perto = sum(1 for p in suspeitas if abs(p - x) < RAIO_OCLUSOR)
+        nota = n - PESO_OCLUSOR * perto
+        if nota > melhor_nota:
+            melhor_x, melhor_nota, melhor_n = x, nota, n
+
+    print(f"  {len(faixas)} pessoas rastreadas, {len(uteis)} com deslocamento útil")
+    if suspeitas:
+        print(f"  {len(suspeitas)} trajetórias começam ou terminam no meio do quadro "
+              f"— possíveis oclusores, evitados na escolha")
+    print(f"  Melhor vertical: x = {melhor_x}, cruzada por {melhor_n} delas")
+
+    # Convenção: o lado direito do quadro é o "dentro". Com a linha de cima
+    # para baixo, esse lado dá sinal -1.
+    return [melhor_x, 0, melhor_x, altura], -1
+
+
+# --------------------------------------------------------------------------
+# Modo manual
+# --------------------------------------------------------------------------
+
+
+def clicar(quadro_base) -> tuple[list[int], int]:
     cliques: list[tuple[int, int]] = []
 
     def ao_clicar(evento, x, y, _flags, _param):
@@ -61,17 +188,14 @@ def main() -> None:
     cv2.setMouseCallback(JANELA, ao_clicar)
 
     while True:
-        tela = base.copy()
+        tela = quadro_base.copy()
         for i, c in enumerate(cliques):
-            cor = (59, 169, 242) if i < 2 else (180, 195, 67)
-            cv2.circle(tela, c, 6, cor, -1)
+            cv2.circle(tela, c, 6, (59, 169, 242) if i < 2 else (180, 195, 67), -1)
         if len(cliques) >= 2:
             cv2.line(tela, cliques[0], cliques[1], (59, 169, 242), 2)
         if len(cliques) == 3:
-            cv2.putText(
-                tela, "DENTRO", (cliques[2][0] + 10, cliques[2][1]),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 195, 67), 2,
-            )
+            cv2.putText(tela, "DENTRO", (cliques[2][0] + 10, cliques[2][1]),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 195, 67), 2)
 
         dica = {0: "Clique o inicio da linha", 1: "Clique o fim da linha",
                 2: "Clique um ponto DE DENTRO do predio"}.get(
@@ -90,20 +214,44 @@ def main() -> None:
             break
 
     cv2.destroyAllWindows()
-
     (x1, y1), (x2, y2), dentro = cliques
-    lado_dentro = geometria.lado((x1, y1), (x2, y2), dentro)
-    if lado_dentro == 0:
+    lado = geometria.lado((x1, y1), (x2, y2), dentro)
+    if lado == 0:
         sys.exit("O ponto 'dentro' caiu sobre a própria linha. Rode de novo.")
+    return [x1, y1, x2, y2], lado
 
-    cameras[args.camera]["linha"] = [int(x1), int(y1), int(x2), int(y2)]
-    cameras[args.camera]["lado_dentro"] = int(lado_dentro)
-    if args.fonte:
-        cameras[args.camera]["fonte"] = str(args.fonte)
-    config.salvar_cameras(cameras)
 
-    print(f"Gravado em {config.ARQUIVO_CAMERAS}")
-    print(f"  {args.camera}: linha=[{x1}, {y1}, {x2}, {y2}] lado_dentro={lado_dentro}")
+def main() -> None:
+    p = argparse.ArgumentParser(description="Calibração da linha de contagem")
+    p.add_argument("--camera", required=True,
+                   help="Id da câmera. Criada em cameras.yaml se não existir.")
+    p.add_argument("--fonte", default=None,
+                   help="Vídeo, índice de webcam ou URL. Obrigatório para câmera nova.")
+    p.add_argument("--quadro", type=int, default=0, help="Qual quadro usar de base")
+    p.add_argument("--sugerir", action="store_true",
+                   help="Propõe a linha a partir das trajetórias, sem cliques")
+    p.add_argument("--nota", default="",
+                   help="Por que a linha ficou aqui. Sobrevive à recalibração.")
+    args = p.parse_args()
+
+    config.garantir_pastas()
+    cameras = config.carregar_cameras()
+    nova = args.camera not in cameras
+
+    fonte = args.fonte or (cameras.get(args.camera) or {}).get("fonte")
+    if not fonte:
+        sys.exit(
+            f"Câmera '{args.camera}' é nova e não tem fonte. Passe --fonte.\n"
+            f"  Exemplo: --fonte \"C:/Users/voce/Videos/porta.mp4\""
+        )
+    if nova:
+        print(f"Câmera '{args.camera}' não existia — será criada.")
+
+    quadro_base = abrir_quadro(fonte, args.quadro)
+    linha, lado_dentro = sugerir(fonte, quadro_base) if args.sugerir else clicar(quadro_base)
+
+    gravar(cameras, args.camera, fonte, linha, lado_dentro, args.nota)
+    prever(quadro_base, linha, config.CAMINHO_SAIDAS / f"{args.camera}_linha.png")
 
 
 if __name__ == "__main__":

@@ -22,19 +22,39 @@ Teste em pelo menos dois horários antes de fixar: uma posição que funciona à
 ## Onde desenhar a linha
 
 ```bash
-python scripts/calibrar_linha.py --camera entrada_a --fonte dados/videos/porta.mp4
+# automático: o rastreador olha por onde as pessoas passam e propõe a linha
+python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4 --sugerir
+
+# manual: dois cliques na linha, o terceiro no lado DE DENTRO
+python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4
 ```
 
-Dois cliques definem a linha. O terceiro clique, do lado de dentro do prédio,
-determina o sinal — o script grava tudo em `config/cameras.yaml`.
+A câmera é criada em `config/cameras.yaml` se ainda não existir — para testar
+um vídeo qualquer não é preciso editar YAML à mão. Os dois modos gravam uma
+**prévia em imagem** com a linha desenhada, em `dados/saidas/<camera>_linha.png`.
+Olhe essa prévia antes de aceitar; é o passo que pega o item 1 abaixo.
+
+O modo automático também **penaliza posições onde muitos tracks nascem ou
+morrem no meio do quadro**, porque é ali que costuma haver oclusor. Não
+substitui olhar a prévia: ele infere o obstáculo, não o enxerga.
+
+Use `--nota "por que a linha ficou aqui"` para deixar a razão registrada. Ela
+vira campo de dado no YAML e sobrevive à próxima recalibração — comentário de
+YAML não sobrevive, porque o arquivo é regravado por programa.
 
 Três regras, e a primeira custou uma passagem perdida no primeiro teste deste
 projeto:
 
-1. **Nunca atrás de um oclusor.** No vídeo de amostra a linha caiu sobre um
-   pilar. Uma pessoa foi ocluída exatamente ao atravessar, o track quebrou, e o
-   cruzamento se perdeu — o rastreador registrou uma trajetória nascendo já do
-   outro lado. Mover a linha 54 px para longe do pilar recuperou a contagem.
+1. **Nunca atrás de um oclusor.** Aconteceu duas vezes neste projeto, e é o
+   erro de calibração mais caro:
+
+   | caso | oclusor | contagem | depois de mover |
+   |---|---|---|---|
+   | vídeo de sala | pilar em x≈420-440 | 2 de 3 | 3 de 3 (x=330) |
+   | vídeo de corredor | pé de mesa em x≈430-500 | 5 de 6 | 6 de 6 (x=490) |
+
+   A pessoa é ocluída exatamente ao atravessar, o track quebra, e o cruzamento
+   se perde — o rastreador registra uma trajetória nascendo já do outro lado.
    Sintoma no vídeo anotado: tracks que aparecem do nada perto da linha.
 
 2. **Longe da borda do quadro.** Quem entra em cena já do lado de dentro nunca
