@@ -2,14 +2,15 @@
 
 Dois modos:
 
-    # automático: o rastreador olha por onde as pessoas passam e propõe a linha
-    python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4 --sugerir
-
     # manual: você clica os pontos no quadro
-    python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4
+    python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"
 
-No modo manual: dois cliques definem a linha, o terceiro marca o lado DE DENTRO
-do prédio. Tecla `r` recomeça, `Enter` grava, `Esc` cancela.
+    # automático: o rastreador olha por onde as pessoas passam e propõe a linha
+    python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4" --sugerir
+
+No modo manual são TRÊS cliques: onde a linha começa, onde termina, e um
+ponto do lado de dentro do prédio. Só então ENTER (ou G) grava. `R` recomeça e
+`Esc` cancela.
 
 A câmera é criada em config/cameras.yaml se ainda não existir — para testar um
 vídeo qualquer não é preciso editar YAML à mão.
@@ -38,7 +39,7 @@ import cv2
 from fluxo import config
 from fluxo.contagem import geometria
 
-JANELA = "Calibrar linha  |  2 cliques = linha, 3o clique = lado DE DENTRO"
+JANELA = "Calibrar linha - ENTER grava"
 
 # Deslocamento mínimo em pixels para a trajetória valer como "atravessou".
 # Abaixo disso é gente parada, e gente parada não define onde fica a porta.
@@ -209,8 +210,34 @@ def sugerir(fonte: str, quadro_base) -> tuple[list[int], int]:
 # --------------------------------------------------------------------------
 
 
+PASSOS = (
+    "1 de 3  -  clique onde a LINHA COMECA",
+    "2 de 3  -  clique onde a LINHA TERMINA",
+    "3 de 3  -  clique um ponto do lado DE DENTRO",
+    "pronto  -  ENTER ou G para GRAVAR",
+)
+
+# Gravar: Enter, G de "gravar", S de "salvar". Ter mais de uma tecla custa
+# nada e evita o usuário ficar preso adivinhando.
+TECLAS_GRAVAR = (13, 10, ord("g"), ord("G"), ord("s"), ord("S"))
+TECLAS_RECOMECAR = (ord("r"), ord("R"), 8)  # 8 = backspace
+
+
+def _faixa(tela, texto, y, cor=(245, 245, 245), escala=0.6):
+    """Texto sobre tarja, para continuar legível em fundo claro."""
+    (largura_txt, altura_txt), _ = cv2.getTextSize(
+        texto, cv2.FONT_HERSHEY_SIMPLEX, escala, 2
+    )
+    cv2.rectangle(tela, (8, y - altura_txt - 8), (18 + largura_txt, y + 8),
+                  (32, 24, 16), -1)
+    cv2.putText(tela, texto, (13, y), cv2.FONT_HERSHEY_SIMPLEX, escala, cor, 2,
+                cv2.LINE_AA)
+
+
 def clicar(quadro_base) -> tuple[list[int], int]:
     cliques: list[tuple[int, int]] = []
+    aviso = ""
+    aviso_ate = 0
 
     def ao_clicar(evento, x, y, _flags, _param):
         if evento == cv2.EVENT_LBUTTONDOWN and len(cliques) < 3:
@@ -218,8 +245,11 @@ def clicar(quadro_base) -> tuple[list[int], int]:
 
     cv2.namedWindow(JANELA, cv2.WINDOW_NORMAL)
     cv2.setMouseCallback(JANELA, ao_clicar)
+    print("\nJanela aberta. " + PASSOS[0])
 
+    quadro_atual = 0
     while True:
+        quadro_atual += 1
         tela = quadro_base.copy()
         for i, c in enumerate(cliques):
             cv2.circle(tela, c, 6, (59, 169, 242) if i < 2 else (180, 195, 67), -1)
@@ -229,21 +259,31 @@ def clicar(quadro_base) -> tuple[list[int], int]:
             cv2.putText(tela, "DENTRO", (cliques[2][0] + 10, cliques[2][1]),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 195, 67), 2)
 
-        dica = {0: "Clique o inicio da linha", 1: "Clique o fim da linha",
-                2: "Clique um ponto DE DENTRO do predio"}.get(
-            len(cliques), "Enter grava  |  r recomeca  |  Esc cancela")
-        cv2.putText(tela, dica, (14, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                    (245, 245, 245), 2, cv2.LINE_AA)
+        _faixa(tela, PASSOS[min(len(cliques), 3)], 30,
+               (180, 195, 67) if len(cliques) == 3 else (245, 245, 245))
+        _faixa(tela, "ENTER/G grava   R recomeca   ESC cancela", 56,
+               (170, 170, 170), 0.5)
+        if aviso and quadro_atual < aviso_ate:
+            _faixa(tela, aviso, 84, (90, 120, 240), 0.55)
 
         cv2.imshow(JANELA, tela)
         tecla = cv2.waitKey(20) & 0xFF
+
         if tecla == 27:
             cv2.destroyAllWindows()
             sys.exit("Cancelado.")
-        if tecla in (ord("r"), ord("R")):
+        if tecla in TECLAS_RECOMECAR:
             cliques.clear()
-        if tecla in (13, 10) and len(cliques) == 3:
-            break
+            print("Recomecando. " + PASSOS[0])
+        if tecla in TECLAS_GRAVAR:
+            if len(cliques) == 3:
+                break
+            # Antes isto era ignorado em silêncio, e parecia que a tecla de
+            # gravar não funcionava. Dizer o que falta é o conserto.
+            faltam = 3 - len(cliques)
+            aviso = f"Faltam {faltam} clique(s): {PASSOS[len(cliques)]}"
+            aviso_ate = quadro_atual + 120
+            print(aviso)
 
     cv2.destroyAllWindows()
     (x1, y1), (x2, y2), dentro = cliques

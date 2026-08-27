@@ -60,3 +60,11 @@ cameras:
     fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando_1.mp4
     linha: [650, 0, 650, 576]
     lado_dentro: -1
+  01_camera_elevada_pessoas_cruzando:
+    nome: 01_camera_elevada_pessoas_cruzando
+    local: ''
+    ativa: true
+    nota: ''
+    fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando.mp4
+    linha: [200, 268, 702, 212]
+    lado_dentro: 1

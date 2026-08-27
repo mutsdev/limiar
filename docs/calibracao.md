@@ -23,10 +23,14 @@ Teste em pelo menos dois horários antes de fixar: uma posição que funciona à
 
 ```bash
 # automático: o rastreador olha por onde as pessoas passam e propõe a linha
-python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4 --sugerir
+python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4" --sugerir
 
-# manual: dois cliques na linha, o terceiro no lado DE DENTRO
-python scripts/calibrar_linha.py --camera minha_porta --fonte video.mp4
+# manual: TRÊS cliques — começo da linha, fim da linha, lado DE DENTRO
+python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"
+
+#   ENTER ou G  grava (só depois dos três cliques)
+#   R           recomeça
+#   ESC         cancela
 ```
 
 A câmera é criada em `config/cameras.yaml` se ainda não existir — para testar
