@@ -35,9 +35,12 @@ python scripts/rodar_servico.py
 # painel web em http://127.0.0.1:8501
 python scripts/rodar_painel.py
 
-# testar um vídeo qualquer: calibrar e contar
+# testar um vídeo qualquer: calibrar e ver a contagem ao vivo
 python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4"
-python scripts/processar_video.py porta --sem-envio --anotar
+python scripts/processar_video.py porta --sem-envio --ao-vivo
+
+#   na janela: q sai, espaço pausa
+#   --escala 1.5 aumenta, --velocidade 2 acelera, --anotar também grava
 
 # a mesma coisa sem clicar: o rastreador propõe a linha
 python scripts/calibrar_linha.py "C:/Users/voce/Videos/porta.mp4" --sugerir

@@ -40,6 +40,7 @@ def processar(
     gravador=None,
     limite_quadros: int | None = None,
     mostrar_progresso: bool = True,
+    janela=None,
 ) -> Resultado:
     """Roda o pipeline inteiro sobre uma fonte de vídeo."""
     import time
@@ -79,9 +80,14 @@ def processar(
                 remetente.enviar(pendentes)
                 pendentes = []
 
-            if gravador is not None:
+            # Anota uma vez só, e reaproveita o mesmo quadro nos dois destinos.
+            if gravador is not None or janela is not None:
                 anotador.anotar(quadro.imagem, linha, rastros, quadro.indice)
+            if gravador is not None:
                 gravador.escrever(quadro.imagem)
+            if janela is not None and not janela.mostrar(quadro.imagem):
+                barra.write("Interrompido pela janela.")
+                break
 
             resultado.quadros += 1
             barra.update(1)

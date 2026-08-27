@@ -1,10 +1,16 @@
 """Roda o pipeline de contagem sobre um vídeo (ou câmera ao vivo).
 
-    # só contar e gravar o vídeo anotado, sem tocar no banco
-    python scripts/processar_video.py --camera entrada_a --sem-envio --anotar
+    # ver a contagem acontecendo numa janela
+    python scripts/processar_video.py porta --sem-envio --ao-vivo
+
+    # ver e gravar ao mesmo tempo
+    python scripts/processar_video.py porta --sem-envio --ao-vivo --anotar
 
     # contar e entregar ao serviço central
-    python scripts/processar_video.py --camera entrada_a
+    python scripts/processar_video.py porta
+
+Na janela: `q` sai, espaço pausa. `--escala 1.5` aumenta, `--velocidade 2`
+acelera.
 """
 
 from __future__ import annotations
@@ -28,7 +34,7 @@ from fluxo.agente.fila_local import FilaLocal
 from fluxo.agente.remetente import Remetente
 from fluxo.contagem.linha import LinhaDeContagem
 from fluxo.dominio.evento import FUSO_LOCAL
-from fluxo.visao.anotador import GravadorDeVideo
+from fluxo.visao.anotador import GravadorDeVideo, JanelaAoVivo
 from fluxo.visao.fonte import FonteDeVideo
 from fluxo.visao.rastreador import ConfigVisao, RastreadorPessoas
 
@@ -49,8 +55,12 @@ def main() -> None:
                         "Windows serializam: rode a segunda camera em cpu.")
     p.add_argument("--inicio", default=None,
                    help="Instante do 1o quadro (ISO). Padrão: mtime do arquivo.")
+    p.add_argument("--ao-vivo", action="store_true",
+                   help="Abre uma janela e mostra a contagem acontecendo.")
+    p.add_argument("--escala", type=float, default=1.0,
+                   help="Aumenta ou reduz a janela (ex.: 1.5). Só afeta a exibição.")
     p.add_argument("--tempo-real", action="store_true",
-                   help="Respeita o relógio, simulando câmera ao vivo")
+                   help="Respeita o relógio na LEITURA (para simular câmera ao vivo)")
     p.add_argument("--velocidade", type=float, default=1.0)
     args = p.parse_args()
 
@@ -119,10 +129,18 @@ def main() -> None:
         )
         gravador = GravadorDeVideo(destino, fonte.largura, fonte.altura, fonte.fps)
 
+    janela = None
+    if args.ao_vivo:
+        janela = JanelaAoVivo(
+            f"Limiar - {args.camera}", fonte.fps, args.velocidade, args.escala
+        )
+
     print(f"Fonte    : {fonte}")
     print(f"Modelo   : {cfg_visao.modelo} em {rastreador.dispositivo}")
     print(f"Linha    : {linha.a} -> {linha.b}  (dentro = {linha.lado_dentro})")
     print(f"Início   : {inicio:%d/%m/%Y %H:%M:%S}")
+    if janela is not None:
+        print("Janela   : ao vivo — q sai, espaço pausa")
     print()
 
     execucao_id = None
@@ -135,12 +153,15 @@ def main() -> None:
 
     try:
         resultado = processador.processar(
-            fonte, rastreador, linha, remetente, gravador, args.limite
+            fonte, rastreador, linha, remetente, gravador, args.limite,
+            janela=janela,
         )
     finally:
         fonte.fechar()
         if gravador is not None:
             gravador.fechar()
+        if janela is not None:
+            janela.fechar()
 
     if remetente is not None and execucao_id is not None:
         remetente.fechar_execucao(

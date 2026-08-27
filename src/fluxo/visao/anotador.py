@@ -84,6 +84,92 @@ def anotar(imagem, linha: LinhaDeContagem, rastros: list[Rastro], quadro: int, e
     return imagem
 
 
+class JanelaAoVivo:
+    """Mostra a contagem acontecendo, em vez de entregar um arquivo no fim.
+
+    O ritmo é acertado aqui, e não na leitura do vídeo: se o processamento for
+    mais rápido que o vídeo, esperamos; se for mais lento, seguimos sem tentar
+    recuperar o atraso — numa câmera de verdade o quadro velho não interessa.
+    """
+
+    TECLAS_SAIR = (27, ord("q"), ord("Q"))
+    TECLAS_PAUSA = (32, ord("p"), ord("P"))
+
+    def __init__(self, titulo: str, fps: float = 25.0, velocidade: float = 1.0,
+                 escala: float = 1.0) -> None:
+        self.titulo = titulo
+        self.intervalo = 1.0 / max(1e-6, fps * max(0.01, velocidade))
+        self.escala = escala
+        self.pausado = False
+        self._proximo = None
+        cv2.namedWindow(titulo, cv2.WINDOW_NORMAL)
+
+    def _desenhar_estado(self, imagem):
+        if self.pausado:
+            texto = "PAUSADO - espaco continua"
+            (largura, altura), _ = cv2.getTextSize(texto, FONTE, 0.7, 2)
+            x = (imagem.shape[1] - largura) // 2
+            y = imagem.shape[0] - 24
+            cv2.rectangle(imagem, (x - 10, y - altura - 10), (x + largura + 10, y + 10),
+                          COR_FUNDO, -1)
+            cv2.putText(imagem, texto, (x, y), FONTE, 0.7, COR_LINHA, 2, cv2.LINE_AA)
+        else:
+            cv2.putText(imagem, "q sai  |  espaco pausa",
+                        (12, imagem.shape[0] - 12), FONTE, 0.45, (150, 150, 150), 1,
+                        cv2.LINE_AA)
+        return imagem
+
+    def mostrar(self, imagem) -> bool:
+        """Devolve False quando o usuário pede para parar."""
+        import time
+
+        tela = imagem if self.escala == 1.0 else cv2.resize(
+            imagem, None, fx=self.escala, fy=self.escala, interpolation=cv2.INTER_LINEAR
+        )
+        self._desenhar_estado(tela)
+        cv2.imshow(self.titulo, tela)
+
+        # Fechar a janela no X também precisa encerrar; sem isto o laço
+        # continuaria rodando às cegas até o fim do vídeo.
+        if cv2.getWindowProperty(self.titulo, cv2.WND_PROP_VISIBLE) < 1:
+            return False
+
+        agora = time.monotonic()
+        if self._proximo is None:
+            self._proximo = agora
+        self._proximo += self.intervalo
+        espera = self._proximo - agora
+        if espera < 0:                       # atrasado: não tenta recuperar
+            self._proximo = agora
+            espera = 0.0
+
+        tecla = cv2.waitKey(max(1, int(espera * 1000))) & 0xFF
+        if tecla in self.TECLAS_SAIR:
+            return False
+        if tecla in self.TECLAS_PAUSA:
+            self.pausado = True
+            while self.pausado:
+                cv2.imshow(self.titulo, self._desenhar_estado(tela.copy()))
+                if cv2.getWindowProperty(self.titulo, cv2.WND_PROP_VISIBLE) < 1:
+                    return False
+                t = cv2.waitKey(50) & 0xFF
+                if t in self.TECLAS_PAUSA:
+                    self.pausado = False
+                elif t in self.TECLAS_SAIR:
+                    return False
+            self._proximo = time.monotonic()
+        return True
+
+    def fechar(self) -> None:
+        cv2.destroyWindow(self.titulo)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.fechar()
+
+
 class GravadorDeVideo:
     """Grava o vídeo anotado. É o entregável visual da apresentação."""
 
