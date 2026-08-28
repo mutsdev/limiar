@@ -13,6 +13,7 @@ não há vínculo com identidade civil em nenhum ponto.
 | `docs/calibracao.md` | onde montar a câmera e onde desenhar a linha |
 | `docs/avaliacao.md` | como se prova que o número está certo |
 | `docs/resultados.md` | **os números medidos**, com as limitações declaradas |
+| `docs/referencias.md` | projetos de fora que resolvem problemas vizinhos |
 
 ## Começar
 
