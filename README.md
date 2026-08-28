@@ -14,17 +14,39 @@ não há vínculo com identidade civil em nenhum ponto.
 | `docs/avaliacao.md` | como se prova que o número está certo |
 | `docs/resultados.md` | **os números medidos**, com as limitações declaradas |
 
-## Instalar
+## Começar
+
+Quatro comandos, numa máquina limpa. **Não precisa de GPU nem de vídeo** — o
+simulador povoa o banco com dados sintéticos e o painel abre com as curvas.
 
 ```bash
-uv sync                  # núcleo: banco, serviço, painel, testes
-uv sync --extra visao    # + YOLO/PyTorch (~2,5 GB), necessário da fase 4 em diante
+uv sync
 python scripts/criar_banco.py
+python scripts/simular_dia.py --dias 14
+python scripts/rodar_painel.py          # http://127.0.0.1:8501
 ```
 
-O banco vai para `~/Documents/dados-fluxo/fluxo.db`, **fora do OneDrive**:
-sincronização em nuvem durante escrita corrompe SQLite. O caminho vem de
-`CAMINHO_BANCO` no `.env` (copie de `.env.exemplo`).
+Para rodar os testes: `python -m pytest` (224, sem rede, sem GPU, sem vídeo).
+
+### E para trabalhar com vídeo de verdade
+
+```bash
+uv sync --extra visao    # + YOLO e PyTorch, ~2,5 GB
+```
+
+Em Windows e Linux vêm as wheels CUDA; em macOS, as normais do PyPI. Sem placa
+NVIDIA tudo funciona em CPU, mais devagar (~11 quadros/s em 768×432).
+
+O banco vai para `~/Documents/dados-fluxo/fluxo.db` — **fora do repositório de
+propósito**, porque sincronização em nuvem durante a escrita corrompe SQLite.
+Para mudar, copie `.env.exemplo` para `.env` e ajuste `CAMINHO_BANCO`.
+
+### O que não está aqui
+
+`dados/` nunca é versionado: é vídeo de pessoas reais. Os vídeos de exemplo e as
+sequências de avaliação vêm por script (`scripts/baixar_mot.py`) e têm licença
+própria — o MOT17 é **CC BY-NC-SA 3.0, uso não comercial**. Ver "Dados de
+terceiros" no fim deste arquivo.
 
 ## Rodar
 
@@ -112,16 +134,20 @@ porta — acabou **desligada por medição**, e não por precaução (`§2b`).
 
 ## Ambiente
 
-O repositório vive dentro do OneDrive, o que exige dois ajustes já fixados no
-`pyproject.toml` (`package = false` e `link-mode = "copy"`) — o cache de
-hardlinks do `uv` é incompatível com o filtro de sincronização da nuvem. Para
-não sincronizar os 2,5 GB do PyTorch, o ambiente virtual mora fora:
+**Na maioria das máquinas, `uv sync` basta e esta seção não interessa.**
+
+Ela vale para quem clonar o repositório **dentro de uma pasta sincronizada em
+nuvem** (OneDrive, Google Drive, Dropbox). Ali o cache de hardlinks do `uv`
+colide com o filtro de sincronização e a instalação falha de forma intermitente
+(`os error 396`). Dois ajustes no `pyproject.toml` já resolvem isso para todos —
+`package = false` e `link-mode = "copy"` — e não atrapalham quem está fora.
+
+Falta só tirar o ambiente virtual de dentro da pasta sincronizada, para não
+subir 2,5 GB de PyTorch para a nuvem:
 
 ```bash
-export UV_PROJECT_ENVIRONMENT="C:/Users/joaop/Documents/dados-fluxo/.venv-limiar"
+export UV_PROJECT_ENVIRONMENT="$HOME/Documents/dados-fluxo/.venv-limiar"
 ```
-
-Numa máquina sem OneDrive nada disso é necessário: `uv sync` basta.
 
 **Não é preciso exportar nada para usar os scripts.** Eles detectam o ambiente
 do projeto e se reexecutam nele — `python scripts/processar_video.py elevada`

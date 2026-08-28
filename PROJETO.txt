@@ -3,18 +3,37 @@ CONTAGEM DE FLUXO DE PESSOAS NAS ENTRADAS DA FACULDADE
 Documento de Projeto - Versao 1 (Escopo "UNO")
 ================================================================================
 
-Data............: 25/08/2026
+Data............: 25/08/2026 (estado revisado em 28/08/2026)
 Autor...........: Joao Pedro
 Status..........: Etapa "Uno" IMPLEMENTADA (v1.0-uno)
-Repositorio.....: https://github.com/mutsdev/fluxo-faculdade
+Repositorio.....: https://github.com/mutsdev/limiar
+Licenca.........: MIT (o codigo). Os datasets de terceiros tem licenca propria.
 
-ESTADO EM 25/08/2026
-  Fases 0 a 10 concluidas. 179 testes automatizados, lint limpo, instalacao
+ESTADO EM 28/08/2026
+  Fases 0 a 11 concluidas. 224 testes automatizados, lint limpo, instalacao
   limpa verificada. Os numeros medidos estao em docs/resultados.md.
 
   Erro medido contra anotacao humana (MOT17-09): 31,2% contra tudo que foi
   anotado, 10,0% contra quem tinha ao menos 25% de visibilidade. A linha de
   base por subtracao de fundo erra 68,8% na mesma cena.
+
+  Acrescentado depois da v1.0-uno:
+
+  - TRILHAS (fase 11). A visao roda uma vez e grava o que enxergou; a
+    contagem recorre esse arquivo quantas vezes for preciso, sem GPU. Testar
+    um parametro caiu de ~21 s para menos de 1 s, e uma varredura de 10
+    combinacoes de 3,5 min para 4 s. Ver docs/resultados.md secao 8.
+
+  - COSTURA DE RASTRO: construida, medida e DESLIGADA. Tres sintomas
+    sugeriam que o gargalo era o rastreador quebrar o track sob oclusao. A
+    correcao foi implementada e medida: nao recuperou uma unica travessia no
+    MOT17-09, e no video de teste abriu um balanco que fechava em 11/11. O
+    codigo e os sete testes ficaram, documentando o defeito; o padrao e
+    desligado. O custo dominante continua sendo OCLUSAO TOTAL, confirmado
+    agora por tres caminhos independentes. Ver docs/resultados.md secao 2b.
+
+  - Webcam como fonte, e a calibracao mostrando a contagem logo apos gravar
+    a linha.
 
   FALTA, e nao e codigo: a gravacao das duas entradas reais e a contagem
   manual de referencia por duas pessoas (secao 11). So com ela a meta dos
@@ -637,7 +656,7 @@ de "travou ou esta rodando?" durante uma demonstracao.
 6. ESTRUTURA DE PASTAS DO PROJETO
 ================================================================================
 
-fluxo-faculdade/
+limiar/
 |
 |-- PROJETO.txt                  <- este documento
 |-- README.md                    <- como rodar, em 10 linhas
@@ -1008,7 +1027,7 @@ FASE 0 - AMBIENTE E FUNDACAO
 0.2  Instalar o `uv`.
      ACEITE: `uv --version` responde.
 
-0.3  Criar a pasta `fluxo-faculdade/` e rodar `git init`.
+0.3  Criar a pasta `limiar/` e rodar `git init`.
      ACEITE: `git status` funciona.
 
 0.4  Criar `.gitignore` com: dados/, .env, *.db, *.db-wal, *.db-shm, *.pt,

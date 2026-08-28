@@ -81,24 +81,36 @@ virarem número de relatório.
 5. **Nenhuma coluna identifica pessoa.** Não é lacuna a preencher depois; é a
    definição do sistema.
 
-## Notas de ambiente desta máquina
+## Repositório em pasta sincronizada
 
-O repositório vive dentro do OneDrive, e o cache de hardlinks do `uv` colide
-com o filtro de sincronização da nuvem (`os error 396`). Duas consequências,
-ambas fixadas no `pyproject.toml`:
+Se o clone ficar dentro de OneDrive, Google Drive ou Dropbox, o cache de
+hardlinks do `uv` colide com o filtro de sincronização (`os error 396`) e a
+instalação falha de forma intermitente. Duas decisões no `pyproject.toml`
+resolvem isso **para todos**, sem custo para quem está fora:
 
 - `package = false` — o projeto não é construído nem instalado; `src` entra no
   `sys.path` (pytest pela chave `pythonpath`, scripts por três linhas no topo).
-- `link-mode = "copy"` — o `uv` copia em vez de criar hardlink.
+- `link-mode = "copy"` — o `uv` copia em vez de criar hardlink. Um pouco mais
+  lento, e sempre funciona.
 
-O ambiente virtual mora **fora** do OneDrive, para não sincronizar os 2,5 GB do
-PyTorch:
+Falta só manter o ambiente virtual fora da pasta sincronizada, para os 2,5 GB do
+PyTorch não subirem para a nuvem:
 
 ```bash
-export UV_PROJECT_ENVIRONMENT="C:/Users/joaop/Documents/dados-fluxo/.venv-limiar"
+export UV_PROJECT_ENVIRONMENT="$HOME/Documents/dados-fluxo/.venv-limiar"
 ```
 
-Numa máquina sem OneDrive, nada disso é necessário e `uv sync` basta.
+Não é preciso exportar isso para *usar* os scripts: `src/fluxo/ambiente.py`
+encontra o ambiente do projeto e se reexecuta nele sozinho.
+
+## Uma dependência de plataforma, e por quê
+
+`[tool.uv.sources]` manda `torch` e `torchvision` para o índice CUDA do próprio
+PyTorch — mas **só em Windows e Linux**, por marcador de plataforma. O índice
+`cu124` não publica wheel para macOS: sem o marcador, `uv sync --extra visao`
+não instala mais devagar num Mac, ele **falha na resolução**. Fora dessas duas
+plataformas a dependência cai no PyPI, que no Mac é o build correto de qualquer
+forma — Apple Silicon usa Metal, não CUDA.
 
 ## Como crescer
 

@@ -4,6 +4,11 @@
 # linha: [x1, y1, x2, y2] em pixels do quadro original
 # lado_dentro: sinal do produto vetorial correspondente ao interior
 #              do prédio; depende de como a câmera está montada.
+# nota: por que a linha ficou onde ficou. É campo de dado, e não comentário,
+#       porque o arquivo é regravado por programa e comentário não sobrevive.
+#
+# Os vídeos não são versionados (ver README, "Dados de terceiros"). Uma câmera
+# com `ativa: false` está aqui pela lição que a nota registra, não para rodar.
 
 cameras:
   entrada_a:
@@ -24,6 +29,15 @@ cameras:
     ativa: true
     nota: 'Longe da mesa de apoio: em x=430 o pe da mesa oclui a passagem e custou
       uma travessia (5 em vez de 6).'
+  webcam:
+    nome: Webcam local
+    local: A camera desta maquina
+    fonte: 0
+    linha: [18, 211, 314, 213]
+    lado_dentro: -1
+    ativa: true
+    nota: 'Unica camera que funciona sem baixar nada. A linha aqui vale para o
+      enquadramento de quem calibrou: recalibre na sua com `calibrar_linha.py 0`.'
   mot17_09:
     nome: MOT17-09 (avaliação)
     local: Calçada movimentada, câmera baixa e fixa
@@ -31,72 +45,39 @@ cameras:
     linha: [1385, 0, 1385, 1080]
     lado_dentro: -1
     ativa: false
-    nota: x=1385 e cruzado por 20 das 26 pessoas anotadas e cai em calcada aberta
-      - conferido no quadro 250, sem pilar nem poste sobre a linha.
-  elevada:
-    nome: elevada
-    local: ''
-    ativa: true
-    nota: 'x=420 no meio do caminho. Mais a direita (500-650) a linha cai na area
-      de estacionamento, onde gente circula em vez de passar: travessias por pessoa
-      sobem de 1,40 para 1,63 e o balanco deixa de fechar (11/11 -> 14/18).'
-    fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando.mp4
-    linha: [420, 0, 420, 576]
-    lado_dentro: -1
-  zenital:
-    nome: zenital
-    local: ''
-    ativa: true
-    nota: 'Camera zenital 402x300. Conta, mas inviabiliza a etapa 2: de cima nao ha
-      aparencia.'
-    fonte: C:\Users\joaop\Downloads\02_camera_topo_zenital_calcada.mp4
-    linha: [0, 155, 402, 155]
-    lado_dentro: -1
-  01_camera_elevada_pessoas_cruzando_1:
-    nome: 01_camera_elevada_pessoas_cruzando_1
-    local: ''
-    ativa: true
-    nota: ''
-    fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando_1.mp4
-    linha: [650, 0, 650, 576]
-    lado_dentro: -1
-  01_camera_elevada_pessoas_cruzando:
-    nome: 01_camera_elevada_pessoas_cruzando
-    local: ''
-    ativa: true
-    nota: ''
-    fonte: C:\Users\joaop\Downloads\01_camera_elevada_pessoas_cruzando.mp4
-    linha: [200, 268, 702, 212]
-    lado_dentro: 1
-  03_corredor_loja_camera_alta:
-    nome: 03_corredor_loja_camera_alta
-    local: ''
-    ativa: true
-    nota: ''
-    fonte: C:\Users\joaop\Downloads\03_corredor_loja_camera_alta.mp4
-    linha: [178, 218, 482, 210]
-    lado_dentro: 1
-  01_entrada_loja_portas_automaticas_1440p:
-    nome: 01_entrada_loja_portas_automaticas_1440p
-    local: ''
-    ativa: true
-    nota: ''
-    fonte: dados/videos/01_entrada_loja_portas_automaticas_1440p.mp4
-    linha: [170, 0, 170, 1440]
-    lado_dentro: -1
-  02_entrada_loja_frontal_4k:
-    nome: 02_entrada_loja_frontal_4k
-    local: ''
-    ativa: true
-    nota: ''
-    fonte: dados\videos\02_entrada_loja_frontal_4k.mp4
+    nota: 'x=1385 e cruzado por 20 das 26 pessoas anotadas e cai em calcada aberta
+      - conferido no quadro 250, sem pilar nem poste sobre a linha. Baixe a
+      sequencia com scripts/baixar_mot.py.'
+  entrada_frontal_4k:
+    nome: Entrada de loja, camera frontal
+    local: Porta automatica, pessoas entrando de frente para a camera
+    fonte: dados/videos/02_entrada_loja_frontal_4k.mp4
     linha: [992, 1187, 2478, 1189]
     lado_dentro: 1
-  03_corredor_pilar_oclusao_720p:
-    nome: 03_corredor_pilar_oclusao_720p
-    local: ''
-    ativa: true
-    nota: ''
-    fonte: dados/videos/03_corredor_pilar_oclusao_720p.mp4
-    linha: [770, 0, 770, 720]
+    ativa: false
+    nota: 'Unico exemplo de linha HORIZONTAL, e a geometria da porta da faculdade:
+      a pessoa anda para dentro, afastando-se da camera, em vez de atravessar o
+      quadro. O sugeridor automatico propoe vertical aqui e erra - numa cena
+      frontal a linha tem de cruzar a soleira. Video nao versionado.'
+  elevada:
+    nome: Corredor, camera elevada
+    local: Camera obliqua a ~3 m, pessoas atravessando o quadro
+    fonte: dados/videos/01_camera_elevada_pessoas_cruzando.mp4
+    linha: [420, 0, 420, 576]
     lado_dentro: -1
+    ativa: false
+    nota: 'x=420 no meio do caminho. Mais a direita (500-650) a linha cai na area
+      de estacionamento, onde gente circula em vez de passar: travessias por pessoa
+      sobem de 1,40 para 1,63 e o balanco deixa de fechar (11/11 -> 14/18). E a
+      camera de referencia de docs/resultados.md. Video nao versionado.'
+  zenital:
+    nome: Camera zenital (contraexemplo)
+    local: Vista de topo, 402x300
+    fonte: dados/videos/02_camera_topo_zenital_calcada.mp4
+    linha: [0, 155, 402, 155]
+    lado_dentro: -1
+    ativa: false
+    nota: 'Contraexemplo deliberado. Conta, mas inviabiliza a etapa 2: de cima nao
+      ha aparencia para reidentificar. Alem disso 402x300 e pequeno demais - a
+      pessoa nao chega aos 100 px de altura e o detector a perde. Video nao
+      versionado.'

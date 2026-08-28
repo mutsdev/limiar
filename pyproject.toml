@@ -2,6 +2,9 @@
 name = "fluxo"
 version = "0.1.0"
 description = "Limiar: contagem de fluxo de pessoas nas entradas da faculdade"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "João Pedro" }]
 requires-python = ">=3.11,<3.12"
 
 # Núcleo: tudo que as fases 0 a 3 precisam. Instala em segundos.
@@ -47,26 +50,37 @@ dev = [
 [tool.uv]
 # O projeto NÃO é construído nem instalado no venv — só as dependências são.
 #
-# Motivo: o repositório vive dentro do OneDrive, e o cache de hardlinks do uv
-# é incompatível com o filtro de sincronização da nuvem (os error 396,
-# "operação de nuvem não pode ser executada em arquivo com links físicos
-# incompatíveis"). Qualquer build aqui falha de forma intermitente.
+# Motivo: quando o repositório fica numa pasta sincronizada em nuvem (OneDrive,
+# Drive, Dropbox), o cache de hardlinks do uv colide com o filtro de
+# sincronização — os error 396, "operação de nuvem não pode ser executada em
+# arquivo com links físicos incompatíveis" — e qualquer build falha de forma
+# intermitente.
 #
 # Em vez de lutar contra isso, `src` entra no sys.path: o pytest via
 # `pythonpath` abaixo, e os scripts via três linhas no topo de cada um.
+# Fora de pasta sincronizada isto não atrapalha nada.
 package = false
 
-# O uv instala por hardlink a partir do cache. Nesta máquina isso colide com o
-# filtro de sincronização em nuvem (os error 396, "operação de nuvem não pode
-# ser executada em arquivo com links físicos incompatíveis"). Copiar é um
-# pouco mais lento e sempre funciona.
+# Mesma razão: o uv instala por hardlink a partir do cache, e isso quebra dentro
+# de pasta sincronizada. Copiar é um pouco mais lento e funciona em todo lugar,
+# então vale para todos em vez de virar configuração de máquina.
 link-mode = "copy"
 
 # PyTorch da PyPI no Windows é build só de CPU. Para usar a GPU é preciso
 # pegar as wheels CUDA do índice do próprio PyTorch.
+#
+# O marcador não é detalhe: o índice cu124 **não tem wheel para macOS**, e sem
+# ele um colega de Mac não instala mais devagar — o `uv sync --extra visao`
+# falha na resolução. Fora de Windows e Linux, cai no PyPI normal, que no Mac é
+# o build certo de qualquer forma (Apple Silicon usa Metal, não CUDA).
+#
+# As duas linhas abaixo são longas porque precisam ser: tabela inline não pode
+# quebrar linha em TOML 1.0. O uv aceita a quebra, o `tomllib` do Python não —
+# e aí o pytest para de ler o pyproject inteiro, com um erro que não menciona
+# nem o torch nem o TOML.
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu124", extra = "visao" }]
-torchvision = [{ index = "pytorch-cu124", extra = "visao" }]
+torch = [{ index = "pytorch-cu124", extra = "visao", marker = "sys_platform == 'win32' or sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cu124", extra = "visao", marker = "sys_platform == 'win32' or sys_platform == 'linux'" }]
 
 [[tool.uv.index]]
 name = "pytorch-cu124"

@@ -11,7 +11,7 @@ class TestIdDeCamera:
     @pytest.mark.parametrize(
         "caminho,esperado",
         [
-            (r"C:\Users\joaop\Downloads\01_camera_elevada.mp4", "01_camera_elevada"),
+            (r"C:\Users\ana\Downloads\01_camera_elevada.mp4", "01_camera_elevada"),
             ("porta.mp4", "porta"),
             ("/home/x/Videos/Porta Principal.MP4", "porta_principal"),
             ("Porta - 27/08.mkv", "08"),          # o separador vira parte do caminho
@@ -58,7 +58,7 @@ class TestFonte:
             "video.mp4",
             "0.mp4",                       # arquivo cujo nome é um dígito
             "01_entrada_loja.mp4",         # o padrão dos vídeos deste projeto
-            r"C:\Users\joaop\Videos\0.mp4",
+            r"C:\Users\ana\Videos\0.mp4",
             "rtsp://192.168.0.9/stream",
         ],
     )
