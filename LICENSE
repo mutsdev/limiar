@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Esta licença cobre o CÓDIGO deste repositório.
-
-Ela NÃO cobre os conjuntos de dados de terceiros usados na avaliação, que não
-são distribuídos aqui e têm licenças próprias — em particular o MOT17, que é
-CC BY-NC-SA 3.0 e proíbe uso comercial. Ver a seção "Dados de terceiros" no
-README.md.

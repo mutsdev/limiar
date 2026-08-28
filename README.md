@@ -182,3 +182,11 @@ são os da porta real — ver `docs/calibracao.md`.
 
 O site oficial do MOTChallenge está inacessível desta rede; `scripts/baixar_mot.py`
 usa um espelho. Cite o MOTChallenge no relatório, não o espelho.
+
+## Licença
+
+O **código** deste repositório é MIT — ver `LICENSE`.
+
+A licença **não** se estende aos conjuntos de dados da tabela acima, que não são
+distribuídos aqui e têm termos próprios. O MOT17, em particular, é
+CC BY-NC-SA 3.0 e **proíbe uso comercial**.
