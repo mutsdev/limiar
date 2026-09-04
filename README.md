@@ -27,7 +27,7 @@ python scripts/simular_dia.py --dias 14
 python scripts/rodar_painel.py          # http://127.0.0.1:8501
 ```
 
-Para rodar os testes: `python -m pytest` (224, sem rede, sem GPU, sem vídeo).
+Para rodar os testes: `python -m pytest` (493, sem rede, sem GPU, sem vídeo).
 
 ### E para trabalhar com vídeo de verdade
 
@@ -79,6 +79,32 @@ python scripts/processar_video.py porta --sem-envio --ao-vivo
 # contar e entregar ao serviço
 python scripts/processar_video.py entrada_a
 
+# operação 24h: serviço + agente + painel sob supervisor, com backup diário,
+# sonda de processo travado e a máquina mantida acordada
+# (instalação no logon e runbook em docs/operacao.md; o contrato com o
+#  hardware da câmera está em docs/contrato-hardware.md)
+python scripts/rodar_tudo.py entrada_real
+python scripts/rodar_tudo.py entrada_real --tunel                 # + painel acessível de fora
+python scripts/rodar_tudo.py entrada_real --janela --escala 1.5   # o mesmo, vendo a contagem
+
+# só o agente contínuo (fonte ao vivo, reconecta sozinho, log com rotação)
+python scripts/rodar_agente.py entrada_real
+
+# backup do banco à mão — o rodar_tudo.py já faz um por dia
+python scripts/backup_banco.py
+
+# partida automática no logon do Windows, sem admin e sem o limite de 72 h
+python scripts/instalar_logon.py entrada_real --tunel
+
+# túnel do painel para fora da rede (cloudflared, sem conta, sem admin);
+# a URL nova chega no celular por URL_AVISO (ntfy.sh) — ver docs/operacao.md
+python scripts/instalar_tunel.py
+
+# períodos de teste nomeados: o painel e o relatório filtram por eles
+python scripts/periodo.py --iniciar "Laboratório de física" --camera entrada_real
+python scripts/periodo.py --encerrar
+python scripts/periodo.py --listar
+
 # popular com 14 dias sintéticos, para desenvolver sem câmera
 python scripts/simular_dia.py --dias 14
 
@@ -98,7 +124,20 @@ python scripts/avaliar.py --camera entrada_a --ground-truth dados/ground_truth/p
 python scripts/processar_video.py entrada_a --sem-envio --gravar-trilhas
 python scripts/reprocessar.py entrada_a --varredura
 
-# 224 testes: sem rede, sem GPU, sem vídeo
+# Etapa 2: contar E dizer que "P7 saiu" — pseudônimo do dia, sem rosto, sem nome.
+# Script próprio; o processar_video.py de produção não muda.
+python scripts/identificar_pessoas.py entrada_real --sem-envio --gravar-trilhas --guardar-recortes
+python scripts/rotular_pessoas.py --gerar --camera entrada_real      # CSV para você preencher
+python scripts/reprocessar_identidade.py entrada_real --varredura \
+    --gabarito dados/gabaritos/<data>_entrada_real.csv               # limiares, sem GPU
+python scripts/identificar_pessoas.py entrada_real                   # entregando ao serviço
+
+# o relatório do dia — ou do período — em markdown, para levar à reunião
+python scripts/relatorio_dia.py entrada_real
+python scripts/relatorio_dia.py --todas --data 2026-09-03
+python scripts/relatorio_dia.py --periodo "Teste de campo 03/09"
+
+# 547 testes: sem rede, sem GPU, sem vídeo
 python -m pytest
 ```
 
@@ -123,7 +162,8 @@ por descuido.
 | 10 | Empacotamento e documentação | pronto |
 | 11 | Trilhas: recontar sem GPU | pronto — `docs/resultados.md` §8 |
 | — | Gravação da porta real e calibração | **depende de autorização** |
-| — | Etapa 2: re-identificação | não iniciada |
+| 12 | Etapa 2: re-identificação anônima | código pronto — **medição pendente**, ver `docs/resultados.md` §9 |
+| 13 | Operação desassistida: sonda de travamento, tarefa sem limite de 72 h, túnel do painel, períodos nomeados | pronto — instalado no laboratório de física em 04/09/2026, `docs/operacao.md` |
 
 O que falta para fechar a etapa "Uno" não é código: é a gravação das duas
 entradas e a contagem manual de referência. Ver `docs/avaliacao.md`.

@@ -53,7 +53,9 @@ def desenhar_linha(imagem, linha: LinhaDeContagem, escala: float = 1.0):
     return imagem
 
 
-def desenhar_rastros(imagem, rastros: list[Rastro], escala: float = 1.0):
+def desenhar_rastros(imagem, rastros: list[Rastro], escala: float = 1.0,
+                     etiquetas: dict[int, str] | None = None):
+    """`etiquetas` troca o id do rastreador pelo pseudônimo da Etapa 2 ("P7")."""
     e = escala_de(imagem, escala)
     fonte = 0.45 * e
     grossura = max(1, int(e))
@@ -66,7 +68,8 @@ def desenhar_rastros(imagem, rastros: list[Rastro], escala: float = 1.0):
         px, py = r.ponto_base
         cv2.circle(imagem, (int(px), int(py)), max(4, int(4 * e)), COR_PE, -1)
 
-        etiqueta = f"{r.id_local} {r.confianca:.2f}"
+        nome = etiquetas.get(r.id_local, r.id_local) if etiquetas else r.id_local
+        etiqueta = f"{nome} {r.confianca:.2f}"
         (lt, at), _ = cv2.getTextSize(etiqueta, FONTE, fonte, grossura)
         margem = int(6 * e)
         cv2.rectangle(imagem, (x1, y1 - at - margem), (x1 + lt + margem, y1),
@@ -120,9 +123,9 @@ def desenhar_placar(
 
 
 def anotar(imagem, linha: LinhaDeContagem, rastros: list[Rastro], quadro: int,
-           extra="", escala: float = 1.0):
+           extra="", escala: float = 1.0, etiquetas: dict[int, str] | None = None):
     desenhar_linha(imagem, linha, escala)
-    desenhar_rastros(imagem, rastros, escala)
+    desenhar_rastros(imagem, rastros, escala, etiquetas)
     desenhar_placar(imagem, linha, quadro, len(rastros), extra, escala)
     return imagem
 

@@ -97,6 +97,93 @@ def test_painel_avisa_quando_o_saldo_nao_fecha(banco):
     assert any("Saldo do período" in w.value for w in app.warning)
 
 
+def test_aba_pessoas_monta_com_identidades(banco):
+    """A Etapa 2 no painel: métricas, tabela e nenhuma exceção."""
+    from fluxo.dominio.identidade import PessoaSessao, Vinculo
+
+    eventos = _eventos_recentes()
+    repositorio.inserir_eventos(banco, eventos)
+    entrada = next(e for e in eventos if e.direcao is Direcao.ENTRADA)
+    saida = next(
+        e for e in eventos
+        if e.direcao is Direcao.SAIDA and e.data_ref == entrada.data_ref
+        and e.camera_id == entrada.camera_id
+    )
+    repositorio.upsert_pessoas(banco, [PessoaSessao(
+        camera_id=entrada.camera_id, data_ref=entrada.data_ref, pseudonimo="P1",
+        primeiro_visto=entrada.instante, ultimo_visto=saida.instante,
+    )])
+    repositorio.upsert_vinculos(banco, [
+        Vinculo(id_evento=entrada.id_evento, camera_id=entrada.camera_id,
+                data_ref=entrada.data_ref, pseudonimo="P1", similaridade=None,
+                atribuido=True, metodo="nova"),
+        Vinculo(id_evento=saida.id_evento, camera_id=saida.camera_id,
+                data_ref=saida.data_ref, pseudonimo="P1", similaridade=0.8,
+                atribuido=True, metodo="saida"),
+    ])
+
+    app = AppTest.from_file(CAMINHO_PAINEL, default_timeout=60).run()
+    assert not app.exception, [e.value for e in app.exception]
+    rotulos = [m.label for m in app.metric]
+    assert "Pessoas únicas" in rotulos
+    assert next(m for m in app.metric if m.label == "Pessoas únicas").value == "1"
+    assert "Permanência média" in rotulos
+
+
+def test_aba_pessoas_vazia_orienta(banco):
+    repositorio.inserir_eventos(banco, _eventos_recentes())
+    app = AppTest.from_file(CAMINHO_PAINEL, default_timeout=60).run()
+    assert not app.exception, [e.value for e in app.exception]
+    assert any("identificar_pessoas" in i.value for i in app.info)
+
+
+def test_painel_com_periodo_escolhido_recorta(banco):
+    """O período é um rótulo sobre o tempo: escolhê-lo filtra o que aparece."""
+    eventos = _eventos_recentes()
+    repositorio.inserir_eventos(banco, eventos)
+    # Só o primeiro dia de eventos (ontem), das 8h às 19h.
+    ontem = date.today() - timedelta(days=1)
+    repositorio.criar_periodo(
+        banco, "Teste de ontem",
+        datetime(ontem.year, ontem.month, ontem.day, 7, 0, tzinfo=FUSO_LOCAL),
+        datetime(ontem.year, ontem.month, ontem.day, 20, 0, tzinfo=FUSO_LOCAL),
+    )
+
+    app = AppTest.from_file(CAMINHO_PAINEL, default_timeout=60)
+    app.run()
+    # Pelo rótulo: no AppTest a área principal vem antes da barra lateral.
+    seletor = next(s for s in app.selectbox if s.label == "Período de teste")
+    seletor.select("Teste de ontem").run()
+
+    assert not app.exception, [e.value for e in app.exception]
+    entradas = next(m for m in app.metric if m.label == "Entradas")
+    assert entradas.value == "2"  # 2 entradas naquele dia, não 6
+
+
+def test_painel_pede_senha_quando_ha_senha(banco, monkeypatch):
+    from fluxo import config
+
+    monkeypatch.setattr(config, "SENHA_PAINEL", "segredo")
+    app = AppTest.from_file(CAMINHO_PAINEL, default_timeout=60)
+    app.run()
+    assert not app.exception, [e.value for e in app.exception]
+    assert not app.metric and not app.tabs, "sem senha, nada do painel deveria aparecer"
+
+    app.text_input[0].set_value("errada").run()
+    assert any("incorreta" in e.value for e in app.error)
+
+    app.text_input[0].set_value("segredo").run()
+    assert not app.exception, [e.value for e in app.exception]
+    assert app.tabs, "com a senha certa o painel aparece"
+
+
+def test_aba_ao_vivo_sem_quadro_orienta(banco):
+    """Sem agente publicando, a aba Ao vivo diz isso em vez de quebrar."""
+    app = AppTest.from_file(CAMINHO_PAINEL, default_timeout=60).run()
+    assert not app.exception, [e.value for e in app.exception]
+    assert any("publicando quadro" in i.value for i in app.info)
+
+
 def test_painel_marca_dado_sintetico(banco):
     sinteticos = [
         EventoCruzamento(

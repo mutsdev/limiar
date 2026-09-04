@@ -199,6 +199,16 @@ class LinhaDeContagem:
         for tid in mortos:
             del self._estados[tid]
 
+    def zerar_rastros(self) -> None:
+        """Esquece o estado de todos os tracks; preserva os contadores.
+
+        Para depois de uma lacuna longa de stream: o índice de quadro não
+        avança durante a queda, então `_esquecer_antigos` nunca dispara, e um
+        id reciclado pelo rastreador herdaria um `lado_confirmado` velho —
+        cruzamento fantasma na primeira pessoa que aparecesse.
+        """
+        self._estados.clear()
+
     @property
     def rastros_ativos(self) -> int:
         return len(self._estados)

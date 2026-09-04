@@ -14,15 +14,20 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from fluxo.dominio.evento import EventoCruzamento
 
 
 class FilaLocal:
-    def __init__(self, caminho: Path) -> None:
+    def __init__(self, caminho: Path, modelo: type[BaseModel] = EventoCruzamento) -> None:
         self.caminho = Path(caminho)
         self.caminho.parent.mkdir(parents=True, exist_ok=True)
+        # O que cada linha é. Eventos por padrão; a Etapa 2 enfileira vínculos
+        # num arquivo próprio, com o mesmo mecanismo.
+        self.modelo = modelo
 
-    def enfileirar(self, eventos: Iterable[EventoCruzamento]) -> int:
+    def enfileirar(self, eventos: Iterable[BaseModel]) -> int:
         n = 0
         with self.caminho.open("a", encoding="utf-8") as f:
             for evento in eventos:
@@ -30,7 +35,7 @@ class FilaLocal:
                 n += 1
         return n
 
-    def ler(self) -> list[EventoCruzamento]:
+    def ler(self) -> list:
         if not self.caminho.exists():
             return []
         eventos = []
@@ -38,7 +43,7 @@ class FilaLocal:
             if not linha.strip():
                 continue
             try:
-                eventos.append(EventoCruzamento.model_validate_json(linha))
+                eventos.append(self.modelo.model_validate_json(linha))
             except ValueError:
                 # Linha truncada por queda no meio da escrita. Descartar uma
                 # linha é melhor que travar a fila inteira.

@@ -26,6 +26,10 @@ def banco(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[sqlite3.C
     """Banco temporário, com as duas câmeras cadastradas."""
     caminho = tmp_path / "teste.db"
     monkeypatch.setattr(config, "CAMINHO_BANCO", caminho)
+    # O .env de quem desenvolve não pode mudar o resultado dos testes: sem
+    # senha no painel, e o quadro ao vivo numa pasta vazia.
+    monkeypatch.setattr(config, "SENHA_PAINEL", "")
+    monkeypatch.setattr(config, "CAMINHO_QUADROS", tmp_path / "quadros")
 
     conn = repositorio.conectar(caminho)
     repositorio.criar_banco(conn)

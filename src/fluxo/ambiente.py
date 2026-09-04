@@ -56,6 +56,18 @@ def ambiente_do_projeto(exigir_visao: bool = False) -> Path | None:
     return existentes[0]
 
 
+def interpretador_do_projeto(exigir_visao: bool = True) -> Path | None:
+    """O python do ambiente do projeto, para lançar processos filhos.
+
+    O supervisor não pode confiar no `garantir_venv` dos filhos: `os.execv`
+    no Windows cria um processo novo com outro PID e encerra o original — o
+    filho pareceria morto enquanto o trabalho continua num órfão. Lançar
+    direto com o interpretador certo torna a reexecução um no-op.
+    """
+    venv = ambiente_do_projeto(exigir_visao)
+    return _executavel(venv) if venv is not None else None
+
+
 def garantir_venv(exigir_visao: bool = True) -> None:
     """Reexecuta o processo no interpretador do projeto, se não estiver nele.
 

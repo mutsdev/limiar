@@ -8,7 +8,7 @@ por descuido — por isso ver o sintético exige pedir explicitamente.
 from __future__ import annotations
 
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -61,6 +61,26 @@ def carregar_eventos(
 
 def _vazio(colunas: list[str]) -> pd.DataFrame:
     return pd.DataFrame(columns=colunas)
+
+
+def recortar(
+    df: pd.DataFrame, coluna: str, inicio: datetime, fim: datetime | None = None
+) -> pd.DataFrame:
+    """Só as linhas cujo instante cai em [inicio, fim] — o recorte fino do período.
+
+    Em pandas, e não em SQL, de propósito: o banco guarda o instante como
+    texto ISO, e comparar texto só funciona enquanto todo registro tiver o
+    mesmo offset. Comparar datetime com fuso é correto sempre. Linha sem
+    instante (vínculo cujo evento ainda não chegou) fica.
+    """
+    if df.empty:
+        return df
+    serie = df[coluna]
+    sem_instante = serie.isna()
+    mascara = sem_instante | (serie >= inicio)
+    if fim is not None:
+        mascara &= sem_instante | (serie <= fim)
+    return df[mascara]
 
 
 def resumo_diario(df: pd.DataFrame) -> pd.DataFrame:
@@ -121,8 +141,13 @@ def ocupacao_do_dia(df: pd.DataFrame, dia: date) -> pd.DataFrame:
         return _vazio(["instante", "ocupacao"])
 
     delta = do_dia["direcao"].map({Direcao.ENTRADA.value: 1, Direcao.SAIDA.value: -1})
+    # `.values` numa coluna com fuso descarta o fuso e converte para UTC: o pico
+    # aparecia três horas adiantado (16h42 virava 19h42). Reindexar preserva.
     return pd.DataFrame(
-        {"instante": do_dia["instante"].values, "ocupacao": delta.cumsum().values}
+        {
+            "instante": do_dia["instante"].reset_index(drop=True),
+            "ocupacao": delta.cumsum().reset_index(drop=True),
+        }
     )
 
 
@@ -165,3 +190,101 @@ def pico_do_dia(df: pd.DataFrame) -> tuple[int, int] | None:
         return None
     linha = serie.loc[serie["entradas"].idxmax()]
     return int(linha["hora"]), int(linha["entradas"])
+
+
+# --------------------------------------------------------------------------
+# Etapa 2 — pessoas de sessão e vínculos
+# --------------------------------------------------------------------------
+
+COLUNAS_PESSOAS = [
+    "id", "camera_id", "data_ref", "pseudonimo", "primeiro_visto", "ultimo_visto",
+    "apelido", "entradas", "saidas",
+]
+COLUNAS_VINCULOS = [
+    "id_evento", "camera_id", "data_ref", "similaridade", "atribuido", "metodo",
+    "pseudonimo", "apelido", "instante", "direcao",
+]
+
+
+def carregar_pessoas(
+    conn: sqlite3.Connection,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    camera_id: str | None = None,
+) -> pd.DataFrame:
+    from fluxo.persistencia import repositorio
+
+    linhas = repositorio.listar_pessoas(conn, data_inicio, data_fim, camera_id)
+    df = pd.DataFrame([dict(linha) for linha in linhas], columns=COLUNAS_PESSOAS)
+    if not df.empty:
+        for coluna in ("primeiro_visto", "ultimo_visto"):
+            df[coluna] = pd.to_datetime(df[coluna], format="ISO8601")
+        df["data_ref"] = pd.to_datetime(df["data_ref"])
+    return df
+
+
+def carregar_vinculos(
+    conn: sqlite3.Connection,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    camera_id: str | None = None,
+) -> pd.DataFrame:
+    from fluxo.persistencia import repositorio
+
+    linhas = repositorio.listar_vinculos(conn, data_inicio, data_fim, camera_id)
+    df = pd.DataFrame([dict(linha) for linha in linhas], columns=COLUNAS_VINCULOS)
+    if not df.empty:
+        # Vínculo cujo evento ainda não chegou fica sem instante: NaT.
+        df["instante"] = pd.to_datetime(df["instante"], format="ISO8601", errors="coerce")
+        df["data_ref"] = pd.to_datetime(df["data_ref"])
+    return df
+
+
+def permanencias(vinculos: pd.DataFrame) -> pd.DataFrame:
+    """Entrada→saída de cada pseudônimo, em minutos. Mesma regra de reid.metricas."""
+    from fluxo.reid import metricas
+
+    colunas = ["pseudonimo", "apelido", "entrada", "saida", "minutos"]
+    if vinculos.empty:
+        return _vazio(colunas)
+    com_evento = vinculos.dropna(subset=["instante", "direcao"])
+    registros = [
+        metricas.Registro(
+            r.id_evento, r.instante.to_pydatetime(), Direcao(r.direcao),
+            None if pd.isna(r.pseudonimo) else r.pseudonimo,
+        )
+        for r in com_evento.itertuples(index=False)
+    ]
+    apelidos = (
+        com_evento.dropna(subset=["pseudonimo"]).groupby("pseudonimo")["apelido"].first()
+    )
+    linhas = [
+        {
+            "pseudonimo": p.pseudonimo,
+            "apelido": apelidos.get(p.pseudonimo),
+            "entrada": p.entrada,
+            "saida": p.saida,
+            "minutos": round(p.segundos / 60, 1),
+        }
+        for p in metricas.permanencias(registros)
+    ]
+    return pd.DataFrame(linhas, columns=colunas)
+
+
+def resumo_identidade(pessoas: pd.DataFrame, vinculos: pd.DataFrame) -> dict:
+    """Os números da aba Pessoas. Únicos são somados por dia: P1 de hoje não é o de ontem."""
+    saidas = (
+        vinculos[vinculos["direcao"] == Direcao.SAIDA.value] if not vinculos.empty else vinculos
+    )
+    sem_par = int((saidas["atribuido"] == 0).sum()) if not saidas.empty else 0
+    perms = permanencias(vinculos)
+    return {
+        "unicos": int(pessoas.groupby("data_ref")["pseudonimo"].nunique().sum())
+        if not pessoas.empty else 0,
+        "reentradas": int((vinculos["metodo"] == "reentrada").sum()) if not vinculos.empty else 0,
+        "saidas": int(len(saidas)),
+        "sem_par": sem_par,
+        "taxa_sem_par": (sem_par / len(saidas)) if len(saidas) else 0.0,
+        "permanencias": int(len(perms)),
+        "permanencia_media_min": float(perms["minutos"].mean()) if not perms.empty else 0.0,
+    }

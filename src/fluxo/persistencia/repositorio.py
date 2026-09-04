@@ -8,17 +8,26 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Iterable, Sequence
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fluxo import config
-from fluxo.dominio.evento import FUSO_LOCAL, EventoCruzamento, Origem
+from fluxo.dominio.evento import FUSO_LOCAL, HORA_INICIO_DIA, EventoCruzamento, Origem
+from fluxo.dominio.identidade import Apelido, PessoaSessao, Vinculo
+from fluxo.dominio.periodo import Periodo
 
 _ESQUEMA = Path(__file__).with_name("esquema.sql")
+
+# PROJETO §16.5: o pseudônimo expira em 24-48 h. Quem chama pode apertar.
+EXPIRA_H = 48.0
 
 
 class CameraDesconhecida(Exception):
     """Evento chegou para uma câmera que não está cadastrada."""
+
+
+class PessoaDesconhecida(Exception):
+    """Apelido para um pseudônimo que não existe naquele dia e câmera."""
 
 
 def conectar(caminho: str | Path | None = None) -> sqlite3.Connection:
@@ -262,3 +271,345 @@ def cameras_do_yaml() -> Sequence[tuple[str, str, str, bool]]:
         (id_, c.get("nome", id_), c.get("local", "") or "", bool(c.get("ativa", True)))
         for id_, c in (dados.get("cameras") or {}).items()
     ]
+
+
+# --------------------------------------------------------------------------
+# Etapa 2 — pessoas de sessão, vínculos e apelidos de teste
+# --------------------------------------------------------------------------
+
+
+def _expira_em(data_ref: date, expira_h: float) -> str:
+    inicio = datetime(
+        data_ref.year, data_ref.month, data_ref.day, HORA_INICIO_DIA, tzinfo=FUSO_LOCAL
+    )
+    return (inicio + timedelta(hours=expira_h)).isoformat()
+
+
+def _onde(
+    prefixo: str,
+    data_inicio: date | None,
+    data_fim: date | None,
+    camera_id: str | None,
+) -> tuple[str, list[object]]:
+    """Como _filtros, mas com o alias da tabela: as consultas daqui têm JOIN."""
+    onde: list[str] = []
+    params: list[object] = []
+    if data_inicio is not None:
+        onde.append(f"{prefixo}.data_ref >= ?")
+        params.append(data_inicio.isoformat())
+    if data_fim is not None:
+        onde.append(f"{prefixo}.data_ref <= ?")
+        params.append(data_fim.isoformat())
+    if camera_id is not None:
+        onde.append(f"{prefixo}.camera_id = ?")
+        params.append(camera_id)
+    return (" WHERE " + " AND ".join(onde) if onde else ""), params
+
+
+def purgar_expirados(
+    conn: sqlite3.Connection, agora: datetime | None = None, expira_h: float = EXPIRA_H
+) -> int:
+    """Apaga o que passou de `expira_em`. Devolve quantas pessoas sumiram.
+
+    Chamado a cada escrita e no arranque do serviço: a expiração é mecânica,
+    não um procedimento que alguém precisa lembrar de rodar.
+    """
+    agora = agora or datetime.now(FUSO_LOCAL)
+    ids = [
+        r[0] for r in conn.execute(
+            "SELECT id FROM pessoa_sessao WHERE expira_em < ?", (agora.isoformat(),)
+        )
+    ]
+    if ids:
+        marcas = ",".join("?" * len(ids))
+        conn.execute(f"DELETE FROM apelido_teste WHERE pessoa_id IN ({marcas})", ids)
+        conn.execute(f"DELETE FROM vinculo WHERE pessoa_id IN ({marcas})", ids)
+        conn.execute(f"DELETE FROM pessoa_sessao WHERE id IN ({marcas})", ids)
+    # Vínculo sem pessoa (saída sem par) não aponta para ninguém, mas também
+    # não tem por que sobreviver ao dia que descreve.
+    corte = (agora - timedelta(hours=expira_h)).date().isoformat()
+    conn.execute("DELETE FROM vinculo WHERE pessoa_id IS NULL AND data_ref < ?", (corte,))
+    conn.commit()
+    return len(ids)
+
+
+def _pessoa_id(
+    conn: sqlite3.Connection, camera_id: str, data_ref: date, pseudonimo: str
+) -> int | None:
+    linha = conn.execute(
+        "SELECT id FROM pessoa_sessao WHERE camera_id = ? AND data_ref = ? AND pseudonimo = ?",
+        (camera_id, data_ref.isoformat(), pseudonimo),
+    ).fetchone()
+    return None if linha is None else int(linha[0])
+
+
+def upsert_pessoas(
+    conn: sqlite3.Connection, pessoas: Iterable[PessoaSessao], expira_h: float = EXPIRA_H
+) -> int:
+    """Grava ou atualiza pessoas de sessão. Reenvio alarga as datas, não duplica."""
+    n = 0
+    for p in pessoas:
+        if not camera_existe(conn, p.camera_id):
+            raise CameraDesconhecida(p.camera_id)
+        conn.execute(
+            """
+            INSERT INTO pessoa_sessao
+                (camera_id, data_ref, pseudonimo, primeiro_visto, ultimo_visto, expira_em)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(camera_id, data_ref, pseudonimo) DO UPDATE SET
+                primeiro_visto = MIN(pessoa_sessao.primeiro_visto, excluded.primeiro_visto),
+                ultimo_visto   = MAX(pessoa_sessao.ultimo_visto, excluded.ultimo_visto)
+            """,
+            (
+                p.camera_id,
+                p.data_ref.isoformat(),
+                p.pseudonimo,
+                p.primeiro_visto.isoformat(),
+                p.ultimo_visto.isoformat(),
+                _expira_em(p.data_ref, expira_h),
+            ),
+        )
+        n += 1
+    conn.commit()
+    purgar_expirados(conn, expira_h=expira_h)
+    return n
+
+
+def upsert_vinculos(
+    conn: sqlite3.Connection, vinculos: Iterable[Vinculo], expira_h: float = EXPIRA_H
+) -> int:
+    """Grava ou substitui vínculos. A chave é o id do evento.
+
+    Vínculo que chega antes da pessoa (o POST dela falhou, ou a ordem trocou
+    na fila) cria a pessoa com o que se sabe; o upsert dela corrige as datas
+    depois. Perder o vínculo seria pior que uma data provisória.
+    """
+    n = 0
+    agora = datetime.now(FUSO_LOCAL).isoformat()
+    for v in vinculos:
+        if not camera_existe(conn, v.camera_id):
+            raise CameraDesconhecida(v.camera_id)
+        pessoa_id = None
+        if v.pseudonimo is not None:
+            pessoa_id = _pessoa_id(conn, v.camera_id, v.data_ref, v.pseudonimo)
+            if pessoa_id is None:
+                cur = conn.execute(
+                    """
+                    INSERT INTO pessoa_sessao
+                        (camera_id, data_ref, pseudonimo, primeiro_visto, ultimo_visto, expira_em)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (v.camera_id, v.data_ref.isoformat(), v.pseudonimo, agora, agora,
+                     _expira_em(v.data_ref, expira_h)),
+                )
+                pessoa_id = int(cur.lastrowid or 0)
+        conn.execute(
+            """
+            INSERT INTO vinculo
+                (id_evento, camera_id, data_ref, pessoa_id, similaridade,
+                 atribuido, metodo, recebido_em)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id_evento) DO UPDATE SET
+                pessoa_id = excluded.pessoa_id,
+                similaridade = excluded.similaridade,
+                atribuido = excluded.atribuido,
+                metodo = excluded.metodo,
+                recebido_em = excluded.recebido_em
+            """,
+            (
+                v.id_evento, v.camera_id, v.data_ref.isoformat(), pessoa_id,
+                v.similaridade, int(v.atribuido), v.metodo, agora,
+            ),
+        )
+        n += 1
+    conn.commit()
+    # Também aqui: a pessoa provisória criada acima pode já ter nascido
+    # vencida (replay de um vídeo antigo), e não deve esperar a próxima escrita.
+    purgar_expirados(conn, expira_h=expira_h)
+    return n
+
+
+def definir_apelido(conn: sqlite3.Connection, apelido: Apelido) -> None:
+    pessoa_id = _pessoa_id(conn, apelido.camera_id, apelido.data_ref, apelido.pseudonimo)
+    if pessoa_id is None:
+        raise PessoaDesconhecida(
+            f"{apelido.pseudonimo} em {apelido.data_ref.isoformat()} ({apelido.camera_id})"
+        )
+    conn.execute(
+        """
+        INSERT INTO apelido_teste (pessoa_id, apelido, anotado_em) VALUES (?, ?, ?)
+        ON CONFLICT(pessoa_id) DO UPDATE SET
+            apelido = excluded.apelido, anotado_em = excluded.anotado_em
+        """,
+        (pessoa_id, apelido.apelido, datetime.now(FUSO_LOCAL).isoformat()),
+    )
+    conn.commit()
+
+
+def listar_pessoas(
+    conn: sqlite3.Connection,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    camera_id: str | None = None,
+) -> list[sqlite3.Row]:
+    """Uma linha por pseudônimo, com apelido (se houver) e quantas travessias."""
+    onde, params = _onde("p", data_inicio, data_fim, camera_id)
+    return list(
+        conn.execute(
+            f"""
+            SELECT p.id, p.camera_id, p.data_ref, p.pseudonimo,
+                   p.primeiro_visto, p.ultimo_visto, a.apelido,
+                   SUM(CASE WHEN e.direcao = 'ENTRADA' THEN 1 ELSE 0 END) AS entradas,
+                   SUM(CASE WHEN e.direcao = 'SAIDA' THEN 1 ELSE 0 END) AS saidas
+            FROM pessoa_sessao p
+            LEFT JOIN apelido_teste a ON a.pessoa_id = p.id
+            LEFT JOIN vinculo v ON v.pessoa_id = p.id
+            LEFT JOIN evento e ON e.id_evento = v.id_evento
+            {onde}
+            GROUP BY p.id
+            ORDER BY p.data_ref, p.camera_id, CAST(substr(p.pseudonimo, 2) AS INTEGER)
+            """,
+            params,
+        )
+    )
+
+
+def listar_vinculos(
+    conn: sqlite3.Connection,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    camera_id: str | None = None,
+) -> list[sqlite3.Row]:
+    """Vínculos com o instante e a direção do evento, para relatório e painel."""
+    onde, params = _onde("v", data_inicio, data_fim, camera_id)
+    return list(
+        conn.execute(
+            f"""
+            SELECT v.id_evento, v.camera_id, v.data_ref, v.similaridade, v.atribuido,
+                   v.metodo, p.pseudonimo, a.apelido, e.instante, e.direcao
+            FROM vinculo v
+            LEFT JOIN pessoa_sessao p ON p.id = v.pessoa_id
+            LEFT JOIN apelido_teste a ON a.pessoa_id = p.id
+            LEFT JOIN evento e ON e.id_evento = v.id_evento
+            {onde}
+            ORDER BY e.instante, v.id_evento
+            """,
+            params,
+        )
+    )
+
+
+# --------------------------------------------------------------------------
+# Períodos de teste
+# --------------------------------------------------------------------------
+
+
+class PeriodoDuplicado(Exception):
+    """Já existe um período com esse nome."""
+
+
+class PeriodoDesconhecido(Exception):
+    """Nenhum período com esse id ou nome."""
+
+
+def _periodo_de(linha: sqlite3.Row) -> Periodo:
+    return Periodo(
+        id=linha["id"],
+        nome=linha["nome"],
+        inicio=datetime.fromisoformat(linha["inicio"]),
+        fim=datetime.fromisoformat(linha["fim"]) if linha["fim"] else None,
+        camera_id=linha["camera_id"],
+        observacao=linha["observacao"],
+    )
+
+
+def _com_fuso(instante: datetime) -> datetime:
+    return instante.replace(tzinfo=FUSO_LOCAL) if instante.tzinfo is None else instante
+
+
+def criar_periodo(
+    conn: sqlite3.Connection,
+    nome: str,
+    inicio: datetime,
+    fim: datetime | None = None,
+    camera_id: str | None = None,
+    observacao: str | None = None,
+) -> Periodo:
+    nome = nome.strip()
+    if not nome:
+        raise ValueError("Período precisa de nome.")
+    if camera_id is not None and not camera_existe(conn, camera_id):
+        raise CameraDesconhecida(camera_id)
+    inicio = _com_fuso(inicio)
+    fim = _com_fuso(fim) if fim is not None else None
+    if fim is not None and fim < inicio:
+        raise ValueError("Fim do período antes do início.")
+    try:
+        cur = conn.execute(
+            "INSERT INTO periodo (nome, camera_id, inicio, fim, observacao, criado_em) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                nome, camera_id, inicio.isoformat(),
+                fim.isoformat() if fim else None, observacao,
+                datetime.now(FUSO_LOCAL).isoformat(),
+            ),
+        )
+    except sqlite3.IntegrityError as erro:
+        raise PeriodoDuplicado(nome) from erro
+    conn.commit()
+    return Periodo(cur.lastrowid, nome, inicio, fim, camera_id, observacao)
+
+
+def listar_periodos(conn: sqlite3.Connection) -> list[Periodo]:
+    """Do mais recente para o mais antigo — o de hoje vem primeiro no painel."""
+    return [
+        _periodo_de(r)
+        for r in conn.execute("SELECT * FROM periodo ORDER BY inicio DESC, id DESC")
+    ]
+
+
+def periodo_por_nome(conn: sqlite3.Connection, nome: str) -> Periodo | None:
+    linha = conn.execute("SELECT * FROM periodo WHERE nome = ?", (nome.strip(),)).fetchone()
+    return _periodo_de(linha) if linha else None
+
+
+def periodo_aberto(conn: sqlite3.Connection) -> Periodo | None:
+    """O período em andamento mais recente, se houver."""
+    linha = conn.execute(
+        "SELECT * FROM periodo WHERE fim IS NULL ORDER BY inicio DESC, id DESC LIMIT 1"
+    ).fetchone()
+    return _periodo_de(linha) if linha else None
+
+
+def _id_do_periodo(conn: sqlite3.Connection, periodo: int | str) -> int:
+    if isinstance(periodo, int):
+        if conn.execute("SELECT 1 FROM periodo WHERE id = ?", (periodo,)).fetchone() is None:
+            raise PeriodoDesconhecido(periodo)
+        return periodo
+    achado = periodo_por_nome(conn, periodo)
+    if achado is None or achado.id is None:
+        raise PeriodoDesconhecido(periodo)
+    return achado.id
+
+
+def encerrar_periodo(
+    conn: sqlite3.Connection, periodo: int | str, fim: datetime | None = None
+) -> Periodo:
+    id_ = _id_do_periodo(conn, periodo)
+    fim = _com_fuso(fim) if fim is not None else datetime.now(FUSO_LOCAL)
+    conn.execute("UPDATE periodo SET fim = ? WHERE id = ?", (fim.isoformat(), id_))
+    conn.commit()
+    return _periodo_de(conn.execute("SELECT * FROM periodo WHERE id = ?", (id_,)).fetchone())
+
+
+def renomear_periodo(conn: sqlite3.Connection, periodo: int | str, novo_nome: str) -> Periodo:
+    id_ = _id_do_periodo(conn, periodo)
+    novo_nome = novo_nome.strip()
+    if not novo_nome:
+        raise ValueError("Período precisa de nome.")
+    try:
+        conn.execute("UPDATE periodo SET nome = ? WHERE id = ?", (novo_nome, id_))
+    except sqlite3.IntegrityError as erro:
+        raise PeriodoDuplicado(novo_nome) from erro
+    conn.commit()
+    return _periodo_de(conn.execute("SELECT * FROM periodo WHERE id = ?", (id_,)).fetchone())

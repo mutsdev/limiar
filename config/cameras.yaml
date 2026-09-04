@@ -4,11 +4,6 @@
 # linha: [x1, y1, x2, y2] em pixels do quadro original
 # lado_dentro: sinal do produto vetorial correspondente ao interior
 #              do prédio; depende de como a câmera está montada.
-# nota: por que a linha ficou onde ficou. É campo de dado, e não comentário,
-#       porque o arquivo é regravado por programa e comentário não sobrevive.
-#
-# Os vídeos não são versionados (ver README, "Dados de terceiros"). Uma câmera
-# com `ativa: false` está aqui pela lição que a nota registra, não para rodar.
 
 cameras:
   entrada_a:
@@ -36,8 +31,8 @@ cameras:
     linha: [18, 211, 314, 213]
     lado_dentro: -1
     ativa: true
-    nota: 'Unica camera que funciona sem baixar nada. A linha aqui vale para o
-      enquadramento de quem calibrou: recalibre na sua com `calibrar_linha.py 0`.'
+    nota: 'Unica camera que funciona sem baixar nada. A linha aqui vale para o enquadramento
+      de quem calibrou: recalibre na sua com `calibrar_linha.py 0`.'
   mot17_09:
     nome: MOT17-09 (avaliação)
     local: Calçada movimentada, câmera baixa e fixa
@@ -45,9 +40,9 @@ cameras:
     linha: [1385, 0, 1385, 1080]
     lado_dentro: -1
     ativa: false
-    nota: 'x=1385 e cruzado por 20 das 26 pessoas anotadas e cai em calcada aberta
-      - conferido no quadro 250, sem pilar nem poste sobre a linha. Baixe a
-      sequencia com scripts/baixar_mot.py.'
+    nota: x=1385 e cruzado por 20 das 26 pessoas anotadas e cai em calcada aberta
+      - conferido no quadro 250, sem pilar nem poste sobre a linha. Baixe a sequencia
+      com scripts/baixar_mot.py.
   entrada_frontal_4k:
     nome: Entrada de loja, camera frontal
     local: Porta automatica, pessoas entrando de frente para a camera
@@ -56,9 +51,9 @@ cameras:
     lado_dentro: 1
     ativa: false
     nota: 'Unico exemplo de linha HORIZONTAL, e a geometria da porta da faculdade:
-      a pessoa anda para dentro, afastando-se da camera, em vez de atravessar o
-      quadro. O sugeridor automatico propoe vertical aqui e erra - numa cena
-      frontal a linha tem de cruzar a soleira. Video nao versionado.'
+      a pessoa anda para dentro, afastando-se da camera, em vez de atravessar o quadro.
+      O sugeridor automatico propoe vertical aqui e erra - numa cena frontal a linha
+      tem de cruzar a soleira. Video nao versionado.'
   elevada:
     nome: Corredor, camera elevada
     local: Camera obliqua a ~3 m, pessoas atravessando o quadro
@@ -68,8 +63,8 @@ cameras:
     ativa: false
     nota: 'x=420 no meio do caminho. Mais a direita (500-650) a linha cai na area
       de estacionamento, onde gente circula em vez de passar: travessias por pessoa
-      sobem de 1,40 para 1,63 e o balanco deixa de fechar (11/11 -> 14/18). E a
-      camera de referencia de docs/resultados.md. Video nao versionado.'
+      sobem de 1,40 para 1,63 e o balanco deixa de fechar (11/11 -> 14/18). E a camera
+      de referencia de docs/resultados.md. Video nao versionado.'
   zenital:
     nome: Camera zenital (contraexemplo)
     local: Vista de topo, 402x300
@@ -78,6 +73,16 @@ cameras:
     lado_dentro: -1
     ativa: false
     nota: 'Contraexemplo deliberado. Conta, mas inviabiliza a etapa 2: de cima nao
-      ha aparencia para reidentificar. Alem disso 402x300 e pequeno demais - a
-      pessoa nao chega aos 100 px de altura e o detector a perde. Video nao
-      versionado.'
+      ha aparencia para reidentificar. Alem disso 402x300 e pequeno demais - a pessoa
+      nao chega aos 100 px de altura e o detector a perde. Video nao versionado.'
+  entrada_real:
+    nome: Entrada da faculdade
+    local: PC 24h com o hardware do time de C++
+    fonte: http://10.1.0.97:81/stream
+    lado_dentro: 1
+    ativa: true
+    nota: 'Calibrada na cena real em 01/09/2026, com a XIAO ESP32S3 em VGA. A linha
+      esta em pixels de 640x480: se alguem mexer no FRAMESIZE do firmware, ela deixa
+      de valer e precisa ser recalibrada. O IP vem por DHCP - se a placa reiniciar
+      e trocar de endereco, atualize a fonte. Detalhes do firmware em docs/contrato-hardware.md.'
+    linha: [253, 410, 380, 411]

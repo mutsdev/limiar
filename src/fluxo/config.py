@@ -32,11 +32,35 @@ CAMINHO_VIDEOS = CAMINHO_DADOS / "videos"
 CAMINHO_GROUND_TRUTH = CAMINHO_DADOS / "ground_truth"
 CAMINHO_SAIDAS = CAMINHO_DADOS / "saidas"
 
+# Etapa 2. Trilhas e miniaturas de pessoas são dado de pessoa real: em dados/,
+# fora do git, e apagáveis. O gabarito é o que o João Pedro preenche à mão.
+CAMINHO_TRILHAS = CAMINHO_DADOS / "trilhas"
+CAMINHO_RECORTES = CAMINHO_DADOS / "recortes"
+CAMINHO_GABARITOS = CAMINHO_DADOS / "gabaritos"
+
 # O banco mora fora do OneDrive: sincronização concorrente corrompe SQLite.
 CAMINHO_BANCO = _caminho(
     "CAMINHO_BANCO",
     Path.home() / "Documents" / "dados-fluxo" / "fluxo.db",
 )
+
+# Logs e backups moram junto do banco pela mesma razão: escrita contínua e
+# sincronização de nuvem não convivem.
+CAMINHO_LOGS = _caminho("CAMINHO_LOGS", CAMINHO_BANCO.parent / "logs")
+CAMINHO_BACKUPS = _caminho("CAMINHO_BACKUPS", CAMINHO_BANCO.parent / "backups")
+
+# Pesos baixados (torchvision, re-ID). Ao lado do banco pelo tamanho: centenas
+# de megabytes não têm o que fazer numa pasta sincronizada.
+CAMINHO_MODELOS = _caminho("CAMINHO_MODELOS", CAMINHO_BANCO.parent / "modelos")
+
+# Último quadro anotado de cada câmera, para a aba "Ao vivo" do painel. Um
+# arquivo por câmera, sobrescrito o tempo todo — não é gravação. Junto do
+# banco porque é escrita contínua.
+CAMINHO_QUADROS = _caminho("CAMINHO_QUADROS", CAMINHO_BANCO.parent / "quadros")
+
+# Binários baixados sem admin (o cloudflared do túnel). Junto do banco porque é
+# da máquina, não do repositório.
+CAMINHO_FERRAMENTAS = _caminho("CAMINHO_FERRAMENTAS", CAMINHO_BANCO.parent / "ferramentas")
 
 # Configuração declarativa, versionada.
 CAMINHO_CONFIG = RAIZ / "config"
@@ -44,6 +68,22 @@ ARQUIVO_CAMERAS = CAMINHO_CONFIG / "cameras.yaml"
 ARQUIVO_PIPELINE = CAMINHO_CONFIG / "pipeline.yaml"
 
 URL_SERVICO = os.getenv("URL_SERVICO", "http://127.0.0.1:8000").rstrip("/")
+
+# Chave exigida nas rotas de escrita do serviço quando definida. Vazia deixa
+# tudo aberto — o certo para localhost. Antes de expor com --host 0.0.0.0,
+# defina a mesma chave no .env dos dois lados (docs/operacao.md).
+CHAVE_API = os.getenv("CHAVE_API", "").strip()
+
+# Senha do painel. Vazia = sem porta, o certo para localhost. Obrigatória antes
+# de expor o painel por túnel: a aba "Ao vivo" mostra a porta da faculdade.
+SENHA_PAINEL = os.getenv("SENHA_PAINEL", "").strip()
+
+# Para onde o supervisor manda a URL do túnel quando ela muda (um tópico do
+# ntfy.sh, por exemplo). Vazia = não avisa ninguém; a URL fica só no log.
+URL_AVISO = os.getenv("URL_AVISO", "").strip()
+
+# Caminho do cloudflared, se não estiver no PATH nem em CAMINHO_FERRAMENTAS.
+CLOUDFLARED = os.getenv("CLOUDFLARED", "").strip()
 
 # Fuso fixo. `zoneinfo` no Windows depende do pacote tzdata, que nem sempre
 # está presente; o projeto roda num único fuso e não precisa de mais que isso.
@@ -88,6 +128,14 @@ def garantir_pastas() -> None:
         CAMINHO_VIDEOS,
         CAMINHO_GROUND_TRUTH,
         CAMINHO_SAIDAS,
+        CAMINHO_TRILHAS,
+        CAMINHO_RECORTES,
+        CAMINHO_GABARITOS,
         CAMINHO_BANCO.parent,
+        CAMINHO_LOGS,
+        CAMINHO_BACKUPS,
+        CAMINHO_MODELOS,
+        CAMINHO_QUADROS,
+        CAMINHO_FERRAMENTAS,
     ):
         pasta.mkdir(parents=True, exist_ok=True)

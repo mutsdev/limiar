@@ -171,3 +171,29 @@ class TestRegistroDeExecucao:
         monkeypatch.setattr(httpx, "post", cai)
         r = Remetente("http://x", FilaLocal(tmp_path / "f.jsonl"))
         assert r.fechar_execucao(1, 100, 5) is False
+
+
+class TestChaveNoRemetente:
+    def test_chave_vai_no_header(self, tmp_path, monkeypatch):
+        capturado = {}
+
+        def captura(url, **kw):
+            capturado.update(kw)
+            return _RespostaFalsa()
+
+        monkeypatch.setattr(httpx, "post", captura)
+        r = Remetente("http://x", FilaLocal(tmp_path / "f.jsonl"), chave="s3gr3do")
+        assert r.enviar([evento(1)]) is True
+        assert capturado["headers"] == {"X-Chave-API": "s3gr3do"}
+
+    def test_sem_chave_nao_manda_header(self, tmp_path, monkeypatch):
+        capturado = {}
+
+        def captura(url, **kw):
+            capturado.update(kw)
+            return _RespostaFalsa()
+
+        monkeypatch.setattr(httpx, "post", captura)
+        r = Remetente("http://x", FilaLocal(tmp_path / "f.jsonl"))
+        assert r.enviar([evento(1)]) is True
+        assert capturado["headers"] == {}

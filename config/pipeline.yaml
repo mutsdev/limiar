@@ -48,3 +48,17 @@ contagem:
   #   python scripts/reprocessar.py <camera> --varredura
   costura_quadros: 0       # 15 = 0,5 s a 30 fps; 0 desliga
   costura_raio_px: 80      # o quanto ela pode ter andado enquanto sumiu
+
+# Etapa 2 — re-identificação anônima (scripts/identificar_pessoas.py).
+# Os limiares são ajustados por medição: scripts/reprocessar_identidade.py
+# --varredura sobre uma trilha/2 gravada, contra o gabarito preenchido à mão.
+reid:
+  modelo: "resnet18"            # "osnet_x0_25" se o resnet18 não separar as pessoas
+  recortes_por_track: 5         # quantos recortes recentes entram na média
+  intervalo_recorte_quadros: 3  # recorta 1 de cada N quadros de cada pessoa visível
+  tamanho_recorte: [128, 256]   # largura, altura — o padrão das redes de re-ID
+  limiar_saida: 0.70            # abaixo disto a saída fica "não atribuída"
+  limiar_reentrada: 0.75        # acima disto quem entra é alguém que saiu hoje
+  janela_lote_s: 60             # PROJETO §12(a): saídas resolvidas em lote, nunca uma por vez
+  max_permanencia_h: 12         # "dentro" há mais que isto é saída perdida (fantasma)
+  expira_h: 48                  # PROJETO §16.5: o pseudônimo some do banco depois disto

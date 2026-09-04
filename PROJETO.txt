@@ -1513,6 +1513,77 @@ FASE 2 - RE-IDENTIFICACAO E MATRIZ ORIGEM-DESTINO
   Entregavel: matriz origem-destino com percentual explicito de "nao
   atribuido". Reportar essa fatia e o que torna o resultado honesto.
 
+  MICRO-ETAPAS (iniciadas em 03/09/2026)
+
+  Contexto: a fase 2 comecou antes da tag v1.0-uno, contra o que R7 pede,
+  porque surgiu um campo de teste fora da faculdade - o local de trabalho do
+  autor, com ~20 pessoas conhecidas e a mesma camera XIAO ESP32S3 em VGA.
+  O que torna isso aceitavel e o isolamento: script proprio, tabelas
+  proprias, e um parametro opcional no processador que, ausente, deixa a
+  contagem de producao identica. A matriz origem-destino (duas portas) fica
+  para quando houver duas cameras; com uma porta so, o que se mede e
+  pessoas unicas, permanencia e a qualidade do proprio re-ID.
+
+  12.1 `reid/` puro: assinatura (cosseno), `atribuicao.hungaro` proprio e
+       `galeria` (conjunto de ocupacao, reentrada, lote, expiracao por dia,
+       fantasmas). Sem numpy, sem torch.
+       POR QUE: e o componente que decide identidade; precisa ser provavel
+       em ms com vetores inventados, como `contagem/`.
+       ACEITE: o hungaro bate com forca bruta em matrizes aleatorias ate
+       6x6; saida sem candidato acima do limiar vira "nao atribuido";
+       virar o dia zera a galeria; `pytest tests/test_reid_*` verde no
+       ambiente de nucleo.                                         [feito]
+
+  12.2 Extrator em `visao/aparencia.py` (ResNet-18 do torchvision, cabeca
+       removida, zero dependencia nova), `agente/identidade.py` (buffer de
+       recortes por track, rede so no cruzamento), `processador.processar(
+       ..., identidade=None)`, etiqueta "P7" no anotador, `trilha/2` com as
+       assinaturas, `scripts/identificar_pessoas.py`.
+       POR QUE: sinal cedo na camera real antes de persistir qualquer coisa.
+       ACEITE: uma hora de `identificar_pessoas.py --sem-envio
+       --gravar-trilhas --guardar-recortes` mostra P<n> nas caixas, grava a
+       trilha com linhas "e" e as miniaturas por P; processar_video.py
+       inalterado e test_processador.py verde.                     [feito]
+
+  12.3 O GATE: medir antes de persistir. `scripts/rotular_pessoas.py
+       --gerar` escreve o CSV de gabarito a partir do indice de miniaturas;
+       o autor preenche apelido_real olhando as imagens;
+       `scripts/reprocessar_identidade.py --varredura --gabarito` varre
+       limiar_saida x limiar_reentrada x janela sobre a trilha/2, sem GPU,
+       e imprime pureza, fragmentacao e % nao atribuido por combinacao.
+       POR QUE: 11.1 ja avisou que a ESP32 em VGA "provavelmente nao serve
+       para a fase 2". Isso se mede, nao se presume.
+       ACEITE: decisao registrada em docs/resultados.md secao 9 com a
+       tabela: (a) resnet18 separa -> segue; (b) nao separa -> OSNet pela
+       mesma interface (`visao/osnet.py`, pesos publicos), recomputado a
+       partir das miniaturas, e mede de novo; (c) nem OSNet separa em VGA
+       -> parar e registrar como limite do hardware, com o numero.
+                                                     [codigo feito; medicao pendente]
+
+  12.4 Persistencia: tabelas `pessoa_sessao`, `vinculo` e `apelido_teste`;
+       rotas POST /pessoas/lote, POST /vinculos/lote, PUT /pessoas/apelido,
+       GET /pessoas, GET /vinculos; `Remetente.enviar_vinculos` com fila
+       propria; `purgar_expirados` a cada escrita e no arranque.
+       POR QUE: so vira dado o que ja se sabe que presta. E a regra 5 da
+       arquitetura continua valendo: pseudonimo efemero nao e identidade
+       (docs/arquitetura.md, "Etapa 2").
+       ACEITE: derrubar o servico no meio enfileira os vinculos e drena na
+       volta; reenvio nao duplica; passado `expira_em`, a pessoa some do
+       banco sem ninguem rodar nada.                              [feito]
+
+  12.5 Painel: aba "Pessoas" com unicos do dia, saidas sem par, permanencia
+       media e por faixa, e a tabela P / primeira / ultima / entradas /
+       saidas. A coluna de apelido so aparece se houver algum.
+       ACEITE: test_painel.py verde com e sem identidades.        [feito]
+
+  12.6 Documentacao: docs/arquitetura.md (secao "Etapa 2"), README (estado),
+       este bloco, docs/resultados.md secao 9 com os numeros medidos.
+                                            [feito, exceto os numeros de 12.3]
+
+  12.7 Matriz origem-destino. Exige a segunda camera. A galeria ja e
+       indiferente a camera de origem; falta a chave (camera_entrada,
+       camera_saida) no vinculo e o relatorio.                  [nao iniciada]
+
 FASE 3 - ANALISES DERIVADAS
   Tempo medio de permanencia, previsao de fluxo por dia da semana, deteccao de
   anomalia (dia atipico), estimativa de lotacao em tempo real.

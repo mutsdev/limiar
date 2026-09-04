@@ -133,7 +133,7 @@ def main() -> None:
     remetente = None
     if not args.sem_envio:
         fila = FilaLocal(config.CAMINHO_DADOS / "fila" / f"{args.camera}.jsonl")
-        remetente = Remetente(config.URL_SERVICO, fila)
+        remetente = Remetente(config.URL_SERVICO, fila, chave=config.CHAVE_API)
         if not remetente.servico_no_ar():
             print(f"AVISO: serviço fora do ar em {config.URL_SERVICO}. "
                   f"Os eventos vão para a fila local e serão reenviados depois.")

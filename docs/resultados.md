@@ -274,3 +274,68 @@ como repetido.
 Sem contagem manual, a métrica que ainda diz algo é **cruzamentos por pessoa**
 (eventos ÷ tracks que geraram evento). O ideal é 1,00; acima disso é a mesma
 pessoa contada mais de uma vez, e isso é visível sem referência nenhuma.
+
+---
+
+## 9. Re-identificação: o método está pronto; o número, não
+
+A Etapa 2 (`docs/arquitetura.md`, "Etapa 2") reconhece que a pessoa que saiu
+às 12h é a que entrou às 9h, pela aparência — roupa e silhueta — e chama isso
+de `P7`, um pseudônimo que vale só naquele dia. **Nada aqui foi medido ainda.**
+O que existe é a máquina de medir, e ela é a mesma máquina da seção 8.
+
+### Como se mede
+
+1. Uma execução ao vivo grava a trilha com as assinaturas e uma miniatura por
+   travessia (`identificar_pessoas.py --gravar-trilhas --guardar-recortes`).
+2. `rotular_pessoas.py --gerar` transforma o índice de miniaturas num CSV; quem
+   conhece as pessoas preenche `apelido_real` olhando as imagens. Esse CSV é o
+   gabarito.
+3. `reprocessar_identidade.py --varredura --gabarito` reconta a trilha para
+   cada combinação de `limiar_saida × limiar_reentrada × janela_lote_s` — sem
+   GPU, em segundos — e imprime, por combinação:
+
+| métrica | pergunta que responde | ideal |
+|---|---|---|
+| **pureza** | dentro de um `P`, que fração é da mesma pessoa? | 100 % |
+| **fragmentação** | uma pessoa real virou quantos `P`? | 1,00 |
+| **não atribuído** | que fração das saídas ficou sem par? | baixo, mas **nunca zero à força** |
+
+Pureza e fragmentação puxam para lados opostos: limiar alto dá pureza e
+fragmenta; limiar baixo junta e confunde. A combinação escolhida vai declarada
+em `config/pipeline.yaml` com esta tabela ao lado — escolher o melhor número de
+um dia só e chamar isso de acurácia seria ajuste ao teste, como na seção 2b.
+
+### O que o teste vai decidir
+
+O extrator inicial é o ResNet-18 do torchvision sem a cabeça de classificação:
+512 números por recorte, pesos já instalados, zero dependência nova. Foi
+treinado para dizer "gato", não "mesma pessoa" — é o ponto de partida mais
+barato, não o melhor. `PROJETO.txt` 11.1 já avisou que a ESP32 em VGA
+"provavelmente não serve para a fase 2": a pessoa tem 100–200 px de altura e a
+rede espera 256; a porta é contraluz.
+
+Três desfechos possíveis, e os três são resultado:
+
+- **(a)** o ResNet-18 separa as ~20 pessoas com pureza alta e fragmentação
+  perto de 1 → segue.
+- **(b)** não separa → troca-se o extrator por OSNet (`visao/osnet.py`, pesos
+  públicos) pela **mesma interface**, recalculando as assinaturas a partir das
+  miniaturas já gravadas, e mede-se de novo.
+- **(c)** nem o OSNet separa em VGA → o limite é do hardware, e fica registrado
+  aqui com o número, como a seção 6 faz com os outros.
+
+### Primeiro sinal (não é medição)
+
+Prova de fumaça em 03/09/2026 sobre `people-detection.mp4` (768×432, 150
+quadros): detector + extrator a **36,9 q/s na GPU**, um cruzamento, um `P1`,
+uma miniatura e uma linha de assinatura na trilha. Diz que o caminho está
+inteiro; não diz nada sobre acurácia.
+
+| | valor |
+|---|---|
+| pureza | *pendente* |
+| fragmentação | *pendente* |
+| saídas sem par | *pendente* |
+| pessoas únicas / pessoas reais | *pendente* |
+| combinação escolhida | *pendente* |

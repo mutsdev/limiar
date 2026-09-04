@@ -23,6 +23,9 @@ class Quadro:
     indice: int
     instante: datetime
     imagem: object  # ndarray do OpenCV
+    # Marcado pela FonteViva no primeiro quadro depois de uma queda longa de
+    # stream: avisa o consumidor que o estado de rastreio ficou velho demais.
+    apos_lacuna: bool = False
 
 
 class FonteDeVideo:

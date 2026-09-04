@@ -108,6 +108,17 @@ class TestOcupacao:
         df = consultas.carregar_eventos(povoado)
         assert consultas.ocupacao_do_dia(df, date(2026, 8, 30)).empty
 
+    def test_instante_continua_no_fuso_local(self, povoado):
+        # `.values` convertia para UTC calado: o pico de ocupação aparecia três
+        # horas adiantado no relatório e no painel.
+        df = consultas.carregar_eventos(povoado)
+        curva = consultas.ocupacao_do_dia(df, date(2026, 8, 24))
+        assert list(curva["instante"]) == list(
+            df[df["data_ref"] == pd.Timestamp(date(2026, 8, 24))]
+            .sort_values("instante")["instante"]
+        )
+        assert curva["instante"].dt.tz is not None
+
 
 class TestComparativo:
     def test_participacao_soma_cem(self, povoado):

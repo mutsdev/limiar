@@ -30,8 +30,24 @@ def main() -> None:
     p.add_argument("--recarregar", action="store_true")
     args = p.parse_args()
 
+    extras = {}
+    if not args.recarregar:
+        # Na operação contínua ninguém está olhando o console: o acesso e o
+        # erro vão para arquivo com rotação. No modo --recarregar o uvicorn
+        # reconfigura o logging no processo filho, então lá fica o padrão dele.
+        from fluxo import config, registro
+
+        config.garantir_pastas()
+        for nome in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+            registro.configurar(nome, config.CAMINHO_LOGS / "servico.log")
+        extras["log_config"] = None
+
     uvicorn.run(
-        "fluxo.servico.api:app", host=args.host, port=args.porta, reload=args.recarregar
+        "fluxo.servico.api:app",
+        host=args.host,
+        port=args.porta,
+        reload=args.recarregar,
+        **extras,
     )
 
 

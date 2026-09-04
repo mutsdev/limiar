@@ -16,8 +16,14 @@ Formato (JSON Lines). Primeira linha é o cabeçalho; as demais, um quadro cada,
 **inclusive os quadros vazios** — sem eles o replay não saberia quantos quadros
 se passaram, e `quadros_ate_esquecer` mediria errado.
 
-    {"formato": "trilha/1", "camera": "mot17_09", "fps": 30.0, ...}
+    {"formato": "trilha/2", "camera": "mot17_09", "fps": 30.0, ...}
     {"q": 1, "t": "2026-01-01T08:00:00-03:00", "r": [[7, 100.0, 200.0, 150.0, 400.0, 0.71]]}
+    {"q": 1, "e": [[7, [0.012, -0.34, ...]]]}
+
+A terceira forma é da Etapa 2: a assinatura de aparência do track 7, calculada
+no quadro 1. É linha própria, e não campo do quadro, porque é escrita depois —
+a contagem decide o cruzamento, e só então a rede roda. `trilha/1` (sem essas
+linhas) continua sendo lida.
 """
 
 from __future__ import annotations
@@ -29,7 +35,12 @@ from pathlib import Path
 
 from fluxo.dominio.rastro import Rastro
 
-FORMATO = "trilha/1"
+FORMATO = "trilha/2"
+FORMATOS_ACEITOS = ("trilha/1", FORMATO)
+
+# Casas decimais de cada componente da assinatura. Cinco bastam para o cosseno
+# e cortam o arquivo pela metade em relação ao float completo.
+CASAS_ASSINATURA = 5
 
 
 class TrilhaInvalida(Exception):
@@ -43,10 +54,21 @@ class Trilha:
     cabecalho: dict = field(default_factory=dict)
     # (indice do quadro, instante, rastros daquele quadro)
     quadros: list[tuple[int, datetime, list[Rastro]]] = field(default_factory=list)
+    # Etapa 2: id_local -> [(quadro, assinatura), ...] em ordem de gravação.
+    assinaturas: dict[int, list[tuple[int, list[float]]]] = field(default_factory=dict)
 
     @property
     def total_quadros(self) -> int:
         return len(self.quadros)
+
+    def assinatura_de(self, id_local: int, quadro: int) -> list[float] | None:
+        """A assinatura mais recente do track até aquele quadro, ou None."""
+        candidata = None
+        for q, vetor in self.assinaturas.get(id_local, ()):
+            if q > quadro:
+                break
+            candidata = vetor
+        return candidata
 
     @property
     def pessoas(self) -> int:
@@ -88,6 +110,12 @@ class Gravador:
         )
         self.quadros += 1
 
+    def gravar_assinatura(self, quadro: int, id_local: int, assinatura: list[float]) -> None:
+        """Etapa 2: a aparência de um track, no quadro em que ele cruzou."""
+        self._escrever(
+            {"q": quadro, "e": [[id_local, [round(x, CASAS_ASSINATURA) for x in assinatura]]]}
+        )
+
     def fechar(self) -> None:
         self._arquivo.close()
 
@@ -126,12 +154,19 @@ def carregar(caminho: str | Path) -> Trilha:
             raise TrilhaInvalida(f"{caminho}:{numero} não é JSON válido") from erro
 
         if numero == 1:
-            if objeto.get("formato") != FORMATO:
+            if objeto.get("formato") not in FORMATOS_ACEITOS:
                 raise TrilhaInvalida(
                     f"{caminho} não é uma trilha (formato "
                     f"{objeto.get('formato')!r}, esperado {FORMATO!r})"
                 )
             trilha.cabecalho = objeto
+            continue
+
+        if "e" in objeto:
+            for id_local, vetor in objeto["e"]:
+                trilha.assinaturas.setdefault(int(id_local), []).append(
+                    (int(objeto["q"]), [float(x) for x in vetor])
+                )
             continue
 
         rastros = [

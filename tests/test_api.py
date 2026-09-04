@@ -165,3 +165,34 @@ class TestExecucoes:
         self._abrir(cliente, "entrada_b")
         lista = cliente.get("/execucoes?camera_id=entrada_b").json()
         assert {e["camera_id"] for e in lista} == {"entrada_b"}
+
+
+class TestChaveDeApi:
+    """Com CHAVE_API definida, escrever exige o header; consultar continua aberto."""
+
+    @pytest.fixture(autouse=True)
+    def chave(self, monkeypatch):
+        from fluxo import config
+
+        monkeypatch.setattr(config, "CHAVE_API", "segredo-de-teste")
+
+    def test_post_sem_chave_devolve_401(self, cliente):
+        assert cliente.post("/eventos", json=corpo()).status_code == 401
+
+    def test_post_com_chave_errada_devolve_401(self, cliente):
+        r = cliente.post("/eventos", json=corpo(), headers={"X-Chave-API": "errada"})
+        assert r.status_code == 401
+
+    def test_post_com_chave_certa_registra(self, cliente):
+        r = cliente.post(
+            "/eventos", json=corpo(), headers={"X-Chave-API": "segredo-de-teste"}
+        )
+        assert r.status_code == 200
+        assert r.json()["registrado"] is True
+
+    def test_lote_tambem_exige(self, cliente):
+        assert cliente.post("/eventos/lote", json=[corpo()]).status_code == 401
+
+    def test_consulta_continua_aberta(self, cliente):
+        assert cliente.get("/eventos").status_code == 200
+        assert cliente.get("/saude").status_code == 200
