@@ -1,6 +1,6 @@
 """As rotas da Etapa 2, pelo TestClient, contra o banco temporário."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,8 +8,10 @@ from fastapi.testclient import TestClient
 from fluxo.dominio.evento import FUSO_LOCAL, Direcao, EventoCruzamento
 from fluxo.servico.api import app
 
-DIA = "2026-09-04"
-T0 = datetime(2026, 9, 4, 9, 0, 0, tzinfo=FUSO_LOCAL)
+# Hoje, e não uma data fixa: toda escrita purga o que passou de 48 h, então
+# dado carimbado com data literal nasce vencido assim que a semana vira.
+DIA = date.today().isoformat()
+T0 = datetime.combine(date.today(), time(9, 0), tzinfo=FUSO_LOCAL)
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 """As três tabelas da Etapa 2: upsert, expiração mecânica e apelido de teste."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 
@@ -9,8 +9,12 @@ from fluxo.dominio.identidade import Apelido, PessoaSessao, Vinculo
 from fluxo.persistencia import repositorio
 from fluxo.persistencia.repositorio import CameraDesconhecida, PessoaDesconhecida
 
-DIA = date(2026, 9, 4)
-T0 = datetime(2026, 9, 4, 9, 0, 0, tzinfo=FUSO_LOCAL)
+# Hoje, e não uma data fixa: toda escrita chama `purgar_expirados`, que apaga o
+# que passou de 48 h. Com data literal os testes passavam por dois dias e
+# depois falhavam sozinhos, sem ninguém ter mexido em nada.
+DIA = date.today()
+MEIA_NOITE = datetime.combine(DIA, time(0, 0), tzinfo=FUSO_LOCAL)
+T0 = MEIA_NOITE + timedelta(hours=9)
 
 
 def pessoa(pseudonimo="P1", camera="entrada_a", minutos=0):
@@ -91,8 +95,8 @@ class TestVinculos:
         repositorio.upsert_pessoas(banco, [pessoa("P7", minutos=50)])
         linha = repositorio.listar_pessoas(banco)[0]
         # "Alarga", não "substitui": primeiro_visto é o menor dos dois carimbos
-        # e ultimo_visto o maior. Como T0 é uma data fixa e "agora" anda, só
-        # isto é verdade em qualquer hora do dia.
+        # e ultimo_visto o maior. Como um deles é sempre `real`, a dupla
+        # desigualdade vale a qualquer hora do dia — inclusive antes das 9h.
         real = (T0 + timedelta(minutes=50)).isoformat()
         assert linha["primeiro_visto"] <= real
         assert linha["ultimo_visto"] >= real
@@ -153,11 +157,13 @@ class TestExpiracao:
             banco, Apelido(camera_id="entrada_a", data_ref=DIA, pseudonimo="P1", apelido="maria")
         )
 
-        antes = datetime(2026, 9, 5, 23, 59, 0, tzinfo=FUSO_LOCAL)  # ainda no prazo
+        # O prazo conta da MEIA-NOITE do dia de referência, não do primeiro
+        # avistamento: por isso os dois instantes saem de MEIA_NOITE.
+        antes = MEIA_NOITE + timedelta(hours=47, minutes=59)  # ainda no prazo
         assert repositorio.purgar_expirados(banco, antes) == 0
         assert len(repositorio.listar_pessoas(banco)) == 1
 
-        depois = datetime(2026, 9, 6, 0, 0, 1, tzinfo=FUSO_LOCAL)  # 48h após o início do dia
+        depois = MEIA_NOITE + timedelta(hours=48, seconds=1)  # 48h após o início do dia
         assert repositorio.purgar_expirados(banco, depois) == 1
         assert repositorio.listar_pessoas(banco) == []
         assert repositorio.listar_vinculos(banco) == []

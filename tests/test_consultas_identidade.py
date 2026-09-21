@@ -1,14 +1,16 @@
 """As consultas da aba Pessoas, em cima do banco temporário."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from fluxo.analise import consultas
 from fluxo.dominio.evento import FUSO_LOCAL, Direcao, EventoCruzamento
 from fluxo.dominio.identidade import Apelido, PessoaSessao, Vinculo
 from fluxo.persistencia import repositorio
 
-DIA = date(2026, 9, 4)
-T0 = datetime(2026, 9, 4, 9, 0, 0, tzinfo=FUSO_LOCAL)
+# Hoje, e não uma data fixa: toda escrita purga o que passou de 48 h, então
+# dado carimbado com data literal nasce vencido assim que a semana vira.
+DIA = date.today()
+T0 = datetime.combine(DIA, time(9, 0), tzinfo=FUSO_LOCAL)
 
 
 def _povoar(banco):

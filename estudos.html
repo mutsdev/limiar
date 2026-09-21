@@ -671,6 +671,59 @@ dl.glossario dd { margin: 4px 0 0; color: var(--ink-2); font-size: 15.5px; }
 /* ---------- diagrama SVG ---------- */
 figure { margin: 26px 0; max-width: 640px; }
 figure svg { width: 100%; height: auto; display: block; }
+
+/* Estilo "livro ilustrado": a pergunta da estação, o desenho e o lembrete. */
+.pergunta {
+  font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  font-size: 1.25rem; font-weight: 600; line-height: 1.35;
+  margin: 8px 0 18px; text-wrap: balance;
+}
+.pergunta::before { content: "Pergunta da estação · "; color: var(--entrada); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; display: block; margin-bottom: 6px; font-weight: 600; }
+.desenho { margin: 22px 0; max-width: 560px; }
+.desenho svg { width: 100%; height: auto; display: block; }
+.desenho figcaption { font-size: .85rem; color: var(--ink-3); margin-top: 8px; }
+.desenho text { font-family: "JetBrains Mono", monospace; }
+.lembrete {
+  margin: 26px 0 8px; padding: 16px 18px;
+  border: 1.5px dashed var(--saida); border-radius: 6px;
+  background: var(--surface);
+}
+.lembrete .rotulo { color: var(--saida); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+.lembrete ul { margin: 0; padding-left: 20px; }
+.lembrete li { margin: 4px 0; }
+.passos { counter-reset: passo; list-style: none; padding: 0; margin: 18px 0; }
+.passos li { position: relative; padding-left: 44px; margin: 10px 0; }
+.passos li::before {
+  counter-increment: passo; content: counter(passo);
+  position: absolute; left: 0; top: 1px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--entrada); color: var(--ground); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; font-size: .9rem;
+  font-family: "JetBrains Mono", monospace;
+}
+/* Matemática da Estação 6: fórmulas sem biblioteca, funcionam offline. */
+.formula {
+  font-family: "Newsreader", Georgia, serif; font-style: italic;
+  font-size: 1.18rem; text-align: center; line-height: 1.8;
+  margin: 16px 0 18px; padding: 14px 20px; max-width: 68ch;
+  background: var(--surface-2); border: 1px solid var(--rule-soft); border-radius: 6px;
+  overflow-x: auto;
+}
+.formula b { font-weight: 700; font-style: normal; }
+.formula sub, .formula sup { font-size: .68em; line-height: 0; }
+.formula .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 4px; line-height: 1.25; }
+.formula .frac > span:first-child { border-bottom: 1.5px solid var(--ink); padding: 0 6px 2px; }
+.formula .frac > span:last-child { padding: 2px 6px 0; }
+.formula .mat {
+  display: inline-grid; grid-template-columns: auto auto; column-gap: 18px; row-gap: 4px;
+  vertical-align: middle; margin: 0 6px; padding: 6px 10px;
+  border-left: 1.5px solid var(--ink); border-right: 1.5px solid var(--ink); border-radius: 5px;
+}
+.formula .leg { display: block; font-family: "JetBrains Mono", monospace; font-style: normal; font-size: .72rem; color: var(--ink-3); margin-top: 8px; }
+table.conta { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .84rem; }
+table.conta td { white-space: nowrap; }
+.caixa.fundo { border-left-color: var(--entrada); }
+.caixa.fundo .rotulo { color: var(--entrada); }
+.desenho.largo { max-width: 640px; }
 figcaption {
   font-size: 13.5px;
   color: var(--ink-3);
@@ -733,7 +786,7 @@ footer {
     <div class="grupo">Manual</div>
     <a href="#mapa"><span class="n">·</span><span>Mapa das pastas</span></a>
     <a href="#pacotes"><span class="n">·</span><span>Os doze pacotes</span></a>
-    <a href="#scripts"><span class="n">·</span><span>Os dezenove scripts</span></a>
+    <a href="#scripts"><span class="n">·</span><span>Os vinte e um scripts</span></a>
     <a href="#config"><span class="n">·</span><span>Configuração</span></a>
     <a href="#testes"><span class="n">·</span><span>Como se testa</span></a>
     <a href="#padroes"><span class="n">·</span><span>Sete padrões que se repetem</span></a>
@@ -757,32 +810,32 @@ footer {
   <div class="sobrenome">Guia de estudo do código-fonte</div>
   <h1>Limiar por dentro</h1>
   <div class="linha-decorativa"></div>
-  <p class="chamada">Um sistema que conta quantas pessoas entram e saem por uma porta,
-  usando uma câmera de quinze reais e uma linha desenhada no chão da imagem.
-  Este guia percorre o caminho de <em>um quadro de vídeo até uma linha no banco</em>,
-  e depois vira manual de consulta.</p>
+  <p class="chamada">O Limiar conta quantas pessoas entram e saem por uma porta. Usa uma
+  câmera de quinze reais e uma linha desenhada na imagem. Este guia segue
+  <em>um único quadro de vídeo</em> desde a câmera até virar um número no relatório.
+  Uma ideia por vez, com um desenho quando ajuda.</p>
 
   <div class="faixa">
-    <div><div class="v">52</div><div class="r">módulos em src</div></div>
+    <div><div class="v">57</div><div class="r">módulos em src</div></div>
     <div><div class="v">12</div><div class="r">pacotes</div></div>
-    <div><div class="v">6.233</div><div class="r">linhas de código</div></div>
-    <div><div class="v">4.773</div><div class="r">linhas de teste</div></div>
-    <div><div class="v">494</div><div class="r">testes, sem rede</div></div>
-    <div><div class="v">19</div><div class="r">scripts</div></div>
+    <div><div class="v">7.254</div><div class="r">linhas de código</div></div>
+    <div><div class="v">5.413</div><div class="r">linhas de teste</div></div>
+    <div><div class="v">547</div><div class="r">testes, sem rede</div></div>
+    <div><div class="v">21</div><div class="r">scripts</div></div>
   </div>
 </header>
 
 <section class="medida" id="como-usar">
   <h4>Como usar este guia</h4>
-  <p>A <strong>Parte I</strong> é uma trilha: doze estações que seguem um quadro de vídeo
-  virando um número no relatório. Leia na ordem, com o repositório aberto ao lado.
-  Cada estação termina com perguntas de autoavaliação: responda de cabeça antes de abrir.</p>
-  <p>A <strong>Parte II</strong> é o manual, uma ficha por pacote, para consultar depois.
-  A <strong>Parte III</strong> explica cada biblioteca externa em dois níveis: o que ela é,
-  e o que este projeto faz com ela. A <strong>Parte IV</strong> são doze exercícios para
-  rodar de verdade.</p>
-  <p>Todo trecho de código foi copiado do arquivo, com caminho e linha. Se algum não bater
-  com o que está no disco, o disco manda.</p>
+  <p>A <strong>Parte I</strong> é uma trilha de doze estações. Cada estação começa com uma
+  pergunta simples, responde com uma comparação do dia a dia, e só depois mostra o código.
+  No fim de cada uma há um "Lembre-se" com três frases, e perguntas para você responder
+  de cabeça antes de abrir a resposta.</p>
+  <p>A <strong>Parte II</strong> é o manual: uma ficha por pasta, para consultar depois.
+  A <strong>Parte III</strong> explica cada biblioteca: o que ela é, e o que o Limiar faz
+  com ela. A <strong>Parte IV</strong> são doze exercícios para rodar de verdade.</p>
+  <p>Leia a trilha na ordem, com o repositório aberto ao lado. Todo trecho de código foi
+  copiado do arquivo. Se algum não bater com o que está no disco, o disco manda.</p>
 </section>
 
 <!-- ============================== PARTE I ============================== -->
@@ -790,132 +843,168 @@ footer {
 <div class="divisor">
   <div class="titulo-parte">Parte I</div>
   <h2>A trilha</h2>
-  <p class="medida">De um fóton na lente até uma barra no painel. Doze paradas, cada uma
-  resolvendo um problema que a anterior criou.</p>
+  <p class="medida">Doze paradas. Em cada uma, um problema pequeno e a peça de código que
+  o resolve. Siga um quadro de vídeo do começo ao fim e você terá lido o sistema inteiro.</p>
 </div>
 
 <section id="e1">
-  <h3><span class="estacao">Estação 1</span>O problema, a câmera e o contrato</h3>
+  <h3><span class="estacao">Estação 1</span>O problema e a câmera</h3>
   <div class="arquivos">docs/contrato-hardware.md · config/cameras.yaml</div>
 
-  <p>A pergunta que o sistema responde é modesta e difícil: <strong>quantas pessoas
-  entraram e saíram por esta porta, hora a hora?</strong> Modesta porque não há
-  reconhecimento, nem rosto, nem nome. Difícil porque uma pessoa que hesita na soleira
-  pode virar três entradas, e ninguém percebe: o número continua parecendo plausível.</p>
+  <p class="pergunta">Quantas pessoas entraram e saíram por esta porta, hora a hora?</p>
 
-  <p>O hardware é um <strong>Seeed XIAO ESP32S3 Sense</strong> rodando o exemplo
-  <code>CameraWebServer</code> do fabricante, sem uma linha modificada. Do lado do Python
-  não há nada a escrever: a URL entra num campo do YAML.</p>
+  <p>Parece fácil. Imagine um porteiro com um contador de mão: clique quando alguém entra,
+  clique quando alguém sai. O problema é que o porteiro é um programa, e programas se
+  confundem com coisas que para nós são óbvias. Uma pessoa que para na soleira, dá meio
+  passo para trás e entra de vez pode virar <em>três</em> entradas. E ninguém percebe,
+  porque o número no fim do dia continua parecendo razoável.</p>
 
-  <div class="rolar">
-  <table>
-    <thead><tr><th>Item</th><th>Valor</th><th>Por que importa</th></tr></thead>
-    <tbody>
-      <tr><td>Protocolo</td><td><code>multipart/x-mixed-replace</code></td><td>MJPEG puro: uma sequência de JPEGs independentes, não um vídeo</td></tr>
-      <tr><td>Endereço</td><td><code>http://IP:81/stream</code></td><td>Porta 81, diferente da página web (80) e do <code>/capture</code></td></tr>
-      <tr><td>Resolução</td><td>VGA 640×480</td><td>O exemplo cai para 320×240 sozinho, menor que a câmera zenital já descartada</td></tr>
-      <tr><td>Endereço IP</td><td>DHCP, muda</td><td>Existe um script só para achar a câmera de novo</td></tr>
-      <tr><td>Clientes</td><td><strong>um por vez</strong></td><td>Com a página aberta no navegador, o Limiar não recebe nada</td></tr>
-    </tbody>
-  </table>
-  </div>
+  <p>Guarde essa frase, porque ela volta em quase toda estação: <strong>o erro perigoso é
+  o que produz um número plausível.</strong></p>
+
+  <h4>A câmera</h4>
+  <p>É uma placa pequena, a Seeed XIAO ESP32S3 Sense, rodando o programa de exemplo do
+  fabricante. Ela não sabe nada sobre pessoas. Só faz uma coisa: tira fotos JPEG o tempo
+  todo e manda pela rede, uma atrás da outra. Isso se chama MJPEG. Não é um vídeo; é uma
+  fila de fotos.</p>
+
+  <figure class="desenho">
+    <svg viewBox="0 0 560 120" role="img" aria-label="A câmera manda fotos JPEG em fila pela rede até o computador">
+      <rect x="10" y="35" width="70" height="50" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"></rect>
+      <circle cx="45" cy="60" r="12" fill="none" stroke="var(--ink)" stroke-width="2"></circle>
+      <circle cx="45" cy="60" r="5" fill="var(--ink)"></circle>
+      <text x="45" y="108" fill="var(--ink-3)" font-size="11" text-anchor="middle">câmera</text>
+      <g fill="var(--surface)" stroke="var(--entrada)" stroke-width="1.6">
+        <rect x="120" y="42" width="34" height="36" rx="3"></rect>
+        <rect x="170" y="42" width="34" height="36" rx="3"></rect>
+        <rect x="220" y="42" width="34" height="36" rx="3"></rect>
+        <rect x="270" y="42" width="34" height="36" rx="3"></rect>
+        <rect x="320" y="42" width="34" height="36" rx="3"></rect>
+      </g>
+      <text x="237" y="30" fill="var(--entrada)" font-size="11" text-anchor="middle">JPEG, JPEG, JPEG…  (MJPEG)</text>
+      <text x="237" y="98" fill="var(--ink-3)" font-size="10.5" text-anchor="middle">http://IP:81/stream</text>
+      <path d="M 370 60 L 410 60" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#seta1)"></path>
+      <defs><marker id="seta1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink-3)"></path></marker></defs>
+      <rect x="425" y="30" width="110" height="60" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"></rect>
+      <text x="480" y="64" fill="var(--ink)" font-size="12" text-anchor="middle">Limiar</text>
+      <text x="480" y="108" fill="var(--ink-3)" font-size="11" text-anchor="middle">o PC</text>
+    </svg>
+    <figcaption>A câmera não entende nada. Ela só entrega fotos. Todo o trabalho é do PC.</figcaption>
+  </figure>
+
+  <p>Quatro coisas sobre essa câmera mudam o resto do projeto:</p>
+  <ol class="passos">
+    <li><strong>Ela atende uma pessoa por vez.</strong> Se alguém abrir a página da câmera
+    no navegador, o Limiar para de receber fotos. É a causa número um de "sem conexão".</li>
+    <li><strong>O endereço dela muda.</strong> Cada vez que a placa reinicia, o roteador
+    pode dar outro IP. Existe um script só para achá-la de novo.</li>
+    <li><strong>O tamanho da foto importa.</strong> O programa do fabricante cai sozinho para
+    320×240, e nisso uma pessoa fica pequena demais para o detector. O Limiar exige
+    640×480, e isso tem de estar gravado no programa da placa.</li>
+    <li><strong>Do lado do Python não se escreve nada.</strong> O endereço vai num campo do
+    arquivo <code>cameras.yaml</code>. Só isso.</li>
+  </ol>
 
   <div class="caixa aviso">
     <div class="rotulo">A pegadinha que mais custa tempo</div>
-    <p>O tratador do stream no firmware é um laço infinito na única tarefa do servidor HTTP.
-    Isso significa <strong>um cliente por vez</strong>. Se o log disser "Sem conexão" com a URL
-    correta, a primeira suspeita é uma aba de navegador aberta na câmera.</p>
+    <p>Log dizendo "Sem conexão" com o endereço certo? Antes de qualquer outra coisa,
+    procure uma aba do navegador aberta na câmera. Um cliente por vez.</p>
   </div>
 
-  <p>A resolução não é detalhe estético. O exemplo do fabricante derruba o sensor para
-  QVGA logo após inicializar, para a página web abrir rápido. Trezentos e vinte por
-  duzentos e quarenta é <em>menor</em> que a câmera zenital de 402×300 que o projeto já
-  mediu e descartou, porque a pessoa não chega aos cem pixels de altura e o detector
-  simplesmente a perde. A correção é uma palavra no firmware, e precisa estar no código:
-  mudar pelo menu da página volta ao padrão a cada reinício.</p>
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>A câmera é burra de propósito: manda fotos em fila e mais nada.</li>
+      <li>Um cliente por vez, IP que muda, 640×480 obrigatório.</li>
+      <li>O erro perigoso é o que dá um número plausível.</li>
+    </ul>
+  </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que MJPEG, e não enviar um MP4 ou fotos avulsas?</summary>
-    <div class="resposta"><p>O sensor OV2640 comprime JPEG em hardware, então MJPEG é de graça
-    para a placa. MP4 é um contêiner que exigiria fechar segmentos, e fotos avulsas quebram a
-    continuidade temporal de que o rastreador precisa para manter a identidade entre quadros.</p></div></details>
-    <details><summary>O log mostra "Sem conexão" e a URL está certa. Quais são as três suspeitas, em ordem?</summary>
-    <div class="resposta"><p>Primeiro, alguém com a página da câmera aberta no navegador, porque
-    a placa atende um cliente por vez. Segundo, o IP mudou, porque a placa usa DHCP puro.
-    Terceiro, a placa reiniciou e voltou a QVGA ou caiu do wifi.</p></div></details>
-    <details><summary>Por que a resolução do stream não pode mudar depois da calibração?</summary>
-    <div class="resposta"><p>A linha de contagem é gravada em <strong>pixels do quadro
-    original</strong>. Trocar a resolução move a porta debaixo da linha sem mover a linha:
-    ela passa a cruzar outro lugar da cena, e a contagem fica errada sem nenhum erro aparecer.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>A câmera manda fotos em fila, uma atrás da outra. Por que isso é bom para uma placa tão pequena?</summary>
+    <div class="resposta"><p>Porque o sensor já comprime JPEG em hardware: mandar a foto pronta não custa quase nada. A placa não precisa entender vídeo, nem juntar nada. Ela só entrega, e o PC faz o resto.</p></div></details>
+    <details><summary>O log mostra "Sem conexão" e o endereço está certo. Quais são as três suspeitas, em ordem?</summary>
+    <div class="resposta"><p>Alguém com a página da câmera aberta no navegador (um cliente por vez). O IP mudou (a placa pega outro a cada reinício). A placa reiniciou e caiu do wifi.</p></div></details>
+    <details><summary>A placa reiniciou e voltou a mandar fotos de 320×240. O que acontece com a contagem?</summary>
+    <div class="resposta"><p>Uma pessoa fica pequena demais na foto e o detector simplesmente não a vê. A contagem cai, sem nenhum erro aparecer. Por isso o tamanho tem de estar gravado no programa da placa, não escolhido no menu.</p></div></details>
+    <details><summary>A câmera sabe quantas pessoas passaram?</summary>
+    <div class="resposta"><p>Não. Ela não sabe nem o que é uma pessoa. Todo o trabalho é do PC, a partir das fotos.</p></div></details>
   </div>
 </section>
 
 <section id="e2">
-  <h3><span class="estacao">Estação 2</span>A regra de ouro: a dependência só aponta para baixo</h3>
+  <h3><span class="estacao">Estação 2</span>As camadas: a dependência só aponta para baixo</h3>
   <div class="arquivos">docs/arquitetura.md · src/fluxo/*/__init__.py</div>
 
-  <p>Esta é a decisão que organiza todo o resto, e a única que você precisa memorizar
-  antes de ler qualquer arquivo.</p>
+  <p class="pergunta">Se eu abrir uma pasta qualquer, como sei o que ela pode e o que ela não pode usar?</p>
+
+  <p>Pense num prédio. O andar de cima pode descer a escada e usar o que está embaixo. O
+  andar de baixo não sobe. O Limiar é um prédio de cinco andares, e a regra é uma só:
+  <strong>quem está em cima usa quem está embaixo. Nunca o contrário.</strong></p>
 
   <div class="camadas">
-    <div class="camada"><span class="nome">scripts/</span><span class="desc">argumentos e uma chamada</span></div>
+    <div class="camada"><span class="nome">scripts/</span><span class="desc">lê os argumentos e faz uma chamada</span></div>
     <div class="seta-baixo">↓</div>
-    <div class="camada"><span class="nome">agente/ · servico/</span><span class="desc">orquestração e transporte</span></div>
+    <div class="camada"><span class="nome">agente/ · servico/ · operacao/</span><span class="desc">junta as peças e manda pela rede</span></div>
     <div class="seta-baixo">↓</div>
-    <div class="camada pesada"><span class="nome">visao/</span><span class="desc">OpenCV e ultralytics vivem só aqui</span></div>
+    <div class="camada pesada"><span class="nome">visao/</span><span class="desc">OpenCV, YOLO e PyTorch moram só aqui</span></div>
     <div class="seta-baixo">↓</div>
-    <div class="camada pura"><span class="nome">contagem/ · reid/</span><span class="desc">geometria pura: sem numpy, sem cv2</span></div>
+    <div class="camada pura"><span class="nome">contagem/ · reid/</span><span class="desc">só aritmética: sem numpy, sem cv2</span></div>
     <div class="seta-baixo">↓</div>
-    <div class="camada pura"><span class="nome">dominio/</span><span class="desc">evento e rastro; sem infraestrutura</span></div>
+    <div class="camada pura"><span class="nome">dominio/</span><span class="desc">as palavras do problema: evento, rastro, período</span></div>
   </div>
 
-  <p>O motivo não é estético. A camada que decide se alguém passou é a mais crítica do
-  sistema, e mantê-la em Python puro permite prová-la com dezenas de casos em
-  milissegundos: sem GPU, sem modelo, sem vídeo. Instalar a camada de visão custa dois
-  gigabytes e meio de PyTorch. O núcleo continua testável sem ela, e é por isso que
-  <strong>os 494 testes rodam num ambiente que não tem OpenCV instalado</strong>.</p>
+  <p>Por que isso importa tanto? Porque a parte que decide se alguém passou, a pasta
+  <code>contagem/</code>, é a mais importante do sistema. Como ela não usa nenhuma
+  biblioteca pesada, dá para testá-la com dezenas de casos em milissegundos, sem GPU, sem
+  vídeo, sem modelo. Instalar a camada de visão custa dois gigabytes e meio. O resto do
+  sistema não precisa dela para ser testado, e é por isso que <strong>os 547 testes rodam
+  num computador sem OpenCV instalado</strong>.</p>
 
   <div class="citacao">
     Por que <code>Rastro</code> mora em <code>dominio</code> e não em <code>visao</code>:
     <code>contagem</code> precisa dele e não pode depender de <code>visao</code>. Uma pessoa
     sendo acompanhada é conceito do problema, não da biblioteca.
-    <cite>docs/arquitetura.md, linhas 29–31</cite>
+    <cite>docs/arquitetura.md</cite>
   </div>
 
-  <h4>Dois processos, não um</h4>
-  <p>O agente processa o vídeo e produz eventos. O serviço recebe e grava. Eles conversam
-  por HTTP mesmo rodando na mesma máquina, porque no destino final estarão separados: a
-  câmera fica na porta, o banco fica no servidor. Nascer monolítico significaria reescrever
-  na hora de instalar. E houve um ganho imediato: o painel inteiro foi construído com dados
-  sintéticos, meses antes de a visão computacional existir.</p>
+  <h4>Dois programas, não um</h4>
+  <p>O Limiar são dois programas conversando. O <strong>agente</strong> olha o vídeo e
+  produz eventos ("alguém entrou às 14h02"). O <strong>serviço</strong> recebe esses
+  eventos e guarda no banco. Eles falam por HTTP mesmo rodando no mesmo PC, porque um dia a
+  câmera vai estar na porta e o banco num servidor. Separar depois seria reescrever.
+  Separar antes custou um <code>POST</code>.</p>
 
-  <h4>As oito regras que não se quebram</h4>
+  <h4>As oito regras da casa</h4>
   <ol>
-    <li><strong>Nenhum caminho relativo, nenhum <code>os.chdir()</code>.</strong> Todo caminho sai de <code>config.py</code>, absoluto.</li>
-    <li><strong>O banco fica fora de pasta sincronizada.</strong> Sincronização concorrente corrompe SQLite.</li>
-    <li><strong>Scripts são finos.</strong> Lógica mora no pacote, para poder ser testada.</li>
-    <li><strong>A pasta de dados nunca entra no git.</strong> É imagem de pessoa real.</li>
-    <li><strong>Nenhuma coluna identifica pessoa.</strong> Não é lacuna a preencher depois; é a definição do sistema.</li>
-    <li><strong>A chave do evento não muda.</strong> O re-ID nunca reescreve o identificador do rastreador antes da contagem.</li>
-    <li><strong>Sem identidade, o laço é o de antes.</strong> Um teste trava que o resultado é igual com e sem ela.</li>
-    <li><strong>Nunca forçar um par.</strong> Um par inventado é pior que uma lacuna assumida.</li>
+    <li><strong>Nenhum caminho relativo.</strong> Todo caminho sai de <code>config.py</code>, completo.</li>
+    <li><strong>O banco fica fora do OneDrive.</strong> Sincronização enquanto se escreve corrompe SQLite.</li>
+    <li><strong>Scripts são finos.</strong> A lógica mora no pacote, onde dá para testar.</li>
+    <li><strong>A pasta <code>dados/</code> nunca entra no git.</strong> É imagem de gente real.</li>
+    <li><strong>Nenhuma coluna identifica pessoa.</strong> Não é um "depois a gente vê"; é a definição do sistema.</li>
+    <li><strong>A chave do evento não muda.</strong> A identidade nunca reescreve o número do rastreador.</li>
+    <li><strong>Sem identidade, o laço é o de antes.</strong> Um teste garante que o resultado é igual com e sem ela.</li>
+    <li><strong>Nunca forçar um par.</strong> Um par inventado é pior que um "não sei" assumido.</li>
   </ol>
 
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Cinco andares. Quem está em cima usa quem está embaixo. Nunca o contrário.</li>
+      <li>A contagem é aritmética pura, por isso testa em milissegundos.</li>
+      <li>Agente produz, serviço guarda. Dois programas, HTTP no meio.</li>
+    </ul>
+  </div>
+
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Um colega quer importar <code>numpy</code> em <code>contagem/geometria.py</code> para calcular o produto vetorial. O que você responde?</summary>
-    <div class="resposta"><p>Que a função já existe em duas linhas de aritmética, e que a
-    importação quebraria a propriedade mais valiosa do módulo: rodar no ambiente de núcleo,
-    sem os dois gigabytes e meio da camada de visão. O ganho de desempenho seria zero, porque
-    são operações escalares sobre dois pontos, não sobre vetores grandes.</p></div></details>
-    <details><summary>Onde deve morar um módulo novo que decide se duas trajetórias são a mesma pessoa?</summary>
-    <div class="resposta"><p>Em <code>reid/</code> ou num irmão puro de <code>contagem/</code>, recebendo
-    dados já prontos. Foi exatamente assim que a Etapa 2 entrou: a rede transforma imagem em
-    lista de números em <code>visao/aparencia.py</code>, e tudo daí para baixo só vê vetores.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Um colega quer importar numpy em <code>contagem/geometria.py</code>. O que você diz?</summary>
+    <div class="resposta"><p>Que a conta já está feita em duas linhas de aritmética, e que importar numpy tiraria a melhor propriedade da pasta: rodar e ser testada sem a camada de visão, que custa dois gigabytes e meio. Não ficaria mais rápido: são contas com dois pontos.</p></div></details>
+    <details><summary>Um módulo novo precisa decidir se duas trajetórias são a mesma pessoa. Em que andar ele mora?</summary>
+    <div class="resposta"><p>Num andar puro, embaixo de <code>visao/</code>: recebe números prontos e decide. Quem transforma imagem em números fica em <code>visao/</code>, e o andar de baixo nunca sobe para buscar nada.</p></div></details>
     <details><summary>Por que o agente fala HTTP com o serviço se os dois rodam na mesma máquina?</summary>
-    <div class="resposta"><p>Porque no destino não vão rodar. A câmera fica na porta e o banco no
-    servidor. Separar depois seria reescrever; separar antes custou um <code>POST</code>.</p></div></details>
+    <div class="resposta"><p>Porque no destino final não vão rodar juntos. A câmera fica na porta, o banco no servidor. Separar depois seria reescrever; separar antes custou um <code>POST</code>.</p></div></details>
   </div>
 </section>
 
@@ -923,23 +1012,26 @@ footer {
   <h3><span class="estacao">Estação 3</span>Um quadro nasce, e aprende a não morrer</h3>
   <div class="arquivos">src/fluxo/visao/fonte.py · fonte_mjpeg.py · fonte_viva.py</div>
 
-  <p>Três módulos empilhados, cada um resolvendo o que o anterior não resolvia. Vale
-  estudá-los nesta ordem, porque é a ordem em que foram escritos, e cada um é a resposta
-  a uma medição real.</p>
+  <p class="pergunta">Como o PC recebe as fotos da câmera, e o que acontece quando elas param de chegar?</p>
 
-  <h4>Primeiro: a fonte indiferente</h4>
-  <p><code>FonteDeVideo</code> entrega quadros com um instante associado. Arquivo, webcam e
-  stream entram pela mesma porta, porque <code>cv2.VideoCapture</code> aceita os três. Essa
-  indiferença é o que torna barata a troca para a câmera real: <strong>muda a string no
-  YAML, não o código</strong>.</p>
+  <p>São três peças, uma em cima da outra. Cada uma resolve um problema que a anterior
+  deixou. Leia nesta ordem, porque foi a ordem em que foram escritas.</p>
 
-  <p>O detalhe elegante é o instante. Num arquivo, ele é sintetizado a partir do índice do
-  quadro e da taxa; ao vivo, é o relógio. Um vídeo gravado ontem produz eventos com a hora
-  de ontem, e quem consome não distingue os dois casos.</p>
+  <h4>1. A fonte que não liga para a origem</h4>
+  <p><code>FonteDeVideo</code> entrega quadros, um por vez, cada um com a hora em que
+  aconteceu. Pode ser um arquivo, uma webcam ou uma câmera na rede: para quem consome, é
+  igual. Trocar para a câmera real foi <strong>trocar uma string no YAML</strong>, não
+  código.</p>
 
-  <h4>Depois: o caso patológico, medido</h4>
-  <p>O docstring de <code>fonte_mjpeg.py</code> é um relatório de medição, e é o melhor
-  exemplo no repositório de como documentar uma decisão.</p>
+  <p>Um detalhe bonito: a hora de cada quadro. Num arquivo gravado ontem, a hora é
+  calculada a partir da posição no vídeo. Ao vivo, é o relógio. Assim um vídeo de ontem
+  produz eventos com a hora de ontem, e ninguém precisa saber a diferença.</p>
+
+  <h4>2. O leitor de MJPEG feito à mão</h4>
+  <p>Aqui houve uma surpresa medida. O OpenCV, pedido para ler o stream da câmera,
+  entregava 1 quadro por segundo. O <code>curl</code>, um programa bobo que só baixa,
+  recebia 16. O OpenCV tratava a fila de fotos como se fosse um vídeo de verdade, com
+  buffers e ajustes que só atrapalham.</p>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/visao/fonte_mjpeg.py</span><span>linhas 1–8</span></div>
@@ -947,88 +1039,84 @@ footer {
 
 Medido contra a câmera real (XIAO ESP32S3, 01/09/2026): o `VideoCapture`
 entregou **1,1 quadro/s** de um stream que o `curl` baixava a 16 — e ainda
-estourou `Unknown C++ exception from OpenCV code`. O backend FFmpeg trata o
-`multipart/x-mixed-replace` como um contêiner de vídeo qualquer, com buffer e
-heurística de sincronismo que não fazem sentido para uma sequência de JPEGs
-independentes.</code></pre>
+estourou `Unknown C++ exception from OpenCV code`.</code></pre>
   </div>
 
-  <p>A solução foi escrever o separador de quadros à mão. Duas armadilhas ficaram gravadas
-  em comentário, e as duas custaram uma sessão de depuração cada.</p>
+  <p>A solução foi escrever o separador de fotos na mão. Ele lê o que chega pela rede,
+  acha onde cada JPEG começa e termina, e entrega. Duas armadilhas ficaram gravadas em
+  comentário, cada uma custou uma sessão de depuração. A primeira: o tamanho de cada foto
+  vem num cabeçalho, mas esse cabeçalho <em>não é o último</em>, e supor que era fez o
+  leitor conectar e nunca entregar nada. A segunda: sem um teto de memória, um servidor
+  que mande cabeçalho sem foto faria o buffer crescer até o programa morrer. O teto é 8
+  MB.</p>
 
-  <div class="bloco">
-    <div class="cabecalho"><span class="caminho">src/fluxo/visao/fonte_mjpeg.py</span><span>linhas 28–41</span></div>
-<pre><code class="language-python"># O ESP32 manda `Content-Length` em cada parte, e é nele que dá para confiar:
-# procurar o delimitador dentro do JPEG acharia a sequência por acaso, porque
-# dado binário contém qualquer coisa.
-#
-# O tamanho e o fim do cabeçalho são procurados em separado porque
-# `Content-Length` NÃO é o último campo: o firmware manda `X-Timestamp` depois
-# dele (`app_httpd.cpp:98` do CameraWebServer). Exigir `\r\n\r\n` colado ao
-# número fez a leitura devolver zero quadro — conectava, e nada chegava.
-_TAMANHO = re.compile(rb"Content-Length:\s*(\d+)", re.IGNORECASE)
-FIM_CABECALHO = b"\r\n\r\n"
+  <h4>3. A fonte que não morre</h4>
+  <p>Um arquivo acaba. Uma câmera, não: ela cai, reinicia, o wifi pisca, e o certo é
+  reconectar e continuar. <code>FonteViva</code> embrulha a fonte normal e cuida disso.
+  Tem três ideias dentro.</p>
 
-# Sem teto, um servidor que mande cabeçalho sem corpo faria o buffer crescer
-# até o processo morrer — numa operação de meses isso acontece.
-LIMITE_BUFFER = 8 * 1024 * 1024</code></pre>
-  </div>
+  <figure class="desenho">
+    <svg viewBox="0 0 560 150" role="img" aria-label="Uma thread lê a câmera e deixa só a foto mais recente numa fila de tamanho um; o laço de contagem pega dali">
+      <rect x="10" y="50" width="120" height="50" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"></rect>
+      <text x="70" y="72" fill="var(--ink)" font-size="11.5" text-anchor="middle">thread leitora</text>
+      <text x="70" y="88" fill="var(--ink-3)" font-size="10" text-anchor="middle">lê a câmera</text>
+      <path d="M 135 75 L 205 75" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#seta3)"></path>
+      <defs><marker id="seta3" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink-3)"></path></marker></defs>
+      <rect x="215" y="45" width="60" height="60" rx="4" fill="var(--surface)" stroke="var(--entrada)" stroke-width="2"></rect>
+      <text x="245" y="80" fill="var(--entrada)" font-size="18" text-anchor="middle">1</text>
+      <text x="245" y="125" fill="var(--ink-3)" font-size="10.5" text-anchor="middle">fila de UM lugar</text>
+      <text x="245" y="30" fill="var(--ink-3)" font-size="10.5" text-anchor="middle">foto nova empurra a velha fora</text>
+      <path d="M 285 75 L 355 75" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#seta3)"></path>
+      <rect x="365" y="50" width="180" height="50" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"></rect>
+      <text x="455" y="72" fill="var(--ink)" font-size="11.5" text-anchor="middle">laço de contagem</text>
+      <text x="455" y="88" fill="var(--ink-3)" font-size="10" text-anchor="middle">pega a mais recente</text>
+    </svg>
+    <figcaption>A CPU é mais lenta que a câmera. Sem descartar, ela ficaria vendo o passado.</figcaption>
+  </figure>
 
-  <h4>Por fim: a fonte que reconecta</h4>
-  <p><code>FonteDeVideo</code> tem semântica de arquivo: se a leitura falhou, acabou. Para um
-  stream isso está errado, porque a placa reinicia e o wifi pisca. <code>FonteViva</code>
-  <strong>compõe</strong> a fonte original em vez de modificá-la, para que arquivo continue
-  terminando no fim.</p>
-
-  <p>São três mecanismos que se sustentam:</p>
   <ul>
-    <li><strong>Uma thread leitora com fila de tamanho um.</strong> A CPU processa a onze
-    quadros por segundo e o stream pode mandar mais. Sem descartar, o buffer acumula atraso
-    crescente e a contagem passa a ver o passado.</li>
-    <li><strong>Recuo exponencial que zera com evidência de saúde</strong>, não com sucesso
-    de conexão. Conectar e não receber nada não conta como recuperação.</li>
-    <li><strong>Um watchdog do lado do consumidor.</strong> Sem quadro novo dentro do prazo,
-    a captura é fechada por baixo da thread, e a exceção resultante empurra a thread para o
-    caminho de reconexão que já existe.</li>
+    <li><strong>Fila de um lugar só.</strong> A câmera manda mais fotos do que a CPU consegue
+    olhar. Se guardássemos todas, a contagem ficaria cada vez mais atrasada. Guardando só a
+    última, o programa sempre vê o presente.</li>
+    <li><strong>Espera que dobra, e volta ao início quando chega foto.</strong> Caiu?
+    Espera 1 s, tenta. Caiu de novo? 2 s, 4 s, até 30 s. Conectar não zera a espera:
+    <em>receber uma foto</em> zera. Conectar numa câmera travada não é ficar bom.</li>
+    <li><strong>Um vigia do lado de quem consome.</strong> Passaram 10 s sem foto? O vigia
+    fecha a conexão por baixo da thread leitora. O erro que isso provoca empurra a thread
+    para o mesmo caminho de reconexão de sempre.</li>
   </ul>
 
   <div class="caixa nota">
     <div class="rotulo">A técnica que vale roubar</div>
-    <p>Não dá para matar uma thread em Python. Em vez de tentar, o watchdog fecha o socket
-    debaixo dela e deixa o erro fazer o trabalho. Um único caminho de recuperação, com dois
-    gatilhos diferentes.</p>
+    <p>Não dá para matar uma thread em Python. Então não tente: feche o socket que ela está
+    usando e deixe o erro fazer o trabalho. Um caminho de recuperação só, com dois gatilhos.</p>
   </div>
 
-  <p>Quando a queda foi longa, o primeiro quadro reconstruído carrega uma marca,
-  <code>apos_lacuna</code>, que atravessa todo o pipeline até a linha de contagem. E há um
-  cuidado fácil de esquecer: se esse quadro for descartado pela fila de tamanho um, a marca
-  é <strong>transferida</strong> para o quadro que o substitui.</p>
+  <p>Quando a queda foi longa (mais de 30 s), a primeira foto que volta carrega uma
+  marca, <code>apos_lacuna</code>. Ela viaja até a linha de contagem, que então esquece
+  quem estava na cena. Por quê? Porque quem estava lá há um minuto já não está, e o
+  rastreador reaproveita números: sem esquecer, alguém novo poderia herdar o "lado" de
+  outra pessoa e gerar um cruzamento fantasma. E há um cuidado pequeno: se essa foto
+  marcada for empurrada para fora da fila de um lugar, a marca passa para a foto seguinte.
+  A marca nunca se perde.</p>
 
-  <div class="bloco">
-    <div class="cabecalho"><span class="caminho">src/fluxo/visao/fonte_viva.py</span><span>linhas 176–181</span></div>
-<pre><code class="language-python">        try:
-            descartado = self._fila.get_nowait()
-            # A marca de lacuna não pode se perder num descarte: ela é o único
-            # aviso de que o estado de contagem ficou inválido.
-            if descartado.apos_lacuna and not quadro.apos_lacuna:
-                quadro = replace(quadro, apos_lacuna=True)</code></pre>
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Arquivo, webcam e câmera de rede entram pela mesma porta.</li>
+      <li>Fila de um lugar: o programa sempre vê o presente.</li>
+      <li>A espera só zera quando chega foto. Conectar não é ficar bom.</li>
+    </ul>
   </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que a fila tem tamanho um, e não dez?</summary>
-    <div class="resposta"><p>Porque um quadro velho não interessa. Se a fila guardasse dez, o
-    consumidor processaria imagens de um segundo atrás, e o atraso cresceria sem limite
-    enquanto o stream fosse mais rápido que a CPU. Guardar só o mais recente troca completude
-    por atualidade, que é o certo para uma câmera ao vivo.</p></div></details>
-    <details><summary>A conexão é restabelecida mas nenhum quadro chega. O recuo deve zerar?</summary>
-    <div class="resposta"><p>Não, e o código é explícito nisso: o recuo volta ao início na linha
-    em que um quadro é efetivamente recebido, com o comentário "conexão entregando quadro é
-    conexão sã". Zerar ao conectar faria o agente martelar uma câmera travada.</p></div></details>
-    <details><summary>Por que <code>fonte_viva.py</code> não importa <code>cv2</code>?</summary>
-    <div class="resposta"><p>Para os testes rodarem no ambiente de núcleo. A fonte real só entra
-    pela fábrica padrão, em tempo de execução, e os testes injetam fontes falsas com relógio e
-    espera também injetados, fazendo o tempo andar sem dormir de verdade.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Por que a fila tem um lugar, e não dez?</summary>
+    <div class="resposta"><p>Porque foto velha não interessa. Com dez lugares, o programa processaria fotos de um segundo atrás, e o atraso só cresceria. Guardar só a última troca "ver tudo" por "ver agora", que é o certo para uma câmera ao vivo.</p></div></details>
+    <details><summary>A conexão voltou, mas nenhuma foto chega. A espera deve zerar?</summary>
+    <div class="resposta"><p>Não. A espera só zera quando uma foto é recebida. Conectar numa câmera travada não é ficar bom; zerar ali faria o agente martelar a câmera sem parar.</p></div></details>
+    <details><summary>A câmera ficou dois minutos fora do ar e voltou. O que a primeira foto traz de diferente?</summary>
+    <div class="resposta"><p>A marca <code>apos_lacuna</code>. Ela avisa a contagem para esquecer quem estava na cena, porque essas pessoas já não estão lá e um número reaproveitado poderia herdar o lado de outra pessoa.</p></div></details>
   </div>
 </section>
 
@@ -1036,9 +1124,15 @@ LIMITE_BUFFER = 8 * 1024 * 1024</code></pre>
   <h3><span class="estacao">Estação 4</span>O quadro vira caixas</h3>
   <div class="arquivos">src/fluxo/visao/rastreador.py</div>
 
-  <p>Detecção e rastreamento acontecem numa chamada só, e isso é uma decisão, não
-  preguiça: a cola manual entre detector e rastreador é justamente onde erram as
-  implementações caseiras.</p>
+  <p class="pergunta">Como uma foto vira "pessoa 7 está aqui"?</p>
+
+  <p>Duas tarefas diferentes, feitas por dois programas dentro de uma biblioteca só. O
+  <strong>detector</strong> (YOLO) olha uma foto e desenha uma caixa em volta de cada
+  pessoa. O <strong>rastreador</strong> (ByteTrack) olha as caixas desta foto e da
+  anterior e diz: "esta caixa é a mesma pessoa daquela". É ele que dá o número: pessoa 7.</p>
+
+  <p>No Limiar as duas tarefas acontecem numa chamada só. Isso é decisão, não preguiça: a
+  cola entre detector e rastreador é justamente onde as implementações caseiras erram.</p>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/visao/rastreador.py</span><span>linhas 70–81</span></div>
@@ -1056,24 +1150,28 @@ LIMITE_BUFFER = 8 * 1024 * 1024</code></pre>
         )</code></pre>
   </div>
 
-  <p>Cada argumento carrega uma razão. <code>persist=True</code> é a pegadinha clássica da
-  biblioteca: sem ele, o identificador reinicia a cada quadro e nada funciona.
-  <code>classes=[0]</code> filtra "pessoa" dentro do modelo, o que é mais barato que
-  filtrar depois e elimina carro, mochila e cadeira. E a confiança mínima de 0,30 é
-  <strong>baixa de propósito</strong>, pelo motivo que justifica o rastreador escolhido.</p>
+  <p>Três argumentos têm história:</p>
+  <ul>
+    <li><code>persist=True</code>: sem isso o número da pessoa recomeça a cada foto, e
+    nada funciona. É a pegadinha clássica da biblioteca.</li>
+    <li><code>classes=[0]</code>: "só pessoa". Filtra dentro do modelo, mais barato que
+    filtrar depois, e elimina carro, mochila, cadeira.</li>
+    <li><code>conf=0,30</code>: uma confiança <strong>baixa de propósito</strong>. Vem
+    a seguir por quê.</li>
+  </ul>
 
-  <div class="citacao">
-    Por que ByteTrack e não SORT ou DeepSORT: o ByteTrack associa em duas passadas —
-    primeiro com as detecções de alta confiança, depois tentando casar os tracks órfãos com
-    as de baixa confiança, que os outros descartam. Detecção fraca geralmente não é ruído,
-    é uma pessoa parcialmente ocluída; se há um track esperando naquela posição, a evidência
-    fraca basta. Menos track quebrado significa menos contagem duplicada, que é o modo de
-    falha mais caro daqui.
-    <cite>src/fluxo/visao/rastreador.py, linhas 6–12</cite>
-  </div>
+  <h4>Por que ByteTrack</h4>
+  <p>Imagine que uma pessoa passa atrás de um pilar. Por um instante o detector só vê
+  metade dela, e diz "acho que tem alguém aí, 35% de certeza". A maioria dos rastreadores
+  joga essa detecção fraca fora. O ByteTrack faz diferente: se já existia uma pessoa
+  esperando bem naquele lugar, a evidência fraca basta para manter o número dela. Menos
+  número quebrado significa menos gente contada duas vezes, que é o erro mais caro daqui.
+  Por isso a confiança mínima é baixa: detecção fraca <em>sozinha</em> não vira pessoa
+  nova; ela só serve para não perder quem já existe.</p>
 
-  <p>A conversão para o domínio é a <strong>fronteira</strong> do projeto: é aqui que
-  tensores viram Python puro, e nada de PyTorch atravessa para a camada de contagem.</p>
+  <h4>A fronteira</h4>
+  <p>Logo depois, os números saem do PyTorch e viram listas Python comuns. Esta é a linha
+  divisória do projeto: daqui para baixo, ninguém sabe o que é tensor ou GPU.</p>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/visao/rastreador.py</span><span>linhas 85–93</span></div>
@@ -1090,28 +1188,28 @@ LIMITE_BUFFER = 8 * 1024 * 1024</code></pre>
 
   <div class="caixa">
     <div class="rotulo">Medição que contraria a intuição</div>
-    <p>Modelo maior <strong>piorou</strong> o resultado: o erro foi de 31,2% com o
-    <code>yolo11n</code>, 37,5% com o <code>s</code> e 43,8% com o <code>m</code>. A conclusão
-    é que o gargalo é oclusão, não capacidade de detecção. Trocar o modelo por um maior é a
-    primeira coisa que todo mundo tenta, e neste problema é a errada.</p>
+    <p>Modelo maior <strong>piorou</strong>. Erro de 31% com o menor (<code>yolo11n</code>),
+    37% com o médio, 44% com o grande. O gargalo não é enxergar; é gente tapando gente.
+    Trocar por um modelo maior é a primeira coisa que todo mundo tenta, e aqui é a errada.</p>
+  </div>
+
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Detector desenha caixas. Rastreador dá o número. Uma chamada faz os dois.</li>
+      <li>Confiança baixa de propósito: serve para não perder quem já existe.</li>
+      <li><code>.cpu().tolist()</code> é a fronteira: daqui para baixo, só Python.</li>
+    </ul>
   </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que a confiança mínima é baixa, se detecção fraca gera falso positivo?</summary>
-    <div class="resposta"><p>Porque o ByteTrack sabe aproveitá-la: ele só usa as detecções fracas
-    para casar tracks que já existem e ficaram órfãos. Uma detecção fraca sozinha, sem track
-    esperando, não vira pessoa nova. E há uma segunda defesa depois, a idade mínima de track,
-    que descarta quem aparece por um quadro só.</p></div></details>
-    <details><summary>Em quais situações <code>caixas.id</code> vem nulo?</summary>
-    <div class="resposta"><p>Nos primeiros quadros, antes de o rastreador ter formado qualquer
-    associação, e quando há detecções mas nenhuma foi associada a um track. Sem identificador
-    não há trajetória, e sem trajetória não há como decidir cruzamento, então o retorno é
-    uma lista vazia.</p></div></details>
-    <details><summary>O que <code>.cpu().tolist()</code> faz, e por que está justamente aqui?</summary>
-    <div class="resposta"><p>Traz o tensor da GPU para a memória principal e o converte em lista
-    Python. Está aqui porque este é o ponto exato em que a camada de visão termina: daqui para
-    baixo ninguém importa PyTorch, e é isso que mantém a contagem testável sem GPU.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Detecção fraca gera falso positivo. Por que a confiança mínima é baixa mesmo assim?</summary>
+    <div class="resposta"><p>Porque o ByteTrack só usa detecção fraca para manter um número que já existe, de alguém que ficou meio tapado. Uma detecção fraca sozinha, sem ninguém esperando naquele lugar, não vira pessoa nova.</p></div></details>
+    <details><summary>Quando <code>caixas.id</code> vem vazio?</summary>
+    <div class="resposta"><p>Nas primeiras fotos, antes de o rastreador ter formado qualquer pessoa, ou quando há caixas mas nenhuma ganhou número. Sem número não há como acompanhar ninguém, então volta lista vazia.</p></div></details>
+    <details><summary>O que <code>.cpu().tolist()</code> faz, e por que está bem aqui?</summary>
+    <div class="resposta"><p>Traz os números da GPU para a memória normal e vira lista Python. Está aqui porque é onde a camada de visão termina. Daqui para baixo ninguém importa PyTorch, e é isso que mantém a contagem testável sem GPU.</p></div></details>
   </div>
 </section>
 
@@ -1119,9 +1217,33 @@ LIMITE_BUFFER = 8 * 1024 * 1024</code></pre>
   <h3><span class="estacao">Estação 5</span>As caixas viram rastro, e o rastro tem pés</h3>
   <div class="arquivos">src/fluxo/dominio/rastro.py · src/fluxo/contagem/trajetoria.py</div>
 
-  <p>Duas peças pequenas, e uma delas contém talvez a decisão mais importante do sistema
-  inteiro. A caixa que o detector devolve tem quatro números. Qual ponto dela representa a
-  pessoa?</p>
+  <p class="pergunta">Uma caixa tem quatro cantos. Qual ponto dela é "a pessoa"?</p>
+
+  <p>Parece detalhe. É talvez a decisão mais importante do sistema. A linha de contagem
+  está desenhada <em>no chão</em> da imagem. Se o ponto que representa a pessoa for o
+  centro da caixa, ele fica na altura do peito, num plano diferente do chão, e sobe quando
+  a pessoa levanta o braço. O pé fica no chão, no mesmo plano da linha. Então o Limiar usa
+  o pé: o meio da borda de baixo da caixa.</p>
+
+  <figure class="desenho">
+    <svg viewBox="0 0 560 170" role="img" aria-label="Uma caixa em volta de uma pessoa; o centro flutua no peito, o ponto base fica no pé, sobre a linha do chão">
+      <line x1="20" y1="140" x2="540" y2="140" stroke="var(--limite)" stroke-width="3"></line>
+      <text x="540" y="160" fill="var(--limite)" font-size="11" text-anchor="end">linha, desenhada no chão</text>
+      <rect x="120" y="30" width="80" height="110" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"></rect>
+      <circle cx="160" cy="55" r="11" fill="none" stroke="var(--ink-3)" stroke-width="2"></circle>
+      <path d="M 160 66 L 160 105 M 160 78 L 140 95 M 160 78 L 182 60 M 160 105 L 148 138 M 160 105 L 172 138" stroke="var(--ink-3)" stroke-width="2" fill="none"></path>
+      <circle cx="160" cy="85" r="5" fill="var(--ink-3)"></circle>
+      <text x="215" y="88" fill="var(--ink-3)" font-size="11">centro: flutua no peito</text>
+      <circle cx="160" cy="140" r="6" fill="var(--entrada)"></circle>
+      <text x="215" y="130" fill="var(--entrada)" font-size="11">ponto_base: o pé, no chão</text>
+      <rect x="380" y="45" width="80" height="95" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"></rect>
+      <circle cx="420" cy="68" r="11" fill="none" stroke="var(--ink-3)" stroke-width="2"></circle>
+      <path d="M 420 79 L 420 112 M 420 88 L 400 100 M 420 88 L 445 70 M 420 112 L 410 138 M 420 112 L 430 138" stroke="var(--ink-3)" stroke-width="2" fill="none"></path>
+      <text x="420" y="30" fill="var(--ink-3)" font-size="10.5" text-anchor="middle">meio tapada: o centro muda</text>
+      <circle cx="420" cy="140" r="6" fill="var(--entrada)"></circle>
+    </svg>
+    <figcaption>O pé e a linha estão no mesmo plano. A geometria passa a bater com o mundo.</figcaption>
+  </figure>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/dominio/rastro.py</span><span>linhas 27–36</span></div>
@@ -1137,47 +1259,260 @@ LIMITE_BUFFER = 8 * 1024 * 1024</code></pre>
         return ((x1 + x2) / 2.0, y2)</code></pre>
   </div>
 
-  <p>A linha de contagem é desenhada no chão da imagem. Se o ponto que representa a pessoa
-  for o centro da caixa, ele flutua na altura do peito, num plano diferente do da linha, e
-  sobe quando ela levanta o braço. O pé fica no mesmo plano da linha. A geometria passa a
-  corresponder à física.</p>
-
-  <p>A segunda peça existe porque a caixa oscila alguns pixels entre quadros. Sem suavizar,
-  uma pessoa parada em cima da linha alterna de lado várias vezes por segundo e o contador
-  dispara em série. <code>Trajetoria</code> guarda as últimas posições numa
-  <code>deque</code> com tamanho máximo e devolve a média móvel.</p>
+  <h4>O tremor</h4>
+  <p>A caixa treme alguns pixels de uma foto para a outra. Uma pessoa parada em cima da
+  linha trocaria de lado várias vezes por segundo, e o contador dispararia em série.
+  <code>Trajetoria</code> guarda as últimas posições e devolve a média das três mais
+  recentes. É um filtro simples, e resolve.</p>
 
   <div class="caixa nota">
     <div class="rotulo">Vocabulário</div>
-    <p>O identificador de track vale só dentro de uma câmera e enquanto a pessoa está
-    visível. Se ela sai do quadro e volta, ganha um número novo, <strong>e isso é
-    esperado</strong>. Toda a Etapa 2 existe para lidar com essa consequência.</p>
+    <p>O número da pessoa (o <em>track</em>) vale só naquela câmera e enquanto ela está
+    visível. Saiu do quadro e voltou? Ganha outro número. <strong>Isso é esperado.</strong>
+    A Estação 12 existe inteira para lidar com essa consequência.</p>
+  </div>
+
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>A pessoa é o pé, não o centro da caixa. Pé e linha no mesmo plano.</li>
+      <li>Média de três posições tira o tremor.</li>
+      <li>Track é número temporário. Sair e voltar dá outro.</li>
+    </ul>
   </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>A câmera é montada no teto, apontada para baixo. O ponto do pé continua sendo a escolha certa?</summary>
-    <div class="resposta"><p>Não da mesma forma. Numa vista zenital não há distinção entre pé e
-    cabeça no plano da imagem, e o centro da caixa passa a ser razoável. O projeto tem uma
-    câmera zenital cadastrada justamente como contraexemplo, marcada como inativa: ela conta,
-    mas de cima não há aparência para re-identificar, e a resolução é pequena demais.</p></div></details>
-    <details><summary>A trajetória guarda trinta posições mas a média usa três. Por quê?</summary>
-    <div class="resposta"><p>Para permitir experimentar janelas maiores sem mudar a estrutura de
-    dados. A capacidade é folga deliberada, não desperdício.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>A câmera é montada no teto, olhando para baixo. O pé continua sendo a escolha certa?</summary>
+    <div class="resposta"><p>Não. Vista de cima, não há "pé" e "cabeça" na imagem, e o centro da caixa passa a ser razoável. O projeto tem uma câmera assim cadastrada como contraexemplo, inativa.</p></div></details>
+    <details><summary>Uma pessoa para em cima da linha e fica ali. O que aconteceria sem a média das três posições?</summary>
+    <div class="resposta"><p>A caixa treme alguns pixels de uma foto para a outra. O pé dela trocaria de lado da linha várias vezes por segundo, e o contador dispararia em série: entrou, saiu, entrou, saiu.</p></div></details>
+    <details><summary>A pessoa saiu do quadro e voltou dois minutos depois. Ela tem o mesmo número?</summary>
+    <div class="resposta"><p>Não, e isso é esperado. O número vale enquanto ela está visível. Saber que é a mesma pessoa é outro problema, resolvido só na Estação 12.</p></div></details>
   </div>
 </section>
 
 <section id="e6">
   <h3><span class="estacao">Estação 6</span>O rastro cruza a linha</h3>
-  <div class="arquivos">src/fluxo/contagem/geometria.py · src/fluxo/contagem/linha.py</div>
+  <div class="arquivos">src/fluxo/contagem/geometria.py · src/fluxo/contagem/linha.py · src/fluxo/contagem/trajetoria.py</div>
 
-  <p>Chegamos ao centro. Este é o componente mais crítico do sistema, e é o único que não
-  importa nada: só <code>math.hypot</code>, para que a parte que decide se alguém passou
-  possa ser provada em milissegundos.</p>
+  <p class="pergunta">Como saber, só com números, que uma pessoa atravessou a linha?</p>
 
-  <h4>De que lado está o ponto</h4>
-  <p>Tudo sai de uma operação de ensino médio. O sinal do produto vetorial diz de que lado
-  da reta o ponto está.</p>
+  <p>Chegamos ao coração. É a parte mais importante do sistema e a que usa menos coisa:
+  nenhuma biblioteca, nenhum modelo, só aritmética com quatro números por vez. Esta
+  estação é a mais longa e a mais matemática do livro, de propósito. Quando você sair
+  dela, vai conseguir refazer no papel cada conta que o programa faz, e vai saber
+  <em>por que</em> cada uma existe.</p>
+
+  <p>Vamos usar a porta de verdade o tempo todo. A linha calibrada em 01/09/2026 na
+  câmera <code>entrada_real</code> é esta, em pixels de uma foto de 640×480:</p>
+
+  <div class="rolar">
+  <table class="conta">
+    <thead><tr><th>Nome</th><th>De onde vem</th><th>Valor</th></tr></thead>
+    <tbody>
+      <tr><td>A</td><td>primeiro ponto da linha (<code>cameras.yaml</code>)</td><td>(253, 410)</td></tr>
+      <tr><td>B</td><td>segundo ponto da linha</td><td>(380, 411)</td></tr>
+      <tr><td>lado_dentro</td><td>calibração</td><td>+1</td></tr>
+      <tr><td>zona_morta_px</td><td><code>pipeline.yaml</code></td><td>15</td></tr>
+      <tr><td>P<sub>1</sub></td><td>uma pessoa, antes da porta (inventada para o exemplo)</td><td>(300, 380)</td></tr>
+      <tr><td>P<sub>2</sub></td><td>a mesma pessoa, depois da porta</td><td>(300, 440)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>O caminho tem sete paradas. Cada uma acrescenta uma ideia à anterior.</p>
+  <ol class="passos">
+    <li><strong>O palco.</strong> Pixels são coordenadas, e o eixo y aponta para baixo.</li>
+    <li><strong>Setas.</strong> Um vetor é a diferença entre dois pontos.</li>
+    <li><strong>O produto vetorial.</strong> Uma área com sinal, e o sinal diz o lado.</li>
+    <li><strong>A distância.</strong> A mesma área, dividida pela base: a zona morta.</li>
+    <li><strong>O gráfico.</strong> O que o programa "vê" quando alguém atravessa.</li>
+    <li><strong>O segmento.</strong> Trocar de lado não basta: quatro sinais.</li>
+    <li><strong>O sistema linear.</strong> Onde, exatamente, o caminho cortou a linha.</li>
+  </ol>
+
+  <h4>1. O palco: pixels, com o y para baixo</h4>
+  <p>Uma foto de 640×480 é uma grade. Cada pixel tem um endereço (x, y). O detalhe que
+  pega todo mundo: <strong>a origem fica no canto superior esquerdo e o y cresce para
+  baixo</strong>. No caderno de matemática o y sobe. Na imagem, desce. Guarde isso, porque
+  daqui a duas paradas ele vira um sinal trocado.</p>
+
+  <figure class="desenho">
+    <svg viewBox="0 0 440 290" role="img" aria-label="A foto de 640 por 480 como uma grade, com a origem no canto superior esquerdo, o eixo y para baixo, e a linha de A até B perto da base">
+      <rect x="40" y="20" width="320" height="240" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1.5"></rect>
+      <g stroke="var(--rule-soft)" stroke-width="1">
+        <line x1="120" y1="20" x2="120" y2="260"></line><line x1="200" y1="20" x2="200" y2="260"></line><line x1="280" y1="20" x2="280" y2="260"></line>
+        <line x1="40" y1="80" x2="360" y2="80"></line><line x1="40" y1="140" x2="360" y2="140"></line><line x1="40" y1="200" x2="360" y2="200"></line>
+      </g>
+      <path d="M 40 20 L 400 20" stroke="var(--ink)" stroke-width="1.5" marker-end="url(#seta6x)"></path>
+      <path d="M 40 20 L 40 285" stroke="var(--ink)" stroke-width="1.5" marker-end="url(#seta6x)"></path>
+      <defs><marker id="seta6x" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--ink)"></path></marker></defs>
+      <text x="408" y="24" fill="var(--ink)" font-size="12">x</text>
+      <text x="36" y="284" fill="var(--ink)" font-size="12" text-anchor="end">y</text>
+      <text x="30" y="16" fill="var(--ink-3)" font-size="10" text-anchor="end">(0,0)</text>
+      <text x="360" y="14" fill="var(--ink-3)" font-size="10" text-anchor="end">x = 640</text>
+      <text x="36" y="262" fill="var(--ink-3)" font-size="10" text-anchor="end">480</text>
+      <line x1="166.5" y1="225" x2="230" y2="225.5" stroke="var(--limite)" stroke-width="3"></line>
+      <circle cx="166.5" cy="225" r="4" fill="var(--limite)"></circle>
+      <circle cx="230" cy="225.5" r="4" fill="var(--limite)"></circle>
+      <text x="160" y="244" fill="var(--limite)" font-size="11" text-anchor="middle">A (253, 410)</text>
+      <text x="246" y="244" fill="var(--limite)" font-size="11" text-anchor="middle">B (380, 411)</text>
+      <text x="198" y="210" fill="var(--saida)" font-size="10.5" text-anchor="middle">lado −1</text>
+      <text x="198" y="257" fill="var(--entrada)" font-size="10.5" text-anchor="middle">lado +1 = dentro</text>
+      <circle cx="190" cy="210" r="3" fill="var(--saida)"></circle>
+      <circle cx="190" cy="240" r="3" fill="var(--entrada)"></circle>
+    </svg>
+    <figcaption>A linha real está perto da base da foto e quase deitada: de A até B ela
+    sobe 1 pixel em 127 (0,45°). Os dois pontos de exemplo, P<sub>1</sub> e P<sub>2</sub>,
+    estão acima e abaixo dela na tela.</figcaption>
+  </figure>
+
+  <h4>2. Setas: um vetor é uma diferença</h4>
+  <p>Um ponto é um lugar. Um <strong>vetor</strong> é um deslocamento: "ande tanto em x e
+  tanto em y". Para obter o vetor que leva de A até B, basta subtrair: <b>d</b> = B − A.
+  Nos nossos números:</p>
+
+  <div class="formula">
+    <b>d</b> = B − A = (380 − 253, 411 − 410) = (127, 1)
+    <span class="leg">a linha, como uma seta que aponta de A para B</span>
+  </div>
+
+  <p>Do mesmo jeito, a seta de A até a pessoa é <b>v</b> = P − A. Para P<sub>1</sub> =
+  (300, 380) dá <b>v</b><sub>1</sub> = (47, −30); para P<sub>2</sub> = (300, 440) dá
+  <b>v</b><sub>2</sub> = (47, 30). Repare que as duas têm o mesmo x e y trocado de sinal:
+  P<sub>1</sub> está 30 pixels "acima" da altura de A, P<sub>2</sub> está 30 "abaixo".
+  Toda a geometria da estação é feita com pares de setas assim.</p>
+
+  <figure class="desenho">
+    <svg viewBox="0 0 560 210" role="img" aria-label="A seta d de A até B e as setas v1 e v2 de A até P1 e P2">
+      <defs>
+        <marker id="seta6d" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--limite)"></path></marker>
+        <marker id="seta6v" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--ink)"></path></marker>
+      </defs>
+      <line x1="80" y1="105" x2="460" y2="108" stroke="var(--limite)" stroke-width="3" marker-end="url(#seta6d)"></line>
+      <circle cx="80" cy="105" r="5" fill="var(--limite)"></circle>
+      <text x="70" y="110" fill="var(--limite)" font-size="12" text-anchor="end">A</text>
+      <text x="470" y="112" fill="var(--limite)" font-size="12">B</text>
+      <text x="270" y="126" fill="var(--limite)" font-size="11" text-anchor="middle">d = (127, 1)</text>
+      <line x1="80" y1="105" x2="221" y2="15" stroke="var(--ink)" stroke-width="1.8" marker-end="url(#seta6v)"></line>
+      <circle cx="221" cy="15" r="5" fill="var(--saida)"></circle>
+      <text x="232" y="20" fill="var(--saida)" font-size="12">P₁ (300, 380)</text>
+      <text x="118" y="52" fill="var(--ink)" font-size="11" transform="rotate(-33 118 52)">v₁ = (47, −30)</text>
+      <line x1="80" y1="105" x2="221" y2="195" stroke="var(--ink)" stroke-width="1.8" marker-end="url(#seta6v)"></line>
+      <circle cx="221" cy="195" r="5" fill="var(--entrada)"></circle>
+      <text x="232" y="200" fill="var(--entrada)" font-size="12">P₂ (300, 440)</text>
+      <text x="118" y="170" fill="var(--ink)" font-size="11" transform="rotate(33 118 170)">v₂ = (47, 30)</text>
+    </svg>
+    <figcaption>Três setas saindo de A. A pergunta da próxima parada é: a seta da pessoa
+    está "à esquerda" ou "à direita" da seta da linha?</figcaption>
+  </figure>
+
+  <h4>3. O produto vetorial: uma área com sinal</h4>
+  <p>Aqui está a conta central do Limiar. Dadas duas setas <b>d</b> = (d<sub>x</sub>,
+  d<sub>y</sub>) e <b>v</b> = (v<sub>x</sub>, v<sub>y</sub>), o <strong>produto
+  vetorial</strong> é um único número:</p>
+
+  <div class="formula">
+    <b>d</b> × <b>v</b> = d<sub>x</sub>·v<sub>y</sub> − d<sub>y</sub>·v<sub>x</sub>
+    <span class="leg">produto_vetorial(a, b, p) no geometria.py, com d = b − a e v = p − a</span>
+  </div>
+
+  <p>É exatamente a linha de código, só que com nomes: <code>(b[0]-a[0])</code> é
+  d<sub>x</sub>, <code>(p[1]-a[1])</code> é v<sub>y</sub>, e assim por diante. Vamos
+  fazer a conta para os dois pontos:</p>
+
+  <div class="rolar">
+  <table class="conta">
+    <thead><tr><th>Ponto</th><th>v = P − A</th><th>d<sub>x</sub>·v<sub>y</sub></th><th>d<sub>y</sub>·v<sub>x</sub></th><th>d × v</th><th>lado</th></tr></thead>
+    <tbody>
+      <tr><td>P<sub>1</sub> (300, 380)</td><td>(47, −30)</td><td>127 · (−30) = −3810</td><td>1 · 47 = 47</td><td>−3810 − 47 = <strong>−3857</strong></td><td>−1</td></tr>
+      <tr><td>P<sub>2</sub> (300, 440)</td><td>(47, 30)</td><td>127 · 30 = 3810</td><td>1 · 47 = 47</td><td>3810 − 47 = <strong>+3763</strong></td><td>+1</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Sinais opostos, lados opostos. Isso é tudo o que a função <code>lado</code> devolve.
+  Mas por que essa conta funciona? Porque ela mede uma <strong>área</strong>.</p>
+
+  <p>Pegue as duas setas saindo de A e complete o paralelogramo. A área dele é
+  base × altura. A base é o comprimento de <b>d</b>; a altura é o quanto <b>v</b> se
+  afasta da linha, ou seja, |<b>v</b>|·sen θ, sendo θ o ângulo entre as setas. Então:</p>
+
+  <div class="formula">
+    <b>d</b> × <b>v</b> = |<b>d</b>| · |<b>v</b>| · sen θ = área do paralelogramo, com sinal
+  </div>
+
+  <p>O seno é o que dá o sinal. Se <b>v</b> gira num sentido em relação a <b>d</b>, θ é
+  positivo; se gira no outro, negativo. A área "vira do avesso". Zero quer dizer θ = 0
+  ou 180°: a pessoa está exatamente em cima da reta.</p>
+
+  <figure class="desenho largo">
+    <svg viewBox="0 0 620 240" role="img" aria-label="Paralelogramo formado pelas setas d e v; a área é o produto vetorial; um ponto do outro lado dá área negativa">
+      <defs>
+        <marker id="seta6p" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--ink)"></path></marker>
+        <marker id="seta6q" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--limite)"></path></marker>
+      </defs>
+      <polygon points="120,150 420,140 560,60 260,70" fill="var(--glow-saida)" stroke="var(--saida)" stroke-width="1" stroke-dasharray="4 3"></polygon>
+      <line x1="120" y1="150" x2="420" y2="140" stroke="var(--limite)" stroke-width="3" marker-end="url(#seta6q)"></line>
+      <line x1="120" y1="150" x2="260" y2="70" stroke="var(--ink)" stroke-width="1.8" marker-end="url(#seta6p)"></line>
+      <line x1="260" y1="70" x2="260" y2="145" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3"></line>
+      <text x="266" y="112" fill="var(--ink-3)" font-size="10.5">altura = |v|·sen θ</text>
+      <path d="M 165 148 A 45 45 0 0 0 158 128" fill="none" stroke="var(--ink)" stroke-width="1.2"></path>
+      <text x="172" y="134" fill="var(--ink)" font-size="11">θ</text>
+      <circle cx="120" cy="150" r="5" fill="var(--limite)"></circle>
+      <text x="108" y="155" fill="var(--limite)" font-size="12" text-anchor="end">A</text>
+      <text x="430" y="145" fill="var(--limite)" font-size="12">B</text>
+      <text x="270" y="162" fill="var(--limite)" font-size="11" text-anchor="middle">base = |d|</text>
+      <circle cx="260" cy="70" r="5" fill="var(--saida)"></circle>
+      <text x="252" y="60" fill="var(--saida)" font-size="12" text-anchor="end">P₁</text>
+      <text x="340" y="100" fill="var(--saida)" font-size="12" text-anchor="middle">área = d × v &lt; 0</text>
+      <circle cx="300" cy="215" r="5" fill="var(--entrada)"></circle>
+      <line x1="120" y1="150" x2="300" y2="215" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="4 3"></line>
+      <text x="312" y="220" fill="var(--entrada)" font-size="12">P₂ · área &gt; 0</text>
+    </svg>
+    <figcaption>A área do paralelogramo é o produto vetorial. Um ponto do outro lado da
+    linha forma um paralelogramo "virado", e a área sai negativa. O valor sai em
+    pixels ao quadrado, porque é área mesmo.</figcaption>
+  </figure>
+
+  <p>Dá para ver a mesma conta como um <strong>determinante</strong>. Ponha as duas setas
+  como colunas de uma matriz 2×2:</p>
+
+  <div class="formula">
+    det <span class="mat"><span>d<sub>x</sub></span><span>v<sub>x</sub></span><span>d<sub>y</sub></span><span>v<sub>y</sub></span></span>
+    = d<sub>x</sub>·v<sub>y</sub> − d<sub>y</sub>·v<sub>x</sub>
+    = det <span class="mat"><span>127</span><span>47</span><span>1</span><span>−30</span></span> = −3857
+  </div>
+
+  <p>Em álgebra linear, o determinante de uma matriz 2×2 é o fator pelo qual ela estica
+  áreas, com sinal negativo quando ela espelha. É a mesma frase de antes, dita em outra
+  língua: as duas setas formam uma área, e o sinal diz se a segunda está de um lado ou do
+  outro da primeira.</p>
+
+  <div class="caixa fundo">
+    <div class="rotulo">Mais fundo · de onde vem o "z" da docstring</div>
+    <p>A docstring fala em "componente z do produto vetorial". O produto vetorial de
+    verdade é uma operação de três dimensões: dá uma seta perpendicular às duas de
+    entrada. Se você levanta as setas do plano pondo z = 0 nelas, (d<sub>x</sub>,
+    d<sub>y</sub>, 0) × (v<sub>x</sub>, v<sub>y</sub>, 0) = (0, 0,
+    d<sub>x</sub>v<sub>y</sub> − d<sub>y</sub>v<sub>x</sub>). Só a componente z
+    sobrevive, e ela é o nosso número. A seta resultante aponta "para fora da tela" ou
+    "para dentro da tela", e é essa a origem do sinal.</p>
+  </div>
+
+  <div class="caixa aviso">
+    <div class="rotulo">O sinal trocado do y para baixo</div>
+    <p>No caderno (y para cima), produto vetorial positivo significa "<b>v</b> está à
+    <em>esquerda</em> de <b>d</b>", sentido anti-horário. Na imagem o y aponta para
+    baixo, o que é um espelho, e um espelho troca o sinal de toda área. Então na tela
+    <strong>positivo significa à direita</strong> de quem caminha de A para B. Confira
+    no desenho da parada 1: A→B aponta para a direita, e P<sub>2</sub>, que deu +3763,
+    está abaixo, ou seja, à direita de quem anda nesse sentido.</p>
+    <p>É por isso que ninguém decide de cabeça qual sinal é "dentro do prédio". Depende de
+    onde a câmera foi pendurada e do sentido em que A e B foram clicados. A calibração
+    mede e grava em <code>lado_dentro</code>. Trocar A por B inverte todos os sinais.</p>
+  </div>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/contagem/geometria.py</span><span>linhas 19–34</span></div>
@@ -1199,16 +1534,265 @@ def lado(a: Ponto, b: Ponto, p: Ponto) -&gt; int:
     return 0</code></pre>
   </div>
 
-  <p>Qual dos dois sinais é "dentro do prédio" depende de como a câmera foi montada, e sai
-  da calibração: é o campo <code>lado_dentro</code> no YAML da câmera.</p>
+  <p>Uma palavra sobre o <code>EPS</code>, que vale 10<sup>−9</sup>. As posições são
+  médias de três pontos (Estação 5), então aparecem frações como 0,333…, que o computador
+  guarda com erro minúsculo. Um ponto que em aritmética exata daria zero pode dar
+  0,0000000000002. O <code>EPS</code> diz: qualquer área menor que isso é zero. Como a
+  área é em pixels ao quadrado, 10<sup>−9</sup> é um limiar absurdamente pequeno, e é
+  essa a intenção: ele só engole erro de arredondamento, nunca geometria.</p>
 
-  <h4>Segmento, não reta infinita</h4>
-  <p>Trocar de lado não basta. A reta que contém a linha desenhada continua ao infinito
-  para os dois lados, e alguém passando muito à esquerda da porta estaria do outro lado
-  dessa reta sem ter atravessado nada.</p>
+  <h4>4. A distância: a mesma área, dividida pela base</h4>
+  <p>Se área = base × altura, então <strong>altura = área ÷ base</strong>. A altura do
+  paralelogramo é justamente a distância da pessoa até a reta. E a base é o comprimento
+  de <b>d</b>, que sai de Pitágoras:</p>
+
+  <div class="formula">
+    |<b>d</b>| = √(127² + 1²) = √16130 ≈ 127,004
+    <span class="leg">hypot(b[0]-a[0], b[1]-a[1]) no código</span>
+  </div>
+  <div class="formula">
+    dist(P, reta AB) = <span class="frac"><span>|<b>d</b> × <b>v</b>|</span><span>|<b>d</b>|</span></span>
+    <span class="leg">distancia_ponto_reta(p, a, b): abs(produto_vetorial) / comprimento</span>
+  </div>
+
+  <p>Para P<sub>1</sub>: 3857 ÷ 127,004 ≈ <strong>30,4 px</strong>. Para P<sub>2</sub>:
+  3763 ÷ 127,004 ≈ <strong>29,6 px</strong>. Os dois estão a mais de 15 px da linha, fora
+  da zona morta, então o programa decide o lado deles. Agora um terceiro ponto, P = (300,
+  425), com <b>v</b> = (47, 15): a área é 127·15 − 47 = 1858, e a distância é 1858 ÷
+  127,004 ≈ <strong>14,6 px</strong>. Menos que 15. Esse ponto está na zona morta e o
+  programa se recusa a decidir qualquer coisa sobre ele.</p>
+
+  <p>Repare que a distância é a <em>mesma conta</em> do lado, só que sem o sinal e
+  dividida por um número fixo. Uma multiplicação e uma subtração dão o lado; uma divisão a
+  mais dá a distância. Não há nada caro aqui.</p>
+
+  <div class="caixa fundo">
+    <div class="rotulo">Mais fundo · projeção, ou a seta partida em duas</div>
+    <p>Álgebra linear conta a mesma história com outra ferramenta. Qualquer seta <b>v</b>
+    pode ser partida em duas: uma parte <b>v</b><sub>∥</sub> que corre <em>ao longo</em>
+    da linha e uma parte <b>v</b><sub>⊥</sub> <em>perpendicular</em> a ela. A parte
+    paralela sai do produto escalar, <b>v</b><sub>∥</sub> = (<b>v</b>·<b>d</b> / |<b>d</b>|²) <b>d</b>,
+    e a perpendicular é o que sobra, <b>v</b><sub>⊥</sub> = <b>v</b> − <b>v</b><sub>∥</sub>.
+    A distância até a reta é |<b>v</b><sub>⊥</sub>|.</p>
+    <p>Para P<sub>1</sub>: <b>v</b>·<b>d</b> = 47·127 + (−30)·1 = 5939; dividido por
+    |<b>d</b>|² = 16130 dá 0,3682; então <b>v</b><sub>∥</sub> = 0,3682·(127, 1) = (46,76,
+    0,37) e <b>v</b><sub>⊥</sub> = (47 − 46,76, −30 − 0,37) = (0,24, −30,37), cujo
+    comprimento é 30,37 px. O mesmo número da divisão pela base. Produto escalar mede o
+    "quanto ao longo"; produto vetorial mede o "quanto através". São as duas metades de
+    uma seta.</p>
+    <p>O caso degenerado do código, <code>comprimento &lt; EPS</code>, é quando A e B
+    coincidem: a "reta" é um ponto, a divisão estouraria, e a distância vira a distância
+    até esse ponto. Não acontece com linha calibrada, mas a função não pode quebrar.</p>
+  </div>
 
   <div class="bloco">
-    <div class="cabecalho"><span class="caminho">src/fluxo/contagem/geometria.py</span><span>linhas 57–70</span></div>
+    <div class="cabecalho"><span class="caminho">src/fluxo/contagem/geometria.py</span><span>linhas 37–46</span></div>
+<pre><code class="language-python">def distancia_ponto_reta(p: Ponto, a: Ponto, b: Ponto) -&gt; float:
+    """Distância perpendicular de P à reta AB, em pixels.
+
+    Usada pela zona morta: enquanto a pessoa está perto demais da linha, a
+    decisão é adiada em vez de arriscada.
+    """
+    comprimento = hypot(b[0] - a[0], b[1] - a[1])
+    if comprimento &lt; EPS:
+        return hypot(p[0] - a[0], p[1] - a[1])
+    return abs(produto_vetorial(a, b, p)) / comprimento</code></pre>
+  </div>
+
+  <h4>5. O gráfico que o programa "vê"</h4>
+  <p>Junte o lado e a distância num número só: a <strong>distância com sinal</strong>,
+  s = (<b>d</b> × <b>v</b>) ÷ |<b>d</b>|. Negativa de um lado, positiva do outro, zero em
+  cima da linha. Se você acompanha uma pessoa foto a foto e anota esse número, aparece um
+  gráfico. É este gráfico que toda a lógica da <code>LinhaDeContagem</code> lê.</p>
+
+  <p>Vamos simular a pessoa do exemplo descendo em linha reta, 7 pixels por foto, de
+  (300, 362) até (300, 460). O s dela vai de −48,4 até +49,6, subindo 7 por foto:</p>
+
+  <figure class="desenho largo">
+    <svg viewBox="0 0 620 300" role="img" aria-label="Gráfico da distância com sinal por foto: começa em menos 48, cruza zero na foto 7 e termina em mais 50; a faixa entre menos 15 e mais 15 é a zona morta; a âncora fica na foto 4 e o evento na foto 10">
+      <rect x="60" y="100.5" width="530" height="69" fill="var(--glow-limite)"></rect>
+      <line x1="60" y1="135" x2="590" y2="135" stroke="var(--limite)" stroke-width="2"></line>
+      <line x1="60" y1="100.5" x2="590" y2="100.5" stroke="var(--limite)" stroke-width="1" stroke-dasharray="4 3"></line>
+      <line x1="60" y1="169.5" x2="590" y2="169.5" stroke="var(--limite)" stroke-width="1" stroke-dasharray="4 3"></line>
+      <line x1="60" y1="20" x2="60" y2="250" stroke="var(--ink-3)" stroke-width="1"></line>
+      <line x1="60" y1="250" x2="590" y2="250" stroke="var(--ink-3)" stroke-width="1"></line>
+      <g fill="var(--ink-3)" font-size="10" text-anchor="end">
+        <text x="54" y="24">+50</text><text x="54" y="81">+25</text><text x="54" y="139">0</text><text x="54" y="196">−25</text><text x="54" y="254">−50</text>
+      </g>
+      <text x="596" y="104" fill="var(--limite)" font-size="9.5">+15</text>
+      <text x="596" y="173" fill="var(--limite)" font-size="9.5">−15</text>
+      <text x="14" y="140" fill="var(--ink-3)" font-size="10" transform="rotate(-90 14 140)" text-anchor="middle">s (px)</text>
+      <g fill="var(--ink-3)" font-size="10" text-anchor="middle">
+        <text x="70" y="266">0</text><text x="142" y="266">2</text><text x="214" y="266">4</text><text x="286" y="266">6</text><text x="358" y="266">8</text><text x="430" y="266">10</text><text x="502" y="266">12</text><text x="574" y="266">14</text>
+        <text x="325" y="284">foto</text>
+      </g>
+      <polyline points="70,246.3 106,230.2 142,214.1 178,198 214,181.9 250,165.8 286,149.7 322,133.6 358,117.5 394,101.4 430,85.3 466,69.2 502,53.1 538,37 574,20.9" fill="none" stroke="var(--ink-3)" stroke-width="1.2"></polyline>
+      <g fill="var(--ink-3)"><circle cx="70" cy="246.3" r="4"></circle><circle cx="106" cy="230.2" r="4"></circle></g>
+      <g fill="var(--saida)"><circle cx="142" cy="214.1" r="4.5"></circle><circle cx="178" cy="198" r="4.5"></circle><circle cx="214" cy="181.9" r="6"></circle></g>
+      <g fill="none" stroke="var(--ink-3)" stroke-width="1.5"><circle cx="250" cy="165.8" r="4.5"></circle><circle cx="286" cy="149.7" r="4.5"></circle><circle cx="322" cy="133.6" r="4.5"></circle><circle cx="358" cy="117.5" r="4.5"></circle><circle cx="394" cy="101.4" r="4.5"></circle></g>
+      <g fill="var(--entrada)"><circle cx="430" cy="85.3" r="6"></circle><circle cx="466" cy="69.2" r="4.5"></circle><circle cx="502" cy="53.1" r="4.5"></circle><circle cx="538" cy="37" r="4.5"></circle><circle cx="574" cy="20.9" r="4.5"></circle></g>
+      <text x="88" y="238" fill="var(--ink-3)" font-size="9.5">nascendo (menos de 3 fotos)</text>
+      <text x="214" y="200" fill="var(--saida)" font-size="10" text-anchor="middle">âncora, lado −1</text>
+      <text x="322" y="188" fill="var(--ink-3)" font-size="9.5" text-anchor="middle">zona morta: 5 fotos sem decidir nada</text>
+      <text x="430" y="72" fill="var(--entrada)" font-size="10" text-anchor="middle">lado +1: evento</text>
+      <line x1="214" y1="181.9" x2="430" y2="85.3" stroke="var(--ink)" stroke-width="1.4" stroke-dasharray="6 3"></line>
+      <text x="345" y="112" fill="var(--ink)" font-size="9.5" transform="rotate(-24 345 112)">âncora → ponto atual: cruza A–B?</text>
+      <line x1="315" y1="135" x2="315" y2="128" stroke="var(--ink)" stroke-width="1"></line>
+      <text x="315" y="125" fill="var(--ink)" font-size="8.5" text-anchor="middle">zero em 6,9</text>
+    </svg>
+    <figcaption>As duas primeiras fotos não decidem nada (idade mínima 3). A foto 4 é a
+    última fora da faixa do lado −1: vira âncora. Nas fotos 5 a 9 a pessoa está a menos de
+    15 px da linha e o estado congela. Na foto 10 ela reaparece do lado +1, e é entre a
+    âncora e esse ponto que o programa testa o cruzamento.</figcaption>
+  </figure>
+
+  <p>Três coisas ficam visíveis no gráfico e invisíveis no código:</p>
+  <ul>
+    <li><strong>A zona morta é uma histerese.</strong> Para virar "lado +1" não basta
+    passar de zero: tem que passar de +15. Para voltar a "lado −1" tem que passar de −15.
+    Um ponto que tremesse entre −10 e +10 ficaria congelado para sempre, sem contar nada.
+    É a mesma ideia do termostato que liga a 18° e desliga a 22°, e não os dois a 20°.</li>
+    <li><strong>O zero verdadeiro foi na foto 6,9.</strong> A pessoa cortou a linha ali,
+    mas o evento é registrado na foto 10, quando o lado é confirmado. Três fotos de atraso,
+    120 ms a 25 fotos por segundo. Para um contador por hora, nada.</li>
+    <li><strong>A média de três (Estação 5) também atrasa.</strong> Para quem anda em
+    velocidade constante, a média das últimas três posições é a posição de uma foto atrás.
+    Mais 40 ms. Também nada.</li>
+  </ul>
+
+  <p>E por que a média de três existe, se a zona morta já segura o tremor? Porque a zona
+  morta segura tremor <em>pequeno</em>. O que ela não segura é <strong>uma foto ruim</strong>:
+  a caixa da Estação 4 perde as pernas por um instante e o pé "pula" 40 px. Veja o que
+  acontece com e sem a média:</p>
+
+  <figure class="desenho largo">
+    <svg viewBox="0 0 620 270" role="img" aria-label="Gráfico com duas séries: a posição crua tem um pico de uma foto que sai da faixa do outro lado; a média de três fica dentro da zona morta">
+      <rect x="60" y="80" width="530" height="100" fill="var(--glow-limite)"></rect>
+      <line x1="60" y1="130" x2="590" y2="130" stroke="var(--limite)" stroke-width="2"></line>
+      <line x1="60" y1="80" x2="590" y2="80" stroke="var(--limite)" stroke-width="1" stroke-dasharray="4 3"></line>
+      <line x1="60" y1="180" x2="590" y2="180" stroke="var(--limite)" stroke-width="1" stroke-dasharray="4 3"></line>
+      <line x1="60" y1="20" x2="60" y2="235" stroke="var(--ink-3)" stroke-width="1"></line>
+      <line x1="60" y1="235" x2="590" y2="235" stroke="var(--ink-3)" stroke-width="1"></line>
+      <g fill="var(--ink-3)" font-size="10" text-anchor="end">
+        <text x="54" y="34">+30</text><text x="54" y="84">+15</text><text x="54" y="134">0</text><text x="54" y="184">−15</text><text x="54" y="234">−30</text>
+      </g>
+      <g fill="var(--ink-3)" font-size="10" text-anchor="middle">
+        <text x="70" y="251">0</text><text x="130" y="251">1</text><text x="190" y="251">2</text><text x="250" y="251">3</text><text x="310" y="251">4</text><text x="370" y="251">5</text><text x="430" y="251">6</text><text x="490" y="251">7</text><text x="550" y="251">8</text>
+        <text x="325" y="266">foto</text>
+      </g>
+      <polyline points="70,203.3 130,200 190,196.7 250,60 310,196.7 370,200 430,196.7 490,203.3 550,200" fill="none" stroke="var(--limite)" stroke-width="1.4" stroke-dasharray="5 3"></polyline>
+      <g fill="var(--limite)"><circle cx="70" cy="203.3" r="3.5"></circle><circle cx="130" cy="200" r="3.5"></circle><circle cx="190" cy="196.7" r="3.5"></circle><circle cx="250" cy="60" r="5"></circle><circle cx="310" cy="196.7" r="3.5"></circle><circle cx="370" cy="200" r="3.5"></circle><circle cx="430" cy="196.7" r="3.5"></circle><circle cx="490" cy="203.3" r="3.5"></circle><circle cx="550" cy="200" r="3.5"></circle></g>
+      <text x="262" y="52" fill="var(--limite)" font-size="10">crua: +21, fora da faixa, lado trocado</text>
+      <polyline points="190,200 250,152.3 310,151 370,152.3 430,197.7 490,200 550,200" fill="none" stroke="var(--saida)" stroke-width="2"></polyline>
+      <g fill="var(--saida)"><circle cx="190" cy="200" r="4"></circle><circle cx="250" cy="152.3" r="4"></circle><circle cx="310" cy="151" r="4"></circle><circle cx="370" cy="152.3" r="4"></circle><circle cx="430" cy="197.7" r="4"></circle><circle cx="490" cy="200" r="4"></circle><circle cx="550" cy="200" r="4"></circle></g>
+      <text x="310" y="170" fill="var(--saida)" font-size="10" text-anchor="middle">média de 3: −6,7, dentro da faixa, congela</text>
+    </svg>
+    <figcaption>A pessoa está parada em s ≈ −21. Na foto 3 a caixa pula e o pé cru aparece
+    em +21: do outro lado, fora da zona morta. Sem a média, isso viraria uma troca de lado e
+    uma contagem falsa. A média dilui o pico em três fotos, e ele nunca sai da faixa.</figcaption>
+  </figure>
+
+  <div class="caixa fundo">
+    <div class="rotulo">Mais fundo · a média móvel é um operador linear</div>
+    <p>A média das três últimas posições, p̄<sub>k</sub> = (p<sub>k</sub> + p<sub>k−1</sub>
+    + p<sub>k−2</sub>) / 3, é uma <em>convolução</em> com o núcleo [⅓, ⅓, ⅓]. Dois fatos saem
+    disso. Primeiro, um pico isolado de altura h vira três degraus de altura h/3: foi o que
+    o gráfico mostrou, 42 px de salto viraram 14. Segundo, se o tremor de cada foto fosse
+    aleatório e independente, a variância dele cairia por 3 e o desvio padrão por √3 ≈
+    1,73. O preço é o atraso de uma foto, que já vimos ser irrelevante.</p>
+    <p>Como o operador é linear, ele comuta com a geometria: a distância com sinal da média
+    é a média das distâncias com sinal. Por isso dá para desenhar o gráfico em s
+    diretamente, sem voltar aos pontos.</p>
+  </div>
+
+  <h4>6. Trocar de lado não basta: o segmento</h4>
+  <p>Até aqui a "linha" foi uma <em>reta infinita</em>. A conta do produto vetorial não sabe
+  que A e B são extremos: ela vê a reta inteira que passa por eles. Mas a porta tem
+  batentes. Alguém que passa três metros à esquerda da porta troca de lado da reta sem
+  passar por porta nenhuma, e o passo 3 sozinho contaria essa pessoa.</p>
+
+  <p>A pergunta certa é: <strong>o deslocamento da âncora até o ponto atual cruza o pedaço
+  entre A e B?</strong> Existe um teste clássico, e ele usa só a função <code>lado</code>,
+  quatro vezes:</p>
+
+  <div class="formula">
+    P<sub>1</sub>P<sub>2</sub> cruza AB &nbsp;⇔&nbsp; lado(A,B,P<sub>1</sub>) ≠ lado(A,B,P<sub>2</sub>)
+    &nbsp;<span style="font-style:normal">e</span>&nbsp; lado(P<sub>1</sub>,P<sub>2</sub>,A) ≠ lado(P<sub>1</sub>,P<sub>2</sub>,B)
+    <span class="leg">o3 != o4 and o1 != o2 no código; as duas metades são necessárias</span>
+  </div>
+
+  <p>Leia devagar. A primeira metade diz "a pessoa trocou de lado da linha". A segunda diz
+  "a linha trocou de lado <em>do caminho da pessoa</em>": A fica de um lado do trajeto, B
+  fica do outro. Se as duas valem, os dois segmentos se atravessam. Se só a primeira vale,
+  a pessoa passou ao lado da porta.</p>
+
+  <figure class="desenho largo">
+    <svg viewBox="0 0 620 240" role="img" aria-label="Dois casos: à esquerda o caminho corta o segmento AB e os quatro lados alternam; à direita o caminho corta só a reta infinita, além de B, e A e B ficam do mesmo lado do caminho">
+      <defs><marker id="seta6s" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--ink)"></path></marker></defs>
+      <line x1="10" y1="122" x2="290" y2="117" stroke="var(--limite)" stroke-width="1" stroke-dasharray="3 5" opacity=".6"></line>
+      <line x1="50" y1="121" x2="240" y2="118" stroke="var(--limite)" stroke-width="3"></line>
+      <circle cx="50" cy="121" r="4.5" fill="var(--limite)"></circle><circle cx="240" cy="118" r="4.5" fill="var(--limite)"></circle>
+      <text x="50" y="140" fill="var(--limite)" font-size="11" text-anchor="middle">A</text>
+      <text x="240" y="137" fill="var(--limite)" font-size="11" text-anchor="middle">B</text>
+      <line x1="150" y1="40" x2="156" y2="200" stroke="var(--ink)" stroke-width="1.8" marker-end="url(#seta6s)"></line>
+      <circle cx="150" cy="40" r="5" fill="var(--saida)"></circle><circle cx="156" cy="200" r="5" fill="var(--entrada)"></circle>
+      <text x="162" y="38" fill="var(--saida)" font-size="11">P₁ · o3 = −1</text>
+      <text x="164" y="206" fill="var(--entrada)" font-size="11">P₂ · o4 = +1</text>
+      <text x="60" y="108" fill="var(--ink)" font-size="10">o1 = +1</text>
+      <text x="205" y="105" fill="var(--ink)" font-size="10">o2 = −1</text>
+      <text x="150" y="228" fill="var(--saida)" font-size="11" text-anchor="middle" font-weight="700">cruza: o1≠o2 e o3≠o4</text>
+      <line x1="310" y1="20" x2="310" y2="230" stroke="var(--rule)" stroke-width="1"></line>
+      <line x1="330" y1="122" x2="612" y2="117" stroke="var(--limite)" stroke-width="1" stroke-dasharray="3 5" opacity=".6"></line>
+      <line x1="360" y1="121" x2="520" y2="118" stroke="var(--limite)" stroke-width="3"></line>
+      <circle cx="360" cy="121" r="4.5" fill="var(--limite)"></circle><circle cx="520" cy="118" r="4.5" fill="var(--limite)"></circle>
+      <text x="360" y="140" fill="var(--limite)" font-size="11" text-anchor="middle">A</text>
+      <text x="520" y="137" fill="var(--limite)" font-size="11" text-anchor="middle">B</text>
+      <line x1="580" y1="40" x2="586" y2="200" stroke="var(--ink)" stroke-width="1.8" marker-end="url(#seta6s)"></line>
+      <circle cx="580" cy="40" r="5" fill="var(--saida)"></circle><circle cx="586" cy="200" r="5" fill="var(--entrada)"></circle>
+      <text x="572" y="38" fill="var(--saida)" font-size="11" text-anchor="end">o3 = −1 · Q₁</text>
+      <text x="578" y="206" fill="var(--entrada)" font-size="11" text-anchor="end">o4 = +1 · Q₂</text>
+      <text x="372" y="108" fill="var(--ink)" font-size="10">o1 = +1</text>
+      <text x="500" y="105" fill="var(--ink)" font-size="10">o2 = +1</text>
+      <text x="470" y="228" fill="var(--limite)" font-size="11" text-anchor="middle" font-weight="700">não cruza: o3≠o4, mas o1 = o2</text>
+      <text x="470" y="180" fill="var(--ink-3)" font-size="9.5" text-anchor="middle">passou ao lado da porta</text>
+    </svg>
+    <figcaption>Os dois caminhos trocam de lado da reta pontilhada. Só o da esquerda corta o
+    pedaço vermelho. A diferença aparece em o1 e o2: à direita, A e B estão ambos do mesmo
+    lado do caminho.</figcaption>
+  </figure>
+
+  <p>Agora com os números, para os dois casos. A linha é a mesma de antes:
+  <b>A = (253, 410)</b>, <b>B = (380, 411)</b>, logo <b>d</b> = B − A = (127, 1).
+  O caminho de exemplo é P<sub>1</sub> = (300,
+  380) → P<sub>2</sub> = (300, 440), então <b>r</b> = P<sub>2</sub> − P<sub>1</sub> = (0,
+  60). Para o caso ruim, o mesmo caminho deslocado 150 px para a direita, Q<sub>1</sub> =
+  (450, 380) → Q<sub>2</sub> = (450, 440), além de B (x = 380).</p>
+  <p>Cada célula é um produto vetorial 2D, <b>r</b> × <b>w</b> = r<sub>x</sub>·w<sub>y</sub>
+  − r<sub>y</sub>·w<sub>x</sub>. Os vetores <b>w</b> que entram: A − P<sub>1</sub> = (−47, 30),
+  B − P<sub>1</sub> = (80, 31), P<sub>1</sub> − A = (47, −30), P<sub>2</sub> − A = (47, 30);
+  para Q, A − Q<sub>1</sub> = (−197, 30) e B − Q<sub>1</sub> = (−70, 31).</p>
+
+  <div class="rolar">
+  <table class="conta">
+    <thead><tr><th>Sinal</th><th>Conta</th><th>Caminho P (na porta)</th><th>Caminho Q (ao lado)</th></tr></thead>
+    <tbody>
+      <tr><td>o1 = lado(P<sub>1</sub>,P<sub>2</sub>,A)</td><td><b>r</b> × (A − P<sub>1</sub>)</td><td>0·30 − 60·(−47) = 2820 → +1</td><td>0·30 − 60·(−197) = 11820 → +1</td></tr>
+      <tr><td>o2 = lado(P<sub>1</sub>,P<sub>2</sub>,B)</td><td><b>r</b> × (B − P<sub>1</sub>)</td><td>0·31 − 60·80 = −4800 → −1</td><td>0·31 − 60·(−70) = 4200 → +1</td></tr>
+      <tr><td>o3 = lado(A,B,P<sub>1</sub>)</td><td><b>d</b> × (P<sub>1</sub> − A)</td><td>−3857 → −1</td><td>127·(−30) − 197 = −4007 → −1</td></tr>
+      <tr><td>o4 = lado(A,B,P<sub>2</sub>)</td><td><b>d</b> × (P<sub>2</sub> − A)</td><td>+3763 → +1</td><td>3810 − 197 = 3613 → +1</td></tr>
+      <tr><td>veredito</td><td>o1≠o2 e o3≠o4</td><td><strong>cruza</strong></td><td><strong>não cruza</strong> (o1 = o2)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Sobram os casos em que algum sinal dá zero: um extremo de um segmento exatamente em
+  cima do outro. O teste dos sinais não decide, e o código checa se o ponto colinear cai
+  dentro do retângulo do outro segmento. Na prática isso quase nunca acontece com
+  coordenadas de pé suavizadas, mas a função tem que estar certa para todo par de
+  segmentos, porque é a função mais testada do projeto.</p>
+
+  <div class="bloco">
+    <div class="cabecalho"><span class="caminho">src/fluxo/contagem/geometria.py</span><span>linhas 57–81</span></div>
 <pre><code class="language-python">def segmentos_se_cruzam(p1: Ponto, p2: Ponto, a: Ponto, b: Ponto) -&gt; bool:
     """O deslocamento P1-&gt;P2 cruza o SEGMENTO AB?
 
@@ -1222,61 +1806,174 @@ def lado(a: Ponto, b: Ponto, p: Ponto) -&gt; int:
     o4 = lado(a, b, p2)
 
     if o1 != o2 and o3 != o4:
-        return True</code></pre>
+        return True
+
+    # Casos colineares: o ponto toca o segmento sem atravessá-lo.
+    if o1 == 0 and _no_retangulo(p1, a, p2):
+        return True
+    if o2 == 0 and _no_retangulo(p1, b, p2):
+        return True
+    if o3 == 0 and _no_retangulo(a, p1, b):
+        return True
+    if o4 == 0 and _no_retangulo(a, p2, b):
+        return True
+
+    return False</code></pre>
   </div>
 
-  <p>É o teste clássico de orientação: os extremos da linha em lados opostos do
-  deslocamento, <em>e</em> os extremos do deslocamento em lados opostos da linha. As linhas
-  seguintes tratam os casos colineares, quando o ponto toca o segmento sem atravessá-lo.</p>
+  <h4>7. Onde, exatamente, o caminho cortou a linha</h4>
+  <p>O código só precisa de "sim ou não". Mas a pergunta "onde" tem uma resposta bonita, e
+  ela explica <em>por que</em> o teste dos quatro sinais funciona. Escreva os dois segmentos
+  como retas parametrizadas: um ponto do caminho é P<sub>1</sub> + t·<b>r</b>, com t entre
+  0 e 1; um ponto da linha é A + u·<b>d</b>, com u entre 0 e 1. O cruzamento é onde os dois
+  coincidem:</p>
 
-  <h4>A cascata de cinco filtros</h4>
-  <p>Com a geometria pronta, a linha de contagem é uma máquina de estados por track. Cada
-  rastro passa por cinco portões, e cada portão existe por causa de um erro real.</p>
+  <div class="formula">
+    P<sub>1</sub> + t·<b>r</b> = A + u·<b>d</b>
+    <span class="leg">duas equações (uma por coordenada), duas incógnitas (t e u)</span>
+  </div>
 
-  <figure>
-    <svg viewBox="0 0 620 250" role="img" aria-label="Diagrama da linha de contagem com zona morta, âncora e ponto atual">
-      <rect x="0" y="0" width="620" height="250" fill="none"></rect>
-      <!-- zona morta -->
-      <rect x="278" y="24" width="64" height="180" fill="var(--glow)" stroke="none"></rect>
-      <!-- linha -->
-      <line x1="310" y1="24" x2="310" y2="204" stroke="var(--limite)" stroke-width="3"></line>
-      <circle cx="310" cy="24" r="4.5" fill="var(--limite)"></circle>
-      <circle cx="310" cy="204" r="4.5" fill="var(--limite)"></circle>
-      <text x="310" y="16" fill="var(--limite)" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">A</text>
-      <text x="310" y="222" fill="var(--limite)" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">B</text>
-      <!-- rótulo zona morta -->
-      <text x="310" y="240" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">zona morta · 15 px</text>
-      <!-- trajetória -->
-      <path d="M 108 158 C 168 150, 212 138, 258 126" fill="none" stroke="var(--ink-3)" stroke-width="1.6" stroke-dasharray="4 4"></path>
-      <path d="M 258 126 C 300 116, 340 108, 386 100" fill="none" stroke="var(--ink-3)" stroke-width="1.6" stroke-dasharray="2 5" opacity=".55"></path>
-      <path d="M 386 100 C 424 94, 460 90, 506 86" fill="none" stroke="var(--entrada)" stroke-width="1.8"></path>
-      <!-- ancora -->
-      <circle cx="258" cy="126" r="6" fill="var(--saida)"></circle>
-      <text x="258" y="150" fill="var(--saida)" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">âncora</text>
-      <text x="258" y="164" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="9.5" text-anchor="middle">lado = −1</text>
-      <!-- ponto atual -->
-      <circle cx="386" cy="100" r="6" fill="var(--entrada)"></circle>
-      <text x="392" y="126" fill="var(--entrada)" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">ponto atual</text>
-      <text x="392" y="140" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="9.5" text-anchor="middle">lado = +1</text>
-      <!-- vetor testado -->
-      <line x1="258" y1="126" x2="386" y2="100" stroke="var(--ink)" stroke-width="1.4" opacity=".65"></line>
-      <text x="108" y="176" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="10">entra no quadro</text>
-      <text x="506" y="76" fill="var(--ink-3)" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="end">sai do quadro</text>
+  <p>É um sistema linear 2×2. Rearranjando, t·<b>r</b> − u·<b>d</b> = A − P<sub>1</sub>, ou,
+  em forma de matriz com as setas como colunas:</p>
+
+  <div class="formula">
+    <span class="mat"><span>r<sub>x</sub></span><span>−d<sub>x</sub></span><span>r<sub>y</sub></span><span>−d<sub>y</sub></span></span>
+    <span class="mat" style="grid-template-columns:auto"><span>t</span><span>u</span></span>
+    = <span class="mat" style="grid-template-columns:auto"><span>A<sub>x</sub> − P<sub>1x</sub></span><span>A<sub>y</sub> − P<sub>1y</sub></span></span>
+  </div>
+
+  <p>A regra de Cramer resolve um sistema 2×2 com três determinantes, e determinante 2×2 é o
+  nosso produto vetorial. Fazendo as contas, com <b>w</b> = A − P<sub>1</sub>:</p>
+
+  <div class="formula">
+    t = <span class="frac"><span><b>w</b> × <b>d</b></span><span><b>r</b> × <b>d</b></span></span>
+    &nbsp;&nbsp;&nbsp;
+    u = <span class="frac"><span><b>w</b> × <b>r</b></span><span><b>r</b> × <b>d</b></span></span>
+    <span class="leg">o denominador é o determinante do sistema; zero quer dizer caminho paralelo à linha</span>
+  </div>
+
+  <p>Com os números: <b>w</b> = (253 − 300, 410 − 380) = (−47, 30), <b>r</b> = (0, 60),
+  <b>d</b> = (127, 1).</p>
+
+  <div class="rolar">
+  <table class="conta">
+    <thead><tr><th>Determinante</th><th>Conta</th><th>Valor</th></tr></thead>
+    <tbody>
+      <tr><td><b>r</b> × <b>d</b></td><td>0·1 − 60·127</td><td>−7620</td></tr>
+      <tr><td><b>w</b> × <b>d</b></td><td>(−47)·1 − 30·127</td><td>−3857</td></tr>
+      <tr><td><b>w</b> × <b>r</b></td><td>(−47)·60 − 30·0</td><td>−2820</td></tr>
+      <tr><td>t</td><td>−3857 ÷ (−7620)</td><td><strong>0,506</strong></td></tr>
+      <tr><td>u</td><td>−2820 ÷ (−7620)</td><td><strong>0,370</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Os dois estão entre 0 e 1, logo os segmentos se cruzam. E o ponto é P<sub>1</sub> +
+  0,506·(0, 60) = (300, 410,4). Conferindo pelo outro lado: A + 0,370·(127, 1) = (300,0,
+  410,4). Bate.</p>
+
+  <figure class="desenho largo">
+    <svg viewBox="0 0 560 250" role="img" aria-label="A linha A B parametrizada por u e o caminho P1 P2 parametrizado por t; o cruzamento X fica em t igual a 0,506 e u igual a 0,370">
+      <defs><marker id="seta6c" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--ink)"></path></marker></defs>
+      <line x1="60" y1="150" x2="500" y2="140" stroke="var(--limite)" stroke-width="3"></line>
+      <circle cx="60" cy="150" r="5" fill="var(--limite)"></circle><circle cx="500" cy="140" r="5" fill="var(--limite)"></circle>
+      <text x="60" y="172" fill="var(--limite)" font-size="11" text-anchor="middle">A · u = 0</text>
+      <text x="500" y="162" fill="var(--limite)" font-size="11" text-anchor="middle">B · u = 1</text>
+      <line x1="216" y1="50" x2="230" y2="245" stroke="var(--ink)" stroke-width="1.8" marker-end="url(#seta6c)"></line>
+      <circle cx="216" cy="50" r="5" fill="var(--saida)"></circle>
+      <text x="228" y="48" fill="var(--saida)" font-size="11">P₁ · t = 0</text>
+      <text x="242" y="236" fill="var(--entrada)" font-size="11">P₂ · t = 1</text>
+      <circle cx="223" cy="146.4" r="6" fill="var(--ink)"></circle>
+      <text x="238" y="132" fill="var(--ink)" font-size="11">X = (300, 410,4)</text>
+      <text x="238" y="118" fill="var(--ink-3)" font-size="10">t = 0,506 · u = 0,370</text>
+      <path d="M 60 190 L 223 186" stroke="var(--ink-3)" stroke-width="1" marker-end="url(#seta6c)"></path>
+      <text x="140" y="205" fill="var(--ink-3)" font-size="10" text-anchor="middle">u·|d| = 0,37 · 127 = 47 px</text>
     </svg>
-    <figcaption>Dentro da faixa morta nada é confirmado: nem o lado, nem a âncora. O teste
-    de cruzamento é feito entre o segmento âncora–ponto atual e o segmento A–B, e não
-    entre a posição bruta e a reta infinita.</figcaption>
+    <figcaption>t diz "em que fração do passo a pessoa cortou a linha"; u diz "em que ponto
+    da porta". Com u = 0,37, ela passou a 47 px de A, um pouco à esquerda do meio.</figcaption>
+  </figure>
+
+  <p>Agora olhe os numeradores. <b>w</b> × <b>d</b> = −3857 é <em>o mesmo número</em> que
+  produto_vetorial(A, B, P<sub>1</sub>) da parada 3. E o denominador é a diferença entre os
+  dois valores de lado: −3857 − 3763 = −7620. Ou seja:</p>
+
+  <div class="formula">
+    t = <span class="frac"><span>s<sub>1</sub></span><span>s<sub>1</sub> − s<sub>2</sub></span></span>
+    = <span class="frac"><span>−30,37</span><span>−30,37 − 29,63</span></span> = 0,506
+    <span class="leg">s = distância com sinal da parada 5; t é onde a reta entre s₁ e s₂ cruza o zero</span>
+  </div>
+
+  <p>Isso fecha o círculo. O teste dos quatro sinais é a regra de Cramer <em>sem fazer a
+  divisão</em>: t está entre 0 e 1 exatamente quando s<sub>1</sub> e s<sub>2</sub> têm
+  sinais opostos (o3 ≠ o4), e u está entre 0 e 1 exatamente quando os dois produtos com
+  <b>r</b> têm sinais opostos (o1 ≠ o2). O programa não precisa de t nem de u; precisa só
+  saber se cada um cairia dentro de [0, 1], e o sinal já diz. Nenhuma divisão, nenhum risco
+  de dividir por zero, e a mesma resposta.</p>
+
+  <div class="caixa fundo">
+    <div class="rotulo">Mais fundo · a matriz da mudança de base</div>
+    <p>Há um jeito de ver o sistema todo de uma vez. Chame de M a matriz com colunas <b>r</b>
+    e <b>d</b>. Resolver M·(t, −u) = <b>w</b> é expressar <b>w</b> numa <em>base nova</em>,
+    a base formada pelo caminho e pela linha, em vez da base x, y da imagem. Nessa base, "o
+    caminho cruza a linha" vira "as duas coordenadas de <b>w</b> estão entre 0 e 1", uma
+    caixa unitária. A regra de Cramer é a inversa de M escrita à mão: M<sup>−1</sup> =
+    (1/det M) · [[−d<sub>y</sub>, d<sub>x</sub>], [−r<sub>y</sub>, r<sub>x</sub>]]. O det M
+    = <b>r</b> × <b>d</b> aparece no denominador, e é por isso que caminho paralelo à linha
+    (det = 0) não tem solução: a base degenerou, as duas setas viraram uma só.</p>
+  </div>
+
+  <h4>A máquina de estados: cinco portões</h4>
+  <p>Com a geometria pronta, falta a parte que decide <em>quando</em> aplicar cada conta.
+  Cada pessoa passa por cinco portões antes de virar contagem, e cada portão existe por causa
+  de um erro que aconteceu de verdade. O jeito mais claro de ver é como uma máquina de
+  estados por track:</p>
+
+  <figure class="desenho largo">
+    <svg viewBox="0 0 620 210" role="img" aria-label="Máquina de estados: nascendo, sem lado, lado menos um e lado mais um; a zona morta congela; a troca de lado que cruza A B fora do cooldown emite um evento">
+      <defs><marker id="seta6m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M 0 0 L 8 4 L 0 8 z" fill="var(--ink-3)"></path></marker></defs>
+      <rect x="10" y="80" width="110" height="44" rx="6" fill="var(--surface-2)" stroke="var(--rule)"></rect>
+      <text x="65" y="98" fill="var(--ink)" font-size="11" text-anchor="middle">nascendo</text>
+      <text x="65" y="113" fill="var(--ink-3)" font-size="9" text-anchor="middle">quadros &lt; 3</text>
+      <rect x="160" y="80" width="110" height="44" rx="6" fill="var(--surface-2)" stroke="var(--rule)"></rect>
+      <text x="215" y="98" fill="var(--ink)" font-size="11" text-anchor="middle">sem lado</text>
+      <text x="215" y="113" fill="var(--ink-3)" font-size="9" text-anchor="middle">lado_confirmado = None</text>
+      <rect x="330" y="20" width="120" height="44" rx="6" fill="var(--glow-saida)" stroke="var(--saida)"></rect>
+      <text x="390" y="38" fill="var(--saida)" font-size="11" text-anchor="middle">lado −1</text>
+      <text x="390" y="53" fill="var(--ink-3)" font-size="9" text-anchor="middle">âncora guardada</text>
+      <rect x="330" y="140" width="120" height="44" rx="6" fill="var(--glow)" stroke="var(--entrada)"></rect>
+      <text x="390" y="158" fill="var(--entrada)" font-size="11" text-anchor="middle">lado +1</text>
+      <text x="390" y="173" fill="var(--ink-3)" font-size="9" text-anchor="middle">âncora guardada</text>
+      <line x1="120" y1="102" x2="158" y2="102" stroke="var(--ink-3)" stroke-width="1.4" marker-end="url(#seta6m)"></line>
+      <text x="139" y="94" fill="var(--ink-3)" font-size="8.5" text-anchor="middle">3ª foto</text>
+      <line x1="270" y1="96" x2="328" y2="48" stroke="var(--ink-3)" stroke-width="1.4" marker-end="url(#seta6m)"></line>
+      <line x1="270" y1="108" x2="328" y2="156" stroke="var(--ink-3)" stroke-width="1.4" marker-end="url(#seta6m)"></line>
+      <text x="296" y="66" fill="var(--ink-3)" font-size="8.5" text-anchor="middle">fora da faixa</text>
+      <line x1="372" y1="66" x2="372" y2="138" stroke="var(--ink-3)" stroke-width="1.4" marker-end="url(#seta6m)"></line>
+      <line x1="408" y1="138" x2="408" y2="66" stroke="var(--ink-3)" stroke-width="1.4" marker-end="url(#seta6m)"></line>
+      <rect x="455" y="78" width="160" height="50" rx="6" fill="var(--surface)" stroke="var(--limite)" stroke-dasharray="4 3"></rect>
+      <text x="535" y="94" fill="var(--limite)" font-size="9.5" text-anchor="middle">troca de lado:</text>
+      <text x="535" y="106" fill="var(--ink)" font-size="9" text-anchor="middle">cruza A–B? fora do cooldown?</text>
+      <text x="535" y="119" fill="var(--ink)" font-size="9" text-anchor="middle">→ evento; o lado muda sempre</text>
+      <path d="M 390 102 L 453 102" stroke="var(--limite)" stroke-width="1" stroke-dasharray="3 2"></path>
+      <path d="M 210 124 C 200 160, 240 175, 250 130" fill="none" stroke="var(--ink-3)" stroke-width="1.2" marker-end="url(#seta6m)"></path>
+      <text x="228" y="188" fill="var(--ink-3)" font-size="8.5" text-anchor="middle">zona morta: nada muda</text>
+      <path d="M 340 22 C 300 -4, 260 20, 331 30" fill="none" stroke="var(--ink-3)" stroke-width="1.2" marker-end="url(#seta6m)"></path>
+      <text x="290" y="12" fill="var(--ink-3)" font-size="8.5" text-anchor="middle">mesmo lado: âncora avança</text>
+    </svg>
+    <figcaption>Cada track é uma máquina dessas. Dentro da zona morta nenhuma seta é
+    percorrida: o estado fica onde está. A troca de lado é a única transição que pode emitir
+    um evento, e ela acontece mesmo quando o evento é descartado.</figcaption>
   </figure>
 
   <div class="rolar">
   <table>
-    <thead><tr><th>Portão</th><th>O que rejeita</th><th>Erro que previne</th></tr></thead>
+    <thead><tr><th>Portão</th><th>Barra</th><th>Conta por trás</th><th>Erro que evita</th></tr></thead>
     <tbody>
-      <tr><td>Idade mínima de track</td><td>Track com menos de 3 quadros</td><td>Detecção de um quadro só virando pessoa</td></tr>
-      <tr><td>Suavização</td><td>A posição bruta</td><td>Tremulação da caixa entre quadros</td></tr>
-      <tr><td>Zona morta</td><td>Quem está a menos de 15 px da linha</td><td>Pessoa parada na soleira alternando de lado</td></tr>
-      <tr><td>Interseção com o segmento</td><td>Quem trocou de lado sem atravessar</td><td>Passagem longe da porta, do outro lado da reta</td></tr>
-      <tr><td>Cooldown</td><td>Recontagem do mesmo track em 1,5 s</td><td>Hesitação na porta virando três entradas</td></tr>
+      <tr><td>Idade mínima</td><td>Pessoa vista em menos de 3 fotos</td><td>contador de fotos</td><td>Um borrão de uma foto só virando gente</td></tr>
+      <tr><td>Suavização</td><td>A posição crua</td><td>média móvel de 3</td><td>Uma foto ruim jogando o pé para o outro lado</td></tr>
+      <tr><td>Zona morta</td><td>Quem está a menos de 15 px da linha</td><td>|d × v| ÷ |d|</td><td>Parado na soleira, trocando de lado sem parar</td></tr>
+      <tr><td>Cruza o pedaço A–B</td><td>Quem trocou de lado sem passar pela porta</td><td>quatro produtos vetoriais</td><td>Passagem longe da porta</td></tr>
+      <tr><td>Cooldown</td><td>A mesma pessoa contada de novo em 1,5 s</td><td>diferença de instantes</td><td>Hesitação virando três entradas</td></tr>
     </tbody>
   </table>
   </div>
@@ -1313,25 +2010,26 @@ def lado(a: Ponto, b: Ponto, p: Ponto) -&gt; int:
             )</code></pre>
   </div>
 
-  <p>O ponto sutil da zona morta: dentro da faixa <strong>nada é atualizado</strong>, nem o
-  lado confirmado nem a âncora. O estado congela e espera a pessoa emergir de um dos lados.
-  Por isso o lado confirmado é literalmente "o último lado em que ela esteve fora da faixa".</p>
+  <p>Dois detalhes que só a matemática explica. Primeiro: depois da zona morta,
+  <code>lado_atual</code> nunca é zero. Se a distância é maior que 15 px, a área é maior que
+  15 × 127 ≈ 1905 px², muito acima do <code>EPS</code>. A máquina de estados só conhece −1 e
+  +1, e é a zona morta que garante isso. Segundo: a âncora avança a cada foto do mesmo lado.
+  Isso mantém o segmento âncora → ponto <em>curto</em>, e um segmento curto só pode cruzar a
+  porta perto de onde a pessoa está de fato. Se a âncora fosse fixa no primeiro ponto visto,
+  alguém que entrasse pela esquerda da foto e desse a volta pela direita poderia "cruzar"
+  a linha por um trajeto que nunca fez.</p>
 
-  <p>E há uma linha fácil de errar, logo depois de descartar um evento:</p>
+  <p>E há uma linha fácil de errar, logo depois de descartar um cruzamento pelo cooldown:
+  o lado é atualizado <em>mesmo assim</em>. Senão o programa ficaria preso no lado antigo e
+  perderia o próximo cruzamento de verdade. O descarte vale para o evento, não para o
+  estado.</p>
 
-  <div class="bloco">
-    <div class="cabecalho"><span class="caminho">src/fluxo/contagem/linha.py</span><span>linhas 179–183</span></div>
-<pre><code class="language-python">        # O lado é atualizado mesmo quando o evento é descartado; do contrário
-        # o estado ficaria preso e o próximo cruzamento real se perderia.
-        estado.lado_confirmado = lado_atual
-        estado.ancora = ponto
-        return evento</code></pre>
-  </div>
-
-  <h4>A costura, e a lição de método</h4>
-  <p>Quando alguém é ocluída por um pilar, o rastreador encerra o track e abre outro com
-  identificador novo do outro lado. Sem costurar, isso perde a travessia ou a conta duas
-  vezes. O mecanismo existe, está escrito, e <strong>nasce desligado</strong>.</p>
+  <h4>A costura, e a lição</h4>
+  <p>Quando alguém passa atrás de um pilar, o rastreador encerra o número dela e abre outro
+  do outro lado. Existe um mecanismo para "costurar" os dois números: se um track novo nasce
+  a menos de 80 px (distância euclidiana, a última função do <code>geometria.py</code>) de
+  onde um track morto foi visto pela última vez, e a lacuna é curta, o novo herda o estado do
+  velho. Ele está escrito, testado, e <strong>desligado</strong>.</p>
 
   <div class="citacao">
     Nasce DESLIGADA: nas sequências medidas até aqui ela não melhora o número. O padrão
@@ -1339,30 +2037,43 @@ def lado(a: Ponto, b: Ponto, p: Ponto) -&gt; int:
     <cite>src/fluxo/contagem/linha.py, linhas 52–54</cite>
   </div>
 
-  <p>Vale ler a frase duas vezes. O mecanismo foi construído para tratar um problema real,
-  funciona, tem testes, e está desligado porque a medição disse que não ajuda naquelas
-  sequências. Ligar ou desligar por câmera é decisão de medição, com um comando pronto para
-  isso.</p>
+  <p>Leia duas vezes. A costura foi feita para um problema real, funciona, e está
+  desligada porque a medição disse que não ajudou. Ligar é decisão de medição, não de
+  vontade.</p>
+
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Na imagem o y cresce para baixo. Isso espelha o plano e troca o sinal de toda área.</li>
+      <li>Produto vetorial <b>d</b> × <b>v</b> = d<sub>x</sub>v<sub>y</sub> − d<sub>y</sub>v<sub>x</sub> é uma área com sinal. O sinal é o lado; qual sinal é "dentro" vem da calibração.</li>
+      <li>Distância até a reta é a mesma área dividida pela base |<b>d</b>|. Menos de 15 px: zona morta, nada se decide.</li>
+      <li>A zona morta é uma histerese; a média de 3 dilui a foto ruim. Uma segura o tremor, a outra o pico.</li>
+      <li>A reta é infinita; a porta não. Quatro sinais dizem se o caminho cruzou o <em>pedaço</em> A–B.</li>
+      <li>Os quatro sinais são a regra de Cramer sem a divisão: t = s₁ ÷ (s₁ − s₂).</li>
+      <li>Cinco portões, cada um por um erro real. Depois de descartar pelo cooldown, o lado muda mesmo assim.</li>
+    </ul>
+  </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Na calibração alguém clica B primeiro e A depois. O que acontece com todos os produtos vetoriais?</summary>
+    <div class="resposta"><p>Trocam de sinal, todos. <b>d</b> vira −<b>d</b>, e a área muda de orientação. Por isso <code>lado_dentro</code> é medido na calibração, junto com a linha, e não é escolhido de cabeça: ele acompanha o sentido em que A e B foram clicados.</p></div></details>
+    <details><summary>O produto vetorial deu 1858 para um ponto. Ele está dentro ou fora da zona morta?</summary>
+    <div class="resposta"><p>Não dá para saber só com a área. Precisa dividir pela base: 1858 ÷ 127 ≈ 14,6 px, dentro da faixa de 15. A mesma área numa linha mais curta seria uma distância maior. Área é lado; área dividida pela base é distância.</p></div></details>
+    <details><summary>Uma pessoa treme entre s = −10 e s = +10, foto após foto. Quantas vezes ela é contada?</summary>
+    <div class="resposta"><p>Nenhuma. Os dois valores estão dentro da faixa de 15 px, então nenhuma foto sai da zona morta, e o estado dela nunca muda. É a histerese: para confirmar um lado é preciso passar de ±15, não de zero.</p></div></details>
     <details><summary>Aumentar a zona morta de 15 para 40 px: o que melhora e o que piora?</summary>
-    <div class="resposta"><p>Melhora a imunidade a tremulação e a hesitação na soleira. Piora o
-    alcance: numa cena em que a pessoa atravessa rápido e o quadro seguinte já a coloca longe,
-    a faixa larga pode fazer os dois lados confirmados ficarem distantes demais, e travessias
-    curtas junto à borda do quadro passam sem confirmar lado nenhum.</p></div></details>
-    <details><summary>Por que o cooldown é medido em segundos e não em quadros?</summary>
-    <div class="resposta"><p>Porque o que ele modela é comportamento humano, não taxa de
-    processamento. Uma pessoa que hesita leva o mesmo tempo a dez ou a trinta quadros por
-    segundo. Em quadros, o mesmo parâmetro significaria coisas diferentes em cada câmera.</p></div></details>
-    <details><summary>Um cruzamento é descartado pelo cooldown. Por que o lado confirmado é atualizado assim mesmo?</summary>
-    <div class="resposta"><p>Porque senão o estado ficaria preso no lado antigo, e o próximo
-    cruzamento de verdade não seria visto como troca de lado. O descarte vale para o evento,
-    não para o estado.</p></div></details>
-    <details><summary>A costura está pronta e desligada. Como você decidiria ligá-la na porta da faculdade?</summary>
-    <div class="resposta"><p>Gravando uma trilha da porta real uma vez e rodando a varredura de
-    parâmetros sobre ela, sem GPU. É o mesmo procedimento que levou ao desligamento: medir,
-    não supor.</p></div></details>
+    <div class="resposta"><p>Melhora contra tremor e hesitação. Piora o alcance: quem atravessa rápido, ou perto da borda da foto, pode nunca confirmar lado nenhum fora da faixa larga, e passa sem contar. Com a linha real a 410 px de altura numa foto de 480, uma faixa de 40 px já encostaria na borda de baixo.</p></div></details>
+    <details><summary>Alguém anda três metros à esquerda da porta e vai embora. Quais dos quatro sinais denunciam isso?</summary>
+    <div class="resposta"><p>o1 e o2. A pessoa trocou de lado da reta (o3 ≠ o4), mas A e B ficam do mesmo lado do caminho dela (o1 = o2). É a segunda metade do teste que sabe que a porta tem batentes.</p></div></details>
+    <details><summary>Por que o programa não calcula t e u, se eles dão a resposta exata?</summary>
+    <div class="resposta"><p>Porque ele só precisa saber se t e u caem entre 0 e 1, e isso é decidido pelos sinais dos numeradores e do denominador, sem dividir. Mesma resposta, sem divisão e sem o caso do denominador zero (caminho paralelo à linha).</p></div></details>
+    <details><summary>Por que o cooldown é em segundos, e não em fotos?</summary>
+    <div class="resposta"><p>Porque ele modela um comportamento humano: hesitar leva o mesmo tempo a 10 ou a 30 fotos por segundo. Em fotos, o mesmo número significaria coisas diferentes em cada câmera.</p></div></details>
+    <details><summary>Um cruzamento é descartado pelo cooldown. Por que o lado é atualizado mesmo assim?</summary>
+    <div class="resposta"><p>Porque senão o programa ficaria preso no lado antigo, e o próximo cruzamento de verdade não pareceria uma troca de lado. Descarta-se o evento, não o estado.</p></div></details>
+    <details><summary>A costura está pronta e desligada. Quando você a ligaria?</summary>
+    <div class="resposta"><p>Só depois de medir na porta da faculdade, com uma gravação de verdade, e ver que ela melhora o número. Não por parecer boa ideia. Foi medindo que ela foi desligada.</p></div></details>
   </div>
 </section>
 
@@ -1370,12 +2081,36 @@ def lado(a: Ponto, b: Ponto, p: Ponto) -&gt; int:
   <h3><span class="estacao">Estação 7</span>O cruzamento vira evento</h3>
   <div class="arquivos">src/fluxo/dominio/evento.py</div>
 
-  <p>O evento é a única unidade de dado do sistema, e é compartilhado por quem produz e
-  quem consome. Ter uma definição só é o que impede os dois lados de divergirem
-  silenciosamente sobre o formato.</p>
+  <p class="pergunta">Se a rede cair e o agente mandar o mesmo cruzamento duas vezes, como o banco sabe que é repetido?</p>
 
-  <p>A peça central é a chave. Ela não é aleatória: é <strong>derivada dos próprios
-  dados</strong>, de forma determinística.</p>
+  <p>Pense num recibo. Toda compra tem um número, e se o mesmo recibo chegar duas vezes no
+  caixa, o segundo é ignorado. O Limiar faz isso com cada cruzamento. A diferença é que o
+  número do recibo não é sorteado: é <strong>calculado a partir do próprio cruzamento</strong>.
+  Câmera, número da pessoa, direção e o segundo em que aconteceu. Mesmo cruzamento, mesmo
+  recibo, sempre.</p>
+
+  <figure class="desenho">
+    <svg viewBox="0 0 560 130" role="img" aria-label="O mesmo cruzamento enviado duas vezes gera a mesma chave, e o banco guarda um só">
+      <rect x="10" y="20" width="150" height="40" rx="6" fill="var(--surface)" stroke="var(--entrada)" stroke-width="1.8"></rect>
+      <text x="85" y="45" fill="var(--ink)" font-size="11" text-anchor="middle">entrada_real-7-ENTRADA-1757…</text>
+      <rect x="10" y="75" width="150" height="40" rx="6" fill="var(--surface)" stroke="var(--entrada)" stroke-width="1.8" stroke-dasharray="4 3"></rect>
+      <text x="85" y="100" fill="var(--ink)" font-size="11" text-anchor="middle">entrada_real-7-ENTRADA-1757…</text>
+      <text x="85" y="14" fill="var(--ink-3)" font-size="10" text-anchor="middle">1ª vez</text>
+      <text x="85" y="128" fill="var(--ink-3)" font-size="10" text-anchor="middle">reenvio, depois da queda</text>
+      <path d="M 170 40 L 250 62" stroke="var(--ink-3)" stroke-width="1.6"></path>
+      <path d="M 170 95 L 250 72" stroke="var(--ink-3)" stroke-width="1.6"></path>
+      <rect x="260" y="40" width="130" height="55" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"></rect>
+      <text x="325" y="63" fill="var(--ink)" font-size="11.5" text-anchor="middle">serviço</text>
+      <text x="325" y="80" fill="var(--ink-3)" font-size="10" text-anchor="middle">INSERT OR IGNORE</text>
+      <path d="M 400 67 L 440 67" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#seta7)"></path>
+      <defs><marker id="seta7" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink-3)"></path></marker></defs>
+      <ellipse cx="495" cy="50" rx="45" ry="10" fill="none" stroke="var(--ink)" stroke-width="2"></ellipse>
+      <path d="M 450 50 L 450 85 A 45 10 0 0 0 540 85 L 540 50" fill="none" stroke="var(--ink)" stroke-width="2"></path>
+      <text x="495" y="75" fill="var(--saida)" font-size="11" text-anchor="middle">1 linha</text>
+      <text x="495" y="118" fill="var(--ink-3)" font-size="10" text-anchor="middle">banco</text>
+    </svg>
+    <figcaption>A chave é única no banco. O segundo envio bate nela e é ignorado, em silêncio.</figcaption>
+  </figure>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/dominio/evento.py</span><span>linhas 48–58</span></div>
@@ -1392,46 +2127,40 @@ def lado(a: Ponto, b: Ponto, p: Ponto) -&gt; int:
     return f"{camera_id}-{track_id_local}-{direcao.value}-{segundo}"</code></pre>
   </div>
 
-  <p>Essa única função é o que sustenta três coisas que parecem independentes: a fila local
-  pode existir, o reenvio é seguro, e reprocessar uma gravação produz exatamente os mesmos
-  identificadores. A coluna no banco é única, e o serviço grava com
-  <code>INSERT OR IGNORE</code>: a repetição bate na chave e é ignorada em silêncio, com a
-  contagem de duplicados voltando na resposta.</p>
+  <p>Essa função pequena sustenta três coisas que parecem separadas: a fila local pode
+  existir, reenviar é seguro, e reprocessar uma gravação produz exatamente os mesmos
+  recibos. Nome disso: <em>idempotência</em>. Fazer duas vezes dá no mesmo que fazer uma.</p>
 
   <div class="caixa">
-    <div class="rotulo">Granularidade da chave</div>
-    <p>O instante entra na chave como <strong>segundo inteiro</strong>. Dois cruzamentos do
-    mesmo track, na mesma direção, dentro do mesmo segundo, colapsam num só. Isso é
-    intencional e conversa com o cooldown de 1,5 segundo da linha: o que a linha já
-    considera repetição, a chave também considera.</p>
+    <div class="rotulo">Por que o segundo, e não o milissegundo</div>
+    <p>Dois cruzamentos da mesma pessoa, na mesma direção, dentro do mesmo segundo, viram
+    um só. É de propósito, e combina com o cooldown de 1,5 s da linha: o que a linha já
+    trata como repetição, a chave também trata.</p>
   </div>
 
-  <p>Duas outras decisões deste arquivo merecem atenção. A primeira é o campo
-  <code>origem</code>, que separa dado de câmera de dado de simulação. Toda consulta de
-  resultado filtra <code>VISAO</code> por padrão, e é isso que permitiu construir o painel
-  inteiro com dados falsos sem risco de eles virarem número de relatório.</p>
+  <p>Mais duas coisas moram neste arquivo. O campo <code>origem</code> separa dado de
+  câmera (<code>VISAO</code>) de dado inventado pelo simulador (<code>SINTETICO</code>).
+  Toda consulta mostra só o real por padrão. E o registro de execução guarda, junto do
+  resultado, qual modelo e quais parâmetros o produziram: seis semanas depois ainda dá para
+  saber de onde veio aquele número.</p>
 
-  <p>A segunda é o registro de execução, que guarda modelo, rastreador e limiares
-  <em>junto</em> do resultado: seis semanas depois ainda dá para saber com qual
-  configuração aquele número foi produzido.</p>
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Cada cruzamento tem um recibo calculado, não sorteado.</li>
+      <li>Recibo repetido é ignorado. Reenviar é seguro.</li>
+      <li>Dado real e dado inventado têm etiqueta; o inventado nunca vira relatório.</li>
+    </ul>
+  </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que a chave usa o segundo, e não o milissegundo?</summary>
-    <div class="resposta"><p>Porque com milissegundo dois envios do mesmo cruzamento com
-    arredondamento diferente gerariam chaves diferentes, e a deduplicação falharia justo no
-    caso que ela existe para cobrir. O segundo é grosso o bastante para absorver essa
-    variação e fino o bastante para não colidir com uma passagem seguinte, que o cooldown
-    de 1,5 s já separa.</p></div></details>
-    <details><summary>Um evento chega sem fuso horário. O sistema recusa?</summary>
-    <div class="resposta"><p>Não. Assume o fuso local, com um comentário explicando: a origem mais
-    comum é um relógio local, e recusar quebraria o agente por um detalhe de serialização.
-    É uma escolha de robustez sobre pureza, feita de olhos abertos.</p></div></details>
-    <details><summary>Qual é a diferença de comportamento entre reenviar um evento e reenviar um vínculo de identidade?</summary>
-    <div class="resposta"><p>Evento usa <code>INSERT OR IGNORE</code>: a repetição não muda nada.
-    Vínculo usa <code>ON CONFLICT DO UPDATE</code>: reprocessar a identidade sobrescreve a
-    decisão anterior. Faz sentido, porque a contagem é um fato e a atribuição de identidade
-    é uma estimativa que pode melhorar.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Por que o milissegundo estragaria tudo?</summary>
+    <div class="resposta"><p>Dois envios do mesmo cruzamento poderiam arredondar diferente e gerar recibos diferentes. A repetição passaria, justo no caso para o qual o recibo existe. O segundo é grosso o bastante para isso e fino o bastante para não juntar duas passagens reais, que o cooldown já separa.</p></div></details>
+    <details><summary>O simulador cria eventos inventados para testar o painel. Como eles não viram número no relatório?</summary>
+    <div class="resposta"><p>Pela etiqueta <code>origem</code>: eles entram como <code>SINTETICO</code>, e toda consulta mostra só <code>VISAO</code> por padrão. Ver o inventado exige pedir.</p></div></details>
+    <details><summary>Você reprocessa um vídeo gravado que já tinha sido contado. O banco fica com o dobro de eventos?</summary>
+    <div class="resposta"><p>Não. O recibo é calculado do próprio cruzamento, então cada um sai com o mesmo recibo de antes, bate na chave única e é ignorado. Fazer duas vezes dá no mesmo que fazer uma.</p></div></details>
   </div>
 </section>
 
@@ -1439,15 +2168,15 @@ def lado(a: Ponto, b: Ponto, p: Ponto) -&gt; int:
   <h3><span class="estacao">Estação 8</span>O evento sobe, ou espera em disco</h3>
   <div class="arquivos">src/fluxo/agente/processador.py · remetente.py · fila_local.py</div>
 
-  <p>O laço do agente cabe numa tela e faz sete coisas por quadro: verifica lacuna,
-  rastreia, grava trilha, conta, observa identidade, decide envio, desenha. Vale ler o
-  arquivo inteiro uma vez, porque é o lugar onde todas as camadas se encontram.</p>
+  <p class="pergunta">O agente manda cada cruzamento na hora? E se o serviço estiver fora do ar?</p>
 
-  <p>A decisão de envio tem duas condições, e a segunda foi acrescentada por causa de um
-  problema observado em campo.</p>
+  <p>Imagine o carteiro. Ele não sai da agência a cada carta: junta um maço e vai. Mas se
+  o movimento for fraco, ele não pode esperar o maço encher, senão a carta de manhã só
+  chega à noite. O agente faz igual: manda quando junta <strong>25 eventos</strong>, ou
+  quando o mais velho do maço completa <strong>30 segundos</strong>. O que vier primeiro.</p>
 
   <div class="bloco">
-    <div class="cabecalho"><span class="caminho">src/fluxo/agente/processador.py</span><span>linhas 23–31, 137–147</span></div>
+    <div class="cabecalho"><span class="caminho">src/fluxo/agente/processador.py</span><span>linhas 23–31</span></div>
 <pre><code class="language-python"># Eventos são acumulados e enviados em lote. Um POST por pessoa seria uma
 # viagem de rede por passagem, sem necessidade.
 TAMANHO_LOTE = 25
@@ -1456,28 +2185,20 @@ TAMANHO_LOTE = 25
 # levam uma tarde; nesse meio-tempo o painel não vê nada e, se o agente
 # morrer, o que estava na memória morre junto — o supervisor relança o
 # processo, não a memória.
-INTERVALO_ENVIO_S = 30.0
-
-            vencido = bool(pendentes) and (
-                (quadro.instante - pendentes[0].instante).total_seconds() &gt;= INTERVALO_ENVIO_S
-            )
-            if remetente is not None and pendentes and (
-                len(pendentes) &gt;= TAMANHO_LOTE or vencido
-            ):
-                if remetente.enviar(pendentes) and remetente.fila.tamanho:
-                    # O serviço voltou: o que ficou preso de uma queda anterior
-                    # sai agora, e não só no próximo restart do agente.
-                    remetente.drenar_fila()
-                pendentes = []</code></pre>
+INTERVALO_ENVIO_S = 30.0</code></pre>
   </div>
 
-  <p>Repare que o tempo é medido pelo <strong>instante do quadro</strong>, não pelo relógio
-  de parede. Isso torna o comportamento determinístico e testável: um teste faz cem quadros
-  de um segundo cada e verifica que o lote subiu antes do fim.</p>
+  <p>Um detalhe que parece bobo e não é: os 30 segundos são medidos pela <strong>hora do
+  quadro</strong>, não pelo relógio da parede. Isso deixa o comportamento testável: um teste
+  cria cem quadros de um segundo cada e confirma que o maço subiu antes do fim, em
+  milissegundos.</p>
 
   <h4>Quando a rede cai</h4>
-  <p>A fila local é um arquivo JSONL, uma linha por evento, escrita em modo de acréscimo.
-  A escolha do formato é uma decisão de resiliência:</p>
+  <p>O carteiro tenta três vezes, esperando um pouco mais a cada vez. Se não der, ele
+  <strong>deixa as cartas numa caixa no chão</strong> e continua trabalhando. A caixa é um
+  arquivo de texto, uma linha por evento, sempre acrescentando no fim. Quando o serviço
+  voltar, a caixa esvazia sozinha no primeiro envio que der certo, e não só no próximo
+  reinício.</p>
 
   <div class="citacao">
     Formato JSONL: uma linha por evento, append puro. Se o processo morrer no meio da
@@ -1486,28 +2207,33 @@ INTERVALO_ENVIO_S = 30.0
     <cite>src/fluxo/agente/fila_local.py, linhas 6–8</cite>
   </div>
 
-  <p>A leitura leva a decisão até o fim: uma linha truncada é <strong>descartada</strong>,
-  e não derruba a fila inteira. Descartar uma linha é melhor que travar tudo.</p>
+  <p>E se uma linha ficou pela metade porque o programa morreu escrevendo? Ela é
+  descartada, e o resto da caixa continua valendo. Perder uma linha é melhor que travar
+  tudo.</p>
 
-  <p>O remetente tenta três vezes com recuo exponencial e, se falhar, enfileira. Na
-  execução seguinte, drena antes de começar. Em campo isso já foi exercitado a sério: vinte
-  e um mil duzentos e dezoito eventos reenviados, <strong>zero duplicados</strong>. É a
-  chave determinística da estação anterior fazendo o seu trabalho.</p>
+  <div class="caixa nota">
+    <div class="rotulo">Medido em campo</div>
+    <p>Numa queda de serviço, 21.218 eventos foram reenviados da caixa. Duplicados gravados:
+    <strong>zero</strong>. É o recibo da Estação 7 fazendo o trabalho dele.</p>
+  </div>
+
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Manda em maços de 25, ou a cada 30 s. O que vier primeiro.</li>
+      <li>Serviço fora? As cartas vão para uma caixa em disco, uma por linha.</li>
+      <li>A caixa esvazia sozinha quando o serviço volta. Nada duplica.</li>
+    </ul>
+  </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que o vencimento do lote usa o instante do quadro e não <code>time.monotonic()</code>?</summary>
-    <div class="resposta"><p>Para o teste poder controlar o tempo sem dormir. Com quadros
-    sintéticos espaçados de um segundo, o teste comprova o comportamento em milissegundos.
-    Com relógio de parede, seria um teste lento e instável.</p></div></details>
-    <details><summary>O serviço volta ao ar no meio de um envio bem-sucedido. Por que drenar a fila ali, e não no próximo arranque?</summary>
-    <div class="resposta"><p>Porque o próximo arranque pode demorar dias. Um evento que ficou preso
-    numa queda das duas da tarde não deve esperar o reinício da máquina para aparecer no
-    painel.</p></div></details>
-    <details><summary>Por que a Etapa 2 usa um arquivo de fila separado?</summary>
-    <div class="resposta"><p>Porque as duas filas guardam modelos diferentes. Misturá-las faria a
-    drenagem de uma tentar validar linhas da outra e corrompê-la. O mecanismo é o mesmo,
-    parametrizado pelo modelo.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Por que o vencimento do maço usa a hora do quadro e não o relógio da parede?</summary>
+    <div class="resposta"><p>Para o teste controlar o tempo sem dormir. Com quadros inventados espaçados de um segundo, o teste prova o comportamento em milissegundos. Com relógio de parede, seria lento e instável.</p></div></details>
+    <details><summary>O serviço volta no meio de um envio. Por que esvaziar a caixa ali, e não no próximo reinício?</summary>
+    <div class="resposta"><p>Porque o próximo reinício pode demorar dias. Um evento preso numa queda das duas da tarde não deve esperar o PC reiniciar para aparecer no painel.</p></div></details>
+    <details><summary>O agente morre com 10 eventos no maço, antes de completar os 30 s. Eles se perdem?</summary>
+    <div class="resposta"><p>Sim. O que está na memória morre com o programa. É por isso que o maço vence por tempo: a perda fica limitada a, no máximo, 30 segundos de movimento.</p></div></details>
   </div>
 </section>
 
@@ -1515,27 +2241,28 @@ INTERVALO_ENVIO_S = 30.0
   <h3><span class="estacao">Estação 9</span>O serviço grava</h3>
   <div class="arquivos">src/fluxo/servico/api.py · persistencia/repositorio.py · persistencia/esquema.sql</div>
 
-  <p>O serviço é pequeno de propósito: recebe, valida pelo modelo compartilhado, grava,
-  responde. As rotas se dividem em ingestão, consulta e operação, e as de escrita ficam
-  atrás de uma chave opcional.</p>
+  <p class="pergunta">O que o serviço faz com o maço que chegou, e o que ele se recusa a guardar?</p>
+
+  <p>O serviço é pequeno de propósito. Recebe, confere se o formato bate (usando a mesma
+  definição de evento que o agente usa para produzir, então os dois nunca discordam),
+  grava, responde. As rotas de escrita ficam atrás de uma chave opcional; as de leitura,
+  não.</p>
 
   <div class="rolar">
   <table>
     <thead><tr><th>Rota</th><th>Grupo</th><th>O que faz</th></tr></thead>
     <tbody>
-      <tr><td><code>GET /saude</code></td><td>operação</td><td>O agente pergunta antes de tentar enviar</td></tr>
-      <tr><td><code>POST /eventos</code></td><td>ingestão</td><td>Um evento</td></tr>
-      <tr><td><code>POST /eventos/lote</code></td><td>ingestão</td><td>O caminho normal: até 25 de uma vez</td></tr>
-      <tr><td><code>POST /execucoes</code> · <code>/{id}/fim</code></td><td>operação</td><td>Abre e fecha o registro de rastreabilidade</td></tr>
-      <tr><td><code>GET /contagem/diaria</code> · <code>/horaria</code></td><td>consulta</td><td>Agregados prontos</td></tr>
+      <tr><td><code>GET /saude</code></td><td>operação</td><td>"Você está aí?" O agente pergunta antes de enviar, e o supervisor a cada 30 s</td></tr>
+      <tr><td><code>POST /eventos/lote</code></td><td>ingestão</td><td>O caminho normal: o maço de até 25</td></tr>
+      <tr><td><code>POST /execucoes</code> · <code>/{id}/fim</code></td><td>operação</td><td>Abre e fecha o registro de "com que configuração"</td></tr>
+      <tr><td><code>GET /contagem/diaria</code> · <code>/horaria</code></td><td>consulta</td><td>Totais prontos</td></tr>
       <tr><td><code>GET /eventos</code> · <code>/cameras</code> · <code>/execucoes</code></td><td>consulta</td><td>Listagens</td></tr>
-      <tr><td><code>POST /pessoas/lote</code> · <code>/vinculos/lote</code></td><td>identidade</td><td>Etapa 2</td></tr>
-      <tr><td><code>PUT /pessoas/apelido</code></td><td>identidade</td><td>Só no teste de validação</td></tr>
+      <tr><td><code>POST /pessoas/lote</code> · <code>/vinculos/lote</code></td><td>identidade</td><td>Estação 12</td></tr>
     </tbody>
   </table>
   </div>
 
-  <h4>O esquema, e o que ele se recusa a guardar</h4>
+  <h4>O banco, e o que ele se recusa a guardar</h4>
   <p>O arquivo do esquema abre com três linhas que valem mais que o resto:</p>
 
   <div class="bloco">
@@ -1545,8 +2272,9 @@ INTERVALO_ENVIO_S = 30.0
 -- lacuna a preencher depois.</code></pre>
   </div>
 
-  <p>São seis tabelas. <code>camera</code> e <code>execucao</code> dão contexto;
-  <code>evento</code> é o dado; as três da Etapa 2 vieram depois.</p>
+  <p>São sete tabelas. <code>camera</code> e <code>execucao</code> dão contexto.
+  <code>evento</code> é o dado. <code>periodo</code> é um rótulo sobre o tempo (Estação
+  10). As três restantes são da identidade (Estação 12). Esta é a tabela que importa:</p>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/persistencia/esquema.sql</span><span>tabela evento</span></div>
@@ -1568,139 +2296,256 @@ INTERVALO_ENVIO_S = 30.0
 );</code></pre>
   </div>
 
-  <p>Três índices, cada um com um consumidor claro: <code>(data_ref, camera_id)</code> para
-  o painel, <code>instante</code> para as consultas de série, <code>origem</code> para o
-  filtro que separa dado real de simulação.</p>
+  <p>Olhe o que <em>não</em> está aí: nome, matrícula, rosto, foto. Não é que ficou para
+  depois. Não cabe.</p>
+
+  <p>Todo <code>CREATE</code> tem <code>IF NOT EXISTS</code>, e o serviço reaplica o
+  esquema toda vez que sobe. Por isso uma tabela nova entra num banco antigo sem migração
+  nenhuma. Uma coluna nova numa tabela antiga, não: isso exigiria um passo de migração que
+  o projeto não tem. É bom saber antes de propor mudanças.</p>
 
   <div class="caixa nota">
-    <div class="rotulo">Uma chave estrangeira ausente, de propósito</div>
-    <p>A tabela de vínculos de identidade <strong>não</strong> referencia a de eventos. O
-    motivo está em comentário: os eventos sobem em lote e o vínculo pode chegar antes do
-    evento. A junção é feita na consulta. É o tipo de decisão que parece descuido para quem
-    lê o esquema sem o comentário.</p>
+    <div class="rotulo">Uma ligação ausente, de propósito</div>
+    <p>A tabela de vínculos de identidade <strong>não</strong> aponta para a de eventos. O
+    motivo está em comentário: os eventos sobem em maços, e o vínculo pode chegar antes do
+    evento. A junção é feita na hora de consultar. Parece descuido para quem lê sem o
+    comentário.</p>
+  </div>
+
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>O serviço recebe, confere, grava, responde. Pequeno de propósito.</li>
+      <li>Nenhuma coluna identifica pessoa. É a definição do sistema.</li>
+      <li>Tabela nova entra sozinha; coluna nova, não.</li>
+    </ul>
   </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que <code>data_ref</code> existe, se já há <code>instante</code>?</summary>
-    <div class="resposta"><p>Porque o dia operacional pode não ser o dia civil, e porque agrupar
-    por dia sobre um texto ISO exigiria uma função em toda consulta, matando o índice.
-    Guardar o dia calculado torna a consulta trivial e indexável. Hoje a hora de início do
-    dia é zero, mas existe como constante nomeada justamente para poder mudar.</p></div></details>
-    <details><summary>O que <code>PRAGMA journal_mode=WAL</code> resolve neste projeto?</summary>
-    <div class="resposta"><p>Permite ler enquanto se escreve. O painel consulta o banco ao mesmo
-    tempo em que o serviço grava eventos; sem WAL, um bloquearia o outro.</p></div></details>
-    <details><summary>Por que as rotas de escrita têm chave opcional em vez de obrigatória?</summary>
-    <div class="resposta"><p>Porque em <code>localhost</code> a chave não protege de nada e só
-    atrapalha. Ela passa a ser exigida quando o serviço é exposto na rede, e a documentação
-    de operação amarra as duas coisas: expor sem definir a chave é o erro que o texto
-    avisa.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Por que existe <code>data_ref</code>, se já existe <code>instante</code>?</summary>
+    <div class="resposta"><p>Para agrupar por dia sem fazer conta em cima de texto em toda consulta, o que mataria o índice. E porque o "dia" de uma faculdade poderia não começar à meia-noite; hoje começa, mas a hora de virada é uma constante nomeada, pronta para mudar.</p></div></details>
+    <details><summary>Você precisa de uma tabela nova e de uma coluna nova numa tabela antiga. Qual das duas exige mais cuidado?</summary>
+    <div class="resposta"><p>A coluna. A tabela nova entra sozinha na próxima subida do serviço, porque tudo é <code>IF NOT EXISTS</code>. A coluna nova numa tabela que já existe exige um passo de migração, e o projeto não tem um.</p></div></details>
+    <details><summary>Por que a chave das rotas de escrita é opcional?</summary>
+    <div class="resposta"><p>Porque em <code>localhost</code> ela não protege de nada e só atrapalha. Passa a ser exigida quando o serviço é exposto na rede, e a documentação amarra as duas coisas.</p></div></details>
   </div>
 </section>
 
 <section id="e10">
-  <h3><span class="estacao">Estação 10</span>O banco vira gráfico e relatório</h3>
-  <div class="arquivos">src/fluxo/analise/consultas.py · painel.py · relatorio.py</div>
+  <h3><span class="estacao">Estação 10</span>O banco vira gráfico, relatório e período</h3>
+  <div class="arquivos">src/fluxo/analise/consultas.py · painel.py · relatorio.py · dominio/periodo.py</div>
 
-  <p>A camada de análise só lê. Ela carrega eventos num <code>DataFrame</code> e deriva
-  tudo dali: resumo diário, série horária, hora de pico, curva de ocupação, comparativo
-  entre portas, média por dia da semana.</p>
+  <p class="pergunta">Como uma tabela de eventos vira "pico às 16h" e "3 pessoas dentro"?</p>
 
-  <p>A ocupação é acumulada: soma um a cada entrada, subtrai um a cada saída. É estimativa,
-  não medição, e o código diz isso: se o contador perder uma saída, a curva fica alta pelo
-  resto do dia. Por isso o saldo de fim de dia funciona como verificação — foi ele que, no
-  teste de campo, fechou em praticamente zero.</p>
+  <p>A camada de análise só lê. Ela puxa os eventos para uma tabela do pandas e deriva
+  tudo dali: total por dia, movimento por hora, hora de pico, quantas pessoas estão dentro,
+  qual porta é mais usada, média por dia da semana.</p>
 
-  <p>O relatório é o que sai da máquina e vai para a mesa de quem decide, e foi escrito
-  com uma regra explícita:</p>
+  <p>"Quantas estão dentro" é a conta mais simples e a mais traiçoeira: soma um a cada
+  entrada, tira um a cada saída. Se o contador perder uma saída, a curva fica alta pelo
+  resto do dia. Por isso o saldo do fim do dia serve de verificação. No teste de campo ele
+  fechou em 31 entradas e 29 saídas, quase zero, que é o esperado.</p>
 
+  <h4>O relatório diz o que o número não é</h4>
   <div class="citacao">
     Ele diz o número E diz o que o número não é: estimativa sem contagem manual de
     referência, câmera VGA, uma porta. Um relatório que só traz o total convida a confiar
     nele mais do que ele merece.
-    <cite>src/fluxo/analise/relatorio.py, linhas 4–7</cite>
+    <cite>src/fluxo/analise/relatorio.py</cite>
   </div>
+
+  <h4>Períodos com nome</h4>
+  <p>Você faz um teste na terça, outro na quinta, e daqui a um mês quer olhar só o da
+  terça. Com datas, dá trabalho. Com um <strong>nome</strong>, não: "Teste de campo
+  03/09", "Laboratório de física". Um período é uma linha numa tabela própria: nome,
+  início, fim (vazio enquanto ainda está rodando) e, se quiser, uma câmera.</p>
+
+  <p>O ponto importante é o que o período <em>não</em> é: não é uma coluna no evento. O
+  evento continua sendo só porta, hora e direção. O período é um rótulo colocado por cima,
+  na hora de consultar. Duas consequências boas: criar, renomear ou encerrar um período
+  nunca mexe em contagem nenhuma, e a tabela entrou no banco existente sem migração
+  (Estação 9).</p>
+
+  <p>O filtro tem dois passos. O grosso é no SQL, por dia, que tem índice. O fino é em
+  pandas, comparando a hora exata de cada evento com o início e o fim do período. Por que
+  não comparar direto no banco? Porque lá a hora é um texto, e comparar texto só funciona
+  enquanto todos tiverem o mesmo fuso escrito do mesmo jeito. É o tipo de "enquanto" que
+  quebra um dia.</p>
 
   <div class="caixa aviso">
     <div class="rotulo">Um bug real desta camada, corrigido em 04/09/2026</div>
-    <p>A curva de ocupação era montada com <code>.values</code> sobre uma coluna com fuso.
-    Esse acesso descarta o fuso e converte para UTC em silêncio, e o horário do pico saía
-    três horas adiantado: dizia 19h42 quando a última travessia tinha sido às 18h24. A
-    correção foi reindexar em vez de usar <code>.values</code>. Nenhum número de contagem
-    dependia disso, só o eixo do tempo dessa curva e do gráfico no painel.</p>
+    <p>A curva de ocupação usava <code>.values</code> numa coluna com fuso. Esse acesso joga
+    o fuso fora e converte para UTC sem avisar. O pico saía três horas adiantado: dizia
+    19h42 quando a última passagem tinha sido às 18h24. Nenhuma contagem dependia disso, só
+    o eixo do tempo. Mas era um número plausível, e por isso passou.</p>
+  </div>
+
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Análise só lê. Tudo sai de uma tabela do pandas.</li>
+      <li>"Dentro agora" é entradas menos saídas: estimativa, e o saldo do dia é a prova.</li>
+      <li>Período é um nome sobre o tempo, ao lado do evento, nunca dentro dele.</li>
+    </ul>
   </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que "cruzamentos por track" aparece no relatório?</summary>
-    <div class="resposta"><p>Porque é o sinal de contagem dupla. O ideal é 1,00: cada pessoa
-    acompanhada cruza a linha uma vez. Acima disso, a mesma passagem foi contada mais de uma
-    vez. No teste de campo deu 1,02, que é um número saudável.</p></div></details>
-    <details><summary>O painel funciona, mas mostra dados que você não reconhece. Primeira hipótese?</summary>
-    <div class="resposta"><p>Dados sintéticos do simulador. A defesa existe: toda consulta de
-    resultado filtra <code>origem = VISAO</code> por padrão. Se apareceram, é porque alguém
-    pediu explicitamente, ou porque uma consulta nova esqueceu o filtro.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Por que o período não é uma coluna na tabela de eventos?</summary>
+    <div class="resposta"><p>Porque o evento é um fato imutável e o período é um rótulo humano, dado depois. Coluna nova exigiria migração (Estação 9), mudaria todas as consultas, e amarraria cada passagem a uma decisão que pode ser desfeita. Uma tabela ao lado resolve tudo isso.</p></div></details>
+    <details><summary>O saldo do dia deu +12, com 40 entradas. O que você suspeita?</summary>
+    <div class="resposta"><p>Saídas perdidas. O saldo deveria fechar perto de zero. Doze pessoas "ainda dentro" à noite é quase sempre gente que saiu sem ser contada, e a curva de ocupação fica alta pelo resto do dia por causa disso.</p></div></details>
+    <details><summary>O painel mostra dados que você não reconhece. Primeira hipótese?</summary>
+    <div class="resposta"><p>Dado do simulador (Estação 7). Toda consulta mostra só <code>VISAO</code> por padrão. Se apareceu inventado, alguém pediu, ou uma consulta nova esqueceu o filtro.</p></div></details>
   </div>
 </section>
 
 <section id="e11">
-  <h3><span class="estacao">Estação 11</span>Ficar de pé sozinho</h3>
-  <div class="arquivos">src/fluxo/operacao/supervisor.py · scripts/rodar_tudo.py · docs/operacao.md</div>
+  <h3><span class="estacao">Estação 11</span>Ficar de pé sozinho, e ser visto de longe</h3>
+  <div class="arquivos">src/fluxo/operacao/ · src/fluxo/visao/quadro_vivo.py · scripts/rodar_tudo.py · docs/operacao.md</div>
 
-  <p>Contar bem por dez minutos é um exercício. Contar por meses sem ninguém olhando é o
-  produto. A defesa é em quatro camadas, e cada uma cobre a de dentro.</p>
+  <p class="pergunta">O PC fica trancado num laboratório por semanas. O que garante que ele continua contando? E como eu vejo isso de casa?</p>
+
+  <h4>Parte 1: não parar</h4>
+  <p>Contar bem por dez minutos é um exercício. Contar por semanas sem ninguém olhando é o
+  produto. Pense em cinco redes de segurança, uma dentro da outra. Se a de dentro falha, a
+  de fora segura.</p>
 
   <div class="rolar">
   <table>
-    <thead><tr><th>Camada</th><th>Cobre</th></tr></thead>
+    <thead><tr><th>Rede</th><th>Segura quando…</th></tr></thead>
     <tbody>
-      <tr><td><code>FonteViva</code>, dentro do agente</td><td>Stream que cai, congela ou nem abre. Reconecta com recuo, para sempre</td></tr>
-      <tr><td>Laço do agente</td><td>Exceção Python no pipeline. Registra e recomeça em 30 s</td></tr>
-      <tr><td>Supervisor</td><td>Processo que morre. Relança com recuo exponencial</td></tr>
-      <tr><td>Agendador de Tarefas</td><td>Logon ou reinício da máquina. Lança o supervisor</td></tr>
+      <tr><td><code>FonteViva</code>, dentro do agente</td><td>a câmera cai ou trava. Reconecta com espera crescente. Dez minutos sem foto num endereço de rede, ela <strong>desiste</strong>, e o agente sai procurando a câmera em outro IP</td></tr>
+      <tr><td>Laço do agente</td><td>um erro de programa estoura no meio. Registra e recomeça em 30 s</td></tr>
+      <tr><td>Supervisor</td><td>um dos programas <em>morre</em>: relança, esperando mais a cada morte seguida. Um dos programas <em>trava</em> (vivo, mas não responde): a sonda falha três vezes e ele é derrubado e relançado</td></tr>
+      <tr><td>Supervisor, energia</td><td>o Windows quer dormir. Não dorme enquanto o supervisor vive</td></tr>
+      <tr><td>Agendador do Windows</td><td>alguém reinicia o PC ou faz logon. Sobe o supervisor, sem limite de tempo, relançando se cair</td></tr>
     </tbody>
   </table>
   </div>
 
-  <p>O supervisor tem duas sutilezas que valem estudo. A primeira é que o recuo
-  <strong>zera depois de um período estável</strong>: uma queda isolada às duas da tarde
-  não deve penalizar a queda seguinte às dez da noite. A segunda é o atraso escalonado na
-  subida, para o agente não reclamar de serviço fora do ar enquanto o serviço ainda está
-  nascendo.</p>
+  <h4>Morto é fácil. Travado é o problema.</h4>
+  <p>O sistema operacional sabe dizer se um programa morreu. Não sabe dizer se ele está
+  vivo mas parado, olhando para o nada. Um agente preso numa conta que nunca termina, ou
+  um servidor que parou de responder, continuam "vivos". Para isso existe a
+  <strong>sonda</strong>: uma pergunta feita de tempos em tempos. Ao serviço e ao painel,
+  a pergunta é um pedido HTTP. Ao agente, é a idade de um arquivo, o <strong>pulso</strong>,
+  que o agente toca a cada 5 segundos. Arquivo velho há 3 minutos? Travou.</p>
 
-  <div class="bloco">
-    <div class="cabecalho"><span class="caminho">src/fluxo/operacao/supervisor.py</span><span>linhas 45–50</span></div>
-<pre><code class="language-python">def _lancar_subprocesso(p: ProcessoGerido):
-    p.log.parent.mkdir(parents=True, exist_ok=True)
-    # Sem PYTHONIOENCODING o filho herda cp1252 ao escrever em arquivo, e o
-    # primeiro print com acento derruba o processo — a armadilha clássica
-    # deste Windows.
-    ambiente = {**os.environ, "PYTHONIOENCODING": "utf-8"}</code></pre>
+  <figure class="desenho">
+    <svg viewBox="0 0 560 150" role="img" aria-label="O supervisor pergunta a cada filho se está vivo; três nãos seguidos e relança">
+      <rect x="200" y="15" width="160" height="42" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"></rect>
+      <text x="280" y="41" fill="var(--ink)" font-size="12" text-anchor="middle">supervisor</text>
+      <g stroke="var(--ink-3)" stroke-width="1.5" fill="none">
+        <path d="M 240 57 L 100 95"></path><path d="M 280 57 L 280 95"></path><path d="M 320 57 L 460 95"></path>
+      </g>
+      <rect x="40" y="95" width="120" height="40" rx="6" fill="var(--surface)" stroke="var(--saida)" stroke-width="1.8"></rect>
+      <text x="100" y="113" fill="var(--ink)" font-size="11" text-anchor="middle">serviço</text>
+      <text x="100" y="128" fill="var(--ink-3)" font-size="9.5" text-anchor="middle">GET /saude → 200</text>
+      <rect x="220" y="95" width="120" height="40" rx="6" fill="var(--surface)" stroke="var(--saida)" stroke-width="1.8"></rect>
+      <text x="280" y="113" fill="var(--ink)" font-size="11" text-anchor="middle">agente</text>
+      <text x="280" y="128" fill="var(--ink-3)" font-size="9.5" text-anchor="middle">pulso há 4 s</text>
+      <rect x="400" y="95" width="120" height="40" rx="6" fill="var(--surface)" stroke="var(--limite)" stroke-width="1.8"></rect>
+      <text x="460" y="113" fill="var(--ink)" font-size="11" text-anchor="middle">painel</text>
+      <text x="460" y="128" fill="var(--limite)" font-size="9.5" text-anchor="middle">não, não, não → relança</text>
+      <text x="280" y="80" fill="var(--ink-3)" font-size="10" text-anchor="middle">"você está aí?"  a cada 30 s</text>
+    </svg>
+    <figcaption>Morrer o supervisor vê sozinho. Travar, só perguntando.</figcaption>
+  </figure>
+
+  <p>Onde o pulso é tocado decide o que a sonda enxerga. Se fosse tocado pela thread que lê
+  a câmera, uma câmera fora do ar pareceria agente travado, e o supervisor mataria o agente
+  a cada três minutos durante uma noite inteira de wifi caído. Ele é tocado pelo laço que
+  <em>consome</em> as fotos, a cada volta, com foto ou sem (o laço acorda no vigia de 10 s).
+  Câmera fora do ar continua pulsando. Uma conta travada para de pulsar. É a diferença
+  entre vigiar a rede e vigiar o programa.</p>
+
+  <div class="caixa aviso">
+    <div class="rotulo">A parada silenciosa do terceiro dia</div>
+    <p>O Windows encerra tarefas do Agendador depois de <strong>72 horas</strong>, por
+    padrão. O comando simples de criar tarefa não deixa mudar isso. É uma parada sem
+    nenhum aviso no log: o supervisor simplesmente deixa de existir na terceira noite. A
+    tarefa passou a ser importada de um XML que zera esse limite. O comando simples ficou
+    como plano B, e o runbook diz: "parou no terceiro dia? desconfie do plano B".</p>
   </div>
 
-  <p>A lógica do supervisor é pura de propósito: o lançador e o relógio são injetáveis, e
-  os testes exercitam morte, recuo e estabilidade <strong>sem criar um único
-  subprocesso</strong>.</p>
+  <h4>Parte 2: ser visto de longe</h4>
+  <p>Dois problemas. O primeiro: a câmera atende um cliente por vez, e esse cliente é o
+  agente. Ninguém consegue abrir o vídeo para ver a porta. Solução: o agente
+  <strong>republica</strong> o que já está olhando. A foto com as caixas e a linha
+  desenhadas vai para um único arquivo JPEG por câmera, sobrescrito até cinco vezes por
+  segundo. É um espelho, não uma gravação: a foto de agora apaga a de antes. O painel lê
+  esse arquivo na aba "Ao vivo".</p>
+
+  <p>O segundo problema: o firewall da faculdade. Lembre do porteiro: quem está dentro
+  pode sair; quem está fora não entra. Então o PC do laboratório <em>sai</em>: abre uma
+  conexão para o Cloudflare, pela mesma porta que qualquer navegador usa, e recebe um
+  endereço público. Você, em casa, acessa esse endereço. O porteiro nunca viu você entrar.
+  Só viu o PC sair, como faz todo dia.</p>
+
+  <figure class="desenho">
+    <svg viewBox="0 0 560 140" role="img" aria-label="O PC do laboratório sai pelo firewall até o Cloudflare; você em casa acessa o Cloudflare">
+      <rect x="10" y="30" width="170" height="90" rx="6" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="6 4"></rect>
+      <text x="95" y="20" fill="var(--ink-3)" font-size="10.5" text-anchor="middle">rede da faculdade</text>
+      <rect x="30" y="55" width="90" height="42" rx="6" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"></rect>
+      <text x="75" y="80" fill="var(--ink)" font-size="11.5" text-anchor="middle">PC do lab</text>
+      <line x1="180" y1="30" x2="180" y2="120" stroke="var(--limite)" stroke-width="4"></line>
+      <text x="180" y="135" fill="var(--limite)" font-size="10" text-anchor="middle">firewall</text>
+      <path d="M 125 76 L 265 76" stroke="var(--entrada)" stroke-width="2" marker-end="url(#seta11)"></path>
+      <text x="200" y="66" fill="var(--entrada)" font-size="10" text-anchor="middle">sai (443)</text>
+      <defs><marker id="seta11" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--entrada)"></path></marker></defs>
+      <ellipse cx="320" cy="76" rx="50" ry="26" fill="none" stroke="var(--ink)" stroke-width="2"></ellipse>
+      <text x="320" y="72" fill="var(--ink)" font-size="11" text-anchor="middle">Cloudflare</text>
+      <text x="320" y="86" fill="var(--ink-3)" font-size="9" text-anchor="middle">…trycloudflare.com</text>
+      <path d="M 500 76 L 378 76" stroke="var(--saida)" stroke-width="2" marker-end="url(#seta11b)"></path>
+      <defs><marker id="seta11b" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--saida)"></path></marker></defs>
+      <rect x="505" y="55" width="50" height="42" rx="6" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"></rect>
+      <text x="530" y="80" fill="var(--ink)" font-size="11" text-anchor="middle">você</text>
+      <text x="440" y="66" fill="var(--saida)" font-size="10" text-anchor="middle">acessa, com senha</text>
+    </svg>
+    <figcaption>Ninguém entra na rede da faculdade. O PC sai, e você encontra ele do lado de fora.</figcaption>
+  </figure>
+
+  <p>Dois detalhes fecham a história. O endereço muda toda vez que a conexão reinicia, e
+  não há ninguém no laboratório para ler o log. Então o supervisor ganhou
+  <strong>observadores</strong>: funções chamadas a cada passo. Um deles lê a saída do
+  cloudflared e, quando aparece um endereço novo, manda para um tópico do ntfy que o seu
+  celular assina. E como qualquer pessoa com o endereço chega até lá, o painel pede senha.</p>
+
+  <div class="caixa nota">
+    <div class="rotulo">O detalhe que só o ensaio revelou</div>
+    <p>O observador começa a ler do <em>fim</em> do arquivo de log, não do começo. O log
+    guarda a execução anterior, e o endereço de ontem está morto. Na primeira versão ele
+    mandou para o celular um endereço que não existia mais.</p>
+  </div>
 
   <div class="caixa">
-    <div class="rotulo">O limite honesto</div>
-    <p>O supervisor detecta processo <em>morto</em>, não processo <em>travado</em>. Por isso
-    o agente escreve uma linha por hora no log com entradas, saídas, tamanho da fila e número
-    de reconexões. Log sem batimento por mais de uma hora significa travamento, e é a única
-    forma de descobrir isso à distância.</p>
+    <div class="rotulo">O que a operação ainda não cobre</div>
+    <p>Reinício sem logon automático, tampa de notebook fechada, câmera programada para
+    outro wifi. Isso é pedido ao TI, e está escrito assim no runbook. O código não finge
+    cobrir o que não cobre.</p>
+  </div>
+
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>Cinco redes de segurança, uma dentro da outra.</li>
+      <li>Morto o sistema vê. Travado, só perguntando: sonda e pulso.</li>
+      <li>O firewall bloqueia quem entra. O PC sai, e você o encontra lá fora, com senha.</li>
+    </ul>
   </div>
 
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que o recuo zera por tempo de vida, e não por sucesso do lançamento?</summary>
-    <div class="resposta"><p>Porque lançar sempre dá certo; o que interessa é ficar vivo. Um
-    processo que morre dois segundos depois de nascer foi lançado com sucesso e mesmo assim
-    não deve ter o recuo reiniciado.</p></div></details>
-    <details><summary>Como testar a resiliência sem desligar a câmera de verdade?</summary>
-    <div class="resposta"><p>Servindo um vídeo local como stream MJPEG com o ffmpeg, apontando a
-    câmera para esse endereço e derrubando o ffmpeg no meio. O log deve mostrar a queda, as
-    tentativas com recuo e a reconexão. O procedimento está escrito na documentação de
-    operação.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>O painel morre três vezes seguidas. O supervisor relança na hora, toda vez?</summary>
+    <div class="resposta"><p>Não. Ele espera mais a cada morte seguida: 1 s, 2 s, 4 s, até 60 s. Um programa que morre ao nascer não melhora sendo relançado no ato. E depois de cinco minutos vivo, a espera volta ao início.</p></div></details>
+    <details><summary>Por que o pulso é tocado pelo laço que consome as fotos, e não pela thread que lê a câmera?</summary>
+    <div class="resposta"><p>Porque o que se quer vigiar é o programa, não a rede. Tocado pelo consumidor, uma câmera fora do ar continua pulsando (o laço acorda no vigia de 10 s), e uma conta travada para de pulsar. Tocado pela leitora, seria o contrário, e o supervisor mataria o agente a cada três minutos de wifi caído.</p></div></details>
+    <details><summary>Por que a fonte desiste depois de dez minutos, em vez de tentar para sempre?</summary>
+    <div class="resposta"><p>Porque a câmera pode ter voltado com outro IP depois de uma queda de luz. Tentar o IP velho para sempre encheria o log por um fim de semana inteiro. Desistindo, o agente varre a rede e, se achar <em>uma</em> câmera, troca. Se achar duas, não escolhe: contar a porta errada é pior que não contar.</p></div></details>
+    <details><summary>Qualquer pessoa com o endereço do Cloudflare chega até o painel. O que impede um estranho de ver a porta?</summary>
+    <div class="resposta"><p>A senha do painel. O endereço é a praça pública; a senha é a porta. Por isso o supervisor se recusa a subir o túnel sem <code>SENHA_PAINEL</code> definida.</p></div></details>
   </div>
 </section>
 
@@ -1708,15 +2553,17 @@ INTERVALO_ENVIO_S = 30.0
   <h3><span class="estacao">Estação 12</span>Ganhar identidade, sem saber quem é</h3>
   <div class="arquivos">src/fluxo/reid/ · visao/aparencia.py · agente/identidade.py</div>
 
-  <p>Esta é a Etapa 2, e ela ainda <strong>não passou pelo próprio critério de aceitação</strong>.
-  Vale estudá-la agora justamente por isso: é o exemplo mais completo no repositório de
-  como crescer sem quebrar o que já funciona.</p>
+  <p class="pergunta">A pessoa que saiu às 16h é a mesma que entrou às 14h? E dá para responder sem saber quem ela é?</p>
 
-  <p>O problema: o identificador de track morre quando a pessoa sai do quadro. Se você quer
-  saber quantas <em>pessoas distintas</em> passaram, e quanto tempo cada uma ficou, precisa
-  reconhecer que a pessoa que saiu às 16h é a que entrou às 14h.</p>
+  <p>Esta é a Etapa 2, e ela ainda <strong>não passou no próprio teste de aceitação</strong>.
+  Vale estudar justamente por isso: é o melhor exemplo do repositório de como crescer sem
+  quebrar o que já funciona.</p>
 
-  <h4>A pergunta certa</h4>
+  <p>O problema vem da Estação 5: o número da pessoa morre quando ela sai do quadro. Se
+  você quer saber quantas pessoas <em>diferentes</em> passaram, e quanto tempo cada uma
+  ficou, precisa ligar a saída das 16h à entrada das 14h.</p>
+
+  <h4>A pergunta certa é pequena</h4>
   <div class="citacao">
     A pergunta não é "quem é esta pessoa entre todas do mundo", é "qual das pessoas que
     estão dentro do prédio agora acabou de sair". Conjunto fechado, pequeno, e que encolhe
@@ -1724,15 +2571,19 @@ INTERVALO_ENVIO_S = 30.0
     <cite>src/fluxo/reid/galeria.py, linhas 1–6</cite>
   </div>
 
-  <p>Reformular o problema assim é o que o torna tratável com uma rede fraca. Em vez de
-  comparar contra um banco de milhares, compara-se contra as poucas dezenas que estão
-  dentro.</p>
+  <p>Pense num vestiário com fichas. Quem entra deixa uma ficha com a descrição da roupa.
+  Quem sai é comparado só com as fichas penduradas, não com todo mundo da cidade. A
+  "descrição da roupa" aqui é uma lista de 512 números que uma rede neural produz a partir
+  do recorte da pessoa. Duas fotos da mesma pessoa dão listas parecidas.</p>
 
-  <h4>O truque das colunas fantasmas</h4>
-  <p>A atribuição é feita em lote pelo algoritmo húngaro, nunca uma saída por vez. Guloso
-  erra quando duas pessoas parecidas saem juntas: a primeira leva o melhor par das duas e a
-  segunda fica com o resto. E o "não sei" não é um filtro aplicado depois — é parte da
-  otimização.</p>
+  <h4>O truque das cadeiras vazias</h4>
+  <p>Quando duas pessoas saem juntas, decidir uma de cada vez erra: a primeira leva a melhor
+  ficha das duas, e a segunda fica com a sobra. O Limiar decide as duas de uma vez, achando
+  o encaixe de menor custo total (o "algoritmo húngaro"). E tem um truque: além das fichas
+  reais, cada saída ganha uma <strong>cadeira vazia</strong>, que significa "não sei". A
+  cadeira vazia custa exatamente o limiar. Assim a saída só é ligada a uma ficha real
+  quando a semelhança supera o limiar, e o "não sei" faz parte da conta, não é um remendo
+  depois.</p>
 
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">src/fluxo/reid/atribuicao.py</span><span>linhas 112–126</span></div>
@@ -1753,89 +2604,67 @@ INTERVALO_ENVIO_S = 30.0
             nao_atribuidas.append(i)</code></pre>
   </div>
 
-  <p>A matriz tem <em>n</em> linhas de saídas e <em>m + n</em> colunas: as reais, mais uma
-  coluna fantasma por saída. O custo é <code>1 − similaridade</code>, e a coluna fantasma
-  custa <code>1 − limiar</code>. A conta se resolve sozinha: a saída vai para um candidato
-  real exatamente quando a similaridade supera o limiar. O otimizador escolhe "não sei"
-  quando ninguém é bom o bastante, e escolhe globalmente, não par a par.</p>
+  <h4>Preferir o erro que aparece</h4>
+  <p>Quem sai é comparado só com quem está dentro. Quem entra de novo é comparado só com
+  quem já saiu. Por quê? Porque ligar duas pessoas parecidas que estão dentro ao mesmo
+  tempo seria um erro <em>invisível</em>. Já uma saída sem par vira "fragmentação", que o
+  relatório mede. Entre um erro que aparece e um que se esconde, o Limiar escolhe o que
+  aparece. É a mesma filosofia do recibo da Estação 7.</p>
 
-  <p>O algoritmo húngaro é implementação própria, cúbica, e há justificativa: o conjunto de
-  candidatos é quem está dentro do prédio agora, dezenas, não o mundo. Uma dependência a
-  mais não se justifica.</p>
-
-  <h4>Assimetria deliberada</h4>
-  <p>Entrada e saída são tratadas de formas diferentes, e a razão é uma escolha de qual erro
-  preferir:</p>
-
-  <div class="citacao">
-    Só quem está FORA é candidato. Comparar com quem está dentro casaria duas pessoas
-    parecidas que estão no prédio ao mesmo tempo; uma saída perdida vira fragmentação, que o
-    relatório mede — melhor que uma fusão, que ele não veria.
-    <cite>src/fluxo/reid/galeria.py, linhas 177–180</cite>
-  </div>
-
-  <p>Prefere-se o erro <strong>observável</strong> ao erro <strong>invisível</strong>. É a
-  mesma filosofia da chave determinística: o pior erro é o que não aparece.</p>
-
-  <h4>O que é gravado, e o que nunca é</h4>
+  <h4>O que fica no banco</h4>
   <div class="rolar">
   <table>
     <thead><tr><th>Tabela</th><th>Guarda</th><th>Não guarda</th></tr></thead>
     <tbody>
-      <tr><td><code>pessoa_sessao</code></td><td>"P7", câmera, dia, primeira e última vez visto, <strong>data de expiração</strong></td><td>vetor, imagem, nome</td></tr>
-      <tr><td><code>vinculo</code></td><td>evento → P7, ou evento → nenhum; similaridade e método</td><td>nada da pessoa</td></tr>
+      <tr><td><code>pessoa_sessao</code></td><td>"P7", câmera, dia, primeira e última vez visto, <strong>data de validade</strong></td><td>a lista de números, imagem, nome</td></tr>
+      <tr><td><code>vinculo</code></td><td>evento → P7, ou evento → ninguém; semelhança e método</td><td>nada da pessoa</td></tr>
       <tr><td><code>apelido_teste</code></td><td>um rótulo dado à mão, só no teste de validação</td><td>—</td></tr>
     </tbody>
   </table>
   </div>
 
-  <p>O pseudônimo é do dia: nasce da roupa e morre com ela. Expira por construção, em 48
-  horas, com a purga rodando a cada escrita e no arranque do serviço. O vetor de aparência
-  <strong>nunca vai ao banco</strong>. A imagem só toca o disco com uma opção desligada por
-  padrão, que existe apenas para o teste com pessoas conhecidas.</p>
+  <p>O "P7" é do dia: nasce da roupa e morre com ela. Vence em 48 horas, e a limpeza roda a
+  cada gravação. A lista de números <strong>nunca vai ao banco</strong>. A imagem só toca o
+  disco com uma opção desligada por padrão, que existe para o teste com pessoas conhecidas.</p>
 
   <div class="caixa aviso">
     <div class="rotulo">Onde a Etapa 2 está parada</div>
-    <p>O código está pronto e testado. O que falta é a <strong>medição</strong>: rodar contra
-    pessoas conhecidas, preencher o gabarito à mão e comparar. Os três desfechos possíveis
-    já estão escritos de antemão. Se o ResNet-18 separar, segue. Se não, troca-se por uma
-    rede específica de re-identificação pela mesma interface. Se nem essa separar em VGA, o
-    projeto <strong>para e registra como limite do hardware, com o número</strong>. Declarar
-    o critério antes de ver o resultado é o que impede racionalizar depois.</p>
+    <p>O código está pronto e testado. Falta <strong>medir</strong>: rodar com pessoas
+    conhecidas, preencher o gabarito à mão e comparar. Os três desfechos já estão escritos.
+    Se a rede atual separar as pessoas, segue. Se não, troca-se por uma rede feita para
+    isso, pela mesma interface. Se nem essa separar em 640×480, o projeto <strong>para e
+    registra como limite do hardware, com o número</strong>. Decidir o critério antes de
+    ver o resultado é o que impede inventar desculpa depois.</p>
   </div>
 
-  <h4>Como ela entrou sem quebrar nada</h4>
-  <p>Vale a lista, porque é um modelo a repetir:</p>
+  <h4>Como entrou sem quebrar nada</h4>
   <ul>
     <li>Script próprio. O de produção não mudou uma linha.</li>
-    <li>Um parâmetro opcional no laço do processador. Com ele ausente, o caminho é idêntico,
-    e há um teste que trava essa igualdade.</li>
-    <li>Tabelas novas, criadas condicionalmente. Nenhuma coluna existente mudou.</li>
+    <li>Um parâmetro opcional no laço. Ausente, o caminho é idêntico, e um teste garante isso.</li>
+    <li>Tabelas novas. Nenhuma coluna existente mudou.</li>
     <li>Rotas novas. Nenhuma rota existente mudou.</li>
-    <li>Um pacote puro novo, irmão do de contagem, sem importar nada de vídeo.</li>
+    <li>Um pacote puro novo, irmão da contagem, sem importar nada de vídeo.</li>
   </ul>
 
+  <div class="lembrete">
+    <div class="rotulo">Lembre-se</div>
+    <ul>
+      <li>A pergunta é pequena: "quem, dos que estão dentro, acabou de sair?"</li>
+      <li>Decide em lote, com cadeiras vazias para o "não sei".</li>
+      <li>Prefere o erro que aparece ao que se esconde. E ainda falta medir.</li>
+    </ul>
+  </div>
+
   <div class="quiz">
-    <div class="rotulo">Autoavaliação</div>
-    <details><summary>Por que o limiar de reentrada (0,75) é maior que o de saída (0,70)?</summary>
-    <div class="resposta"><p>Porque as duas decisões têm proteções diferentes. A saída é resolvida
-    em lote pelo húngaro contra um conjunto pequeno, e a otimização global já protege contra
-    escolhas ruins. A reentrada é decidida na hora, contra todos os que saíram no dia, sem
-    otimização global. Menos proteção estrutural, mais evidência exigida.</p></div></details>
-    <details><summary>O que significaria uma pureza de 100% com fragmentação alta?</summary>
-    <div class="resposta"><p>Que o sistema nunca confunde duas pessoas, porque está criando um
-    pseudônimo novo para quase toda travessia. É o resultado degenerado, e é exatamente por
-    isso que as duas métricas precisam ser lidas juntas: uma pune fusão, a outra pune
-    divisão.</p></div></details>
-    <details><summary>Por que um "fantasma" precisa sair do conjunto de candidatos?</summary>
-    <div class="resposta"><p>Porque alguém marcado como dentro há doze horas teve a saída perdida,
-    não está mais lá. Deixá-lo na matriz de custo permite que ele ganhe uma coluna e empurre
-    uma saída legítima para o fantasma. O contador de fantasmas existe para tornar isso
-    auditável.</p></div></details>
-    <details><summary>Você precisa trocar o extrator de aparência. Quantos arquivos toca?</summary>
-    <div class="resposta"><p>Um: <code>visao/aparencia.py</code>. Tudo abaixo dele recebe listas de
-    números e não sabe de onde vieram. A troca prevista já tem lugar reservado no código,
-    com um erro explicativo em vez de falha silenciosa.</p></div></details>
+    <div class="rotulo">Responda de cabeça</div>
+    <details><summary>Duas pessoas parecidas saem juntas. Por que decidir uma de cada vez erra?</summary>
+    <div class="resposta"><p>Porque a primeira leva a melhor ficha das duas, e a segunda fica com a sobra, mesmo que a sobra fosse a certa para a primeira. Decidindo as duas de uma vez, pelo menor custo total, o encaixe é o melhor para o par.</p></div></details>
+    <details><summary>Por que a saída sem par é um resultado bom de ter, e não um erro a esconder?</summary>
+    <div class="resposta"><p>Porque ela aparece no relatório, como fragmentação. A alternativa, forçar um par duvidoso, seria um erro invisível: duas pessoas viram uma e ninguém nota. Entre o erro que aparece e o que se esconde, fica o que aparece.</p></div></details>
+    <details><summary>Por que o "P7" vence em 48 horas?</summary>
+    <div class="resposta"><p>Porque ele nasce da roupa. Amanhã a pessoa está de outra roupa e a ficha não serve mais. Vencer por construção também é o que garante que o sistema não vira, aos poucos, um cadastro de gente.</p></div></details>
+    <details><summary>Você precisa trocar a rede que gera a lista de números. Quantos arquivos toca?</summary>
+    <div class="resposta"><p>Um: <code>visao/aparencia.py</code>. Tudo abaixo recebe listas de números e não sabe de onde vieram.</p></div></details>
   </div>
 </section>
 
@@ -1855,12 +2684,12 @@ INTERVALO_ENVIO_S = 30.0
     <thead><tr><th>Caminho</th><th>Papel</th><th>No git?</th></tr></thead>
     <tbody>
       <tr><td><code>src/fluxo/</code></td><td>O pacote. Toda a lógica</td><td>sim</td></tr>
-      <tr><td><code>scripts/</code></td><td>19 entrypoints finos</td><td>sim</td></tr>
-      <tr><td><code>tests/</code></td><td>34 arquivos, 494 testes</td><td>sim</td></tr>
+      <tr><td><code>scripts/</code></td><td>21 entrypoints finos</td><td>sim</td></tr>
+      <tr><td><code>tests/</code></td><td>39 arquivos, 547 testes</td><td>sim</td></tr>
       <tr><td><code>config/</code></td><td>Duas configurações declarativas em YAML</td><td>sim</td></tr>
       <tr><td><code>docs/</code></td><td>Sete documentos: arquitetura, avaliação, calibração, hardware, operação, referências, resultados</td><td>sim</td></tr>
       <tr><td><code>dados/</code></td><td>Vídeos, trilhas, recortes, saídas. <strong>Imagem de pessoa real</strong></td><td><strong>nunca</strong></td></tr>
-      <tr><td><code>~/Documents/dados-fluxo/</code></td><td>Banco, logs, backups, pesos. Fora da pasta sincronizada</td><td>não</td></tr>
+      <tr><td><code>~/Documents/dados-fluxo/</code></td><td>Banco, logs, backups, pesos, o último quadro de cada câmera (<code>quadros/</code>) e o cloudflared (<code>ferramentas/</code>). Fora da pasta sincronizada</td><td>não</td></tr>
     </tbody>
   </table>
   </div>
@@ -1871,12 +2700,13 @@ INTERVALO_ENVIO_S = 30.0
 
   <div class="fichas">
     <div class="ficha pura">
-      <div class="topo"><span class="nome">dominio/</span><span class="loc">242 linhas · 4 arq.</span></div>
-      <p>O vocabulário do problema. Evento, rastro e os tipos da identidade. Sem
-      infraestrutura, sem caminho de arquivo, sem rede.</p>
+      <div class="topo"><span class="nome">dominio/</span><span class="loc">294 linhas · 5 arq.</span></div>
+      <p>O vocabulário do problema. Evento, rastro, os tipos da identidade e o período de
+      teste. Sem infraestrutura, sem caminho de arquivo, sem rede.</p>
       <div class="api"><b>evento.py</b> Direcao · Origem · EventoCruzamento.criar · montar_id_evento · data_de_referencia<br>
       <b>rastro.py</b> Rastro · Ponto · Caixa · .ponto_base<br>
-      <b>identidade.py</b> PessoaSessao · Vinculo · Apelido</div>
+      <b>identidade.py</b> PessoaSessao · Vinculo · Apelido<br>
+      <b>periodo.py</b> Periodo · .aberto · .datas · .contem · .rotulo</div>
     </div>
 
     <div class="ficha pura">
@@ -1899,19 +2729,20 @@ INTERVALO_ENVIO_S = 30.0
     </div>
 
     <div class="ficha">
-      <div class="topo"><span class="nome">visao/</span><span class="loc">1.041 linhas · 7 arq.</span></div>
+      <div class="topo"><span class="nome">visao/</span><span class="loc">1.152 linhas · 8 arq.</span></div>
       <p>A única camada que conhece OpenCV, ultralytics e PyTorch. Tudo o que é pesado
       está aqui, e nada daqui sobe para as camadas puras.</p>
       <div class="api"><b>fonte.py</b> FonteDeVideo · Quadro<br>
       <b>fonte_mjpeg.py</b> FonteMjpeg · separar_quadros · parece_mjpeg<br>
-      <b>fonte_viva.py</b> FonteViva · ConfigFonteViva<br>
+      <b>fonte_viva.py</b> FonteViva · ConfigFonteViva (pulso, desistir_apos_s)<br>
       <b>rastreador.py</b> RastreadorPessoas.atualizar · ConfigVisao<br>
       <b>anotador.py</b> anotar · JanelaAoVivo · GravadorDeVideo<br>
+      <b>quadro_vivo.py</b> PublicadorDeQuadro.publicar · idade_do_quadro<br>
       <b>aparencia.py</b> Extrator.extrair · recortar</div>
     </div>
 
     <div class="ficha">
-      <div class="topo"><span class="nome">agente/</span><span class="loc">713 linhas · 5 arq.</span></div>
+      <div class="topo"><span class="nome">agente/</span><span class="loc">719 linhas · 5 arq.</span></div>
       <p>O laço que junta tudo: fonte, rastreio, linha, envio. E a entrega resiliente, com
       fila em disco para quando a rede cair.</p>
       <div class="api"><b>processador.py</b> processar · versao_do_codigo · TAMANHO_LOTE · INTERVALO_ENVIO_S<br>
@@ -1930,30 +2761,35 @@ INTERVALO_ENVIO_S = 30.0
     </div>
 
     <div class="ficha">
-      <div class="topo"><span class="nome">persistencia/</span><span class="loc">566 linhas · 3 arq.</span></div>
+      <div class="topo"><span class="nome">persistencia/</span><span class="loc">683 linhas · 3 arq.</span></div>
       <p>SQLite direto, sem ORM. O esquema é um arquivo SQL legível, e o repositório é um
-      módulo de funções, não uma hierarquia de classes.</p>
-      <div class="api"><b>esquema.sql</b> camera · evento · execucao · pessoa_sessao · vinculo · apelido_teste<br>
-      <b>repositorio.py</b> inserir_eventos · upsert_pessoas · upsert_vinculos · purgar_expirados<br>
-      <b>backup.py</b> backup_diario</div>
+      módulo de funções, não uma hierarquia de classes. Nada aqui apaga evento.</p>
+      <div class="api"><b>esquema.sql</b> camera · evento · execucao · periodo · pessoa_sessao · vinculo · apelido_teste<br>
+      <b>repositorio.py</b> inserir_eventos · upsert_pessoas · upsert_vinculos · purgar_expirados · criar_periodo · encerrar_periodo · listar_periodos<br>
+      <b>backup.py</b> backup_diario · fazer_backup</div>
     </div>
 
     <div class="ficha">
-      <div class="topo"><span class="nome">analise/</span><span class="loc">683 linhas · 4 arq.</span></div>
-      <p>Só leitura. Consultas com pandas, painel em Streamlit com abas de fluxo e pessoas,
-      e o relatório em markdown que vai para a mesa de quem decide.</p>
-      <div class="api"><b>consultas.py</b> carregar_eventos · resumo_diario · serie_horaria · pico_do_dia · ocupacao_do_dia<br>
-      <b>painel.py</b> as duas abas<br>
-      <b>relatorio.py</b> gerar(conn, dia, camera)</div>
+      <div class="topo"><span class="nome">analise/</span><span class="loc">990 linhas · 4 arq.</span></div>
+      <p>Quase só leitura. Consultas com pandas, painel em Streamlit com as abas de fluxo,
+      pessoas e ao vivo, e o relatório em markdown que vai para a mesa de quem decide. A
+      única escrita é a gestão de períodos, pela barra lateral.</p>
+      <div class="api"><b>consultas.py</b> carregar_eventos · recortar · resumo_diario · serie_horaria · pico_do_dia · ocupacao_do_dia<br>
+      <b>painel.py</b> senha · seletor de período · três abas · exportar<br>
+      <b>relatorio.py</b> gerar(conn, dia, camera) · gerar_periodo(conn, periodo) · slug</div>
     </div>
 
     <div class="ficha">
-      <div class="topo"><span class="nome">operacao/</span><span class="loc">320 linhas · 4 arq.</span></div>
-      <p>Ficar de pé por meses. Supervisor com recuo exponencial, tarefa de logon do
-      Windows sem privilégio de administrador, e a busca pela câmera na rede.</p>
-      <div class="api"><b>supervisor.py</b> Supervisor.rodar · ProcessoGerido<br>
-      <b>agendador.py</b> a montagem do comando do agendador<br>
-      <b>descoberta.py</b> varredura da rede local</div>
+      <div class="topo"><span class="nome">operacao/</span><span class="loc">726 linhas · 7 arq.</span></div>
+      <p>Ficar de pé por meses, sem ninguém. Lógica pura com relógio, lançador e sonda
+      injetáveis: os testes exercitam morte, travamento, recuo e a URL do túnel sem
+      subprocesso nem rede.</p>
+      <div class="api"><b>supervisor.py</b> Supervisor.rodar · ProcessoGerido (sonda) · rotacionar_se_grande<br>
+      <b>agendador.py</b> xml_da_tarefa · comando_criar · comando_criar_simples<br>
+      <b>pulso.py</b> Pulso.bater · pulso_recente · arquivo_do_agente<br>
+      <b>energia.py</b> manter_acordado · comandos_powercfg<br>
+      <b>tunel.py</b> localizar_cloudflared · comando_quick_tunnel · extrair_url · AnunciadorDeTunel<br>
+      <b>descoberta.py</b> varrer · confirmar · url_do_stream</div>
     </div>
 
     <div class="ficha">
@@ -1975,11 +2811,11 @@ INTERVALO_ENVIO_S = 30.0
     </div>
 
     <div class="ficha">
-      <div class="topo"><span class="nome">raiz do pacote</span><span class="loc">333 linhas · 3 arq.</span></div>
+      <div class="topo"><span class="nome">raiz do pacote</span><span class="loc">358 linhas · 3 arq.</span></div>
       <p>Configuração, log e ambiente. <code>config.py</code> é a única fonte de caminhos,
       todos absolutos, e <code>ambiente.py</code> faz o script se reexecutar no ambiente
       certo sozinho.</p>
-      <div class="api"><b>config.py</b> CAMINHO_BANCO · CAMINHO_LOGS · carregar_cameras · carregar_pipeline · garantir_pastas<br>
+      <div class="api"><b>config.py</b> CAMINHO_BANCO · CAMINHO_LOGS · CAMINHO_QUADROS · SENHA_PAINEL · URL_AVISO · carregar_cameras · carregar_pipeline · garantir_pastas<br>
       <b>registro.py</b> configurar (log com rotação diária, 14 dias)<br>
       <b>ambiente.py</b> garantir_venv · interpretador_do_projeto · normalizar_fonte</div>
     </div>
@@ -1995,7 +2831,7 @@ INTERVALO_ENVIO_S = 30.0
 </section>
 
 <section id="scripts">
-  <h4>Os dezenove scripts</h4>
+  <h4>Os vinte e um scripts</h4>
   <p>Todos são entrypoints finos: ajustam o caminho de importação, leem argumentos e fazem
   uma chamada. Vários se reexecutam sozinhos no ambiente virtual do projeto se você chamar
   com o Python errado.</p>
@@ -2006,14 +2842,16 @@ INTERVALO_ENVIO_S = 30.0
     <tbody>
       <tr><td><code>calibrar_linha.py</code></td><td>Define a linha com três cliques ou por sugestão automática, grava no YAML e já roda a contagem para conferir</td><td>antes de tudo</td></tr>
       <tr><td><code>processar_video.py</code></td><td>O cavalo de batalha: pipeline completo sobre arquivo ou câmera</td><td>diário</td></tr>
-      <tr><td><code>rodar_tudo.py</code></td><td>Supervisor: serviço, agente e painel sob vigilância, com backup diário</td><td>operação</td></tr>
-      <tr><td><code>relatorio_dia.py</code></td><td>Relatório em markdown de um dia. Só lê o banco</td><td>fim do dia</td></tr>
+      <tr><td><code>rodar_tudo.py</code></td><td>Supervisor: serviço, agente, painel e, com <code>--tunel</code>, o cloudflared. Sonda quem travou, faz o backup diário e segura a máquina acordada</td><td>operação</td></tr>
+      <tr><td><code>relatorio_dia.py</code></td><td>Relatório em markdown de um dia, ou de um período com <code>--periodo</code>. Só lê o banco</td><td>fim do dia</td></tr>
+      <tr><td><code>periodo.py</code></td><td>Abre, encerra, registra e renomeia períodos de teste nomeados</td><td>cada teste</td></tr>
       <tr><td><code>reprocessar.py</code></td><td>Reconta uma trilha gravada, sem GPU e sem abrir o vídeo. Varre parâmetros</td><td>ajuste</td></tr>
       <tr><td><code>rodar_agente.py</code></td><td>Só o agente 24 h, com fonte resiliente e log em arquivo</td><td>operação</td></tr>
       <tr><td><code>rodar_servico.py</code> · <code>rodar_painel.py</code></td><td>Sobem o serviço e o painel isolados</td><td>desenvolvimento</td></tr>
       <tr><td><code>criar_banco.py</code></td><td>Cria o banco e cadastra as câmeras do YAML</td><td>uma vez</td></tr>
       <tr><td><code>achar_camera.py</code></td><td>Varre a rede atrás da câmera e atualiza o IP no YAML</td><td>quando o IP muda</td></tr>
-      <tr><td><code>instalar_logon.py</code></td><td>Cria a tarefa de logon do Windows, sem administrador</td><td>uma vez</td></tr>
+      <tr><td><code>instalar_logon.py</code></td><td>Cria a tarefa de logon do Windows por XML, sem administrador e sem o limite de 72 h</td><td>uma vez</td></tr>
+      <tr><td><code>instalar_tunel.py</code></td><td>Baixa o cloudflared para a pasta de ferramentas, sem administrador</td><td>uma vez</td></tr>
       <tr><td><code>backup_banco.py</code></td><td>Cópia do banco, uma por dia</td><td>automático</td></tr>
       <tr><td><code>simular_dia.py</code></td><td>Popula o banco com dias sintéticos</td><td>desenvolvimento</td></tr>
       <tr><td><code>avaliar.py</code></td><td>Mede o erro contra contagem manual ou anotação MOT17</td><td>avaliação</td></tr>
@@ -2066,7 +2904,7 @@ INTERVALO_ENVIO_S = 30.0
 
 <section id="testes">
   <h4>Como se testa visão computacional sem câmera</h4>
-  <p>Os 494 testes rodam no ambiente de núcleo: sem GPU, sem vídeo, sem rede, sem os dois
+  <p>Os 547 testes rodam no ambiente de núcleo: sem GPU, sem vídeo, sem rede, sem os dois
   gigabytes e meio da camada de visão. Não há um único <code>skipif</code> na pasta de
   testes, e isso é a prova de que a arquitetura em camadas funciona.</p>
 
@@ -2086,9 +2924,16 @@ INTERVALO_ENVIO_S = 30.0
     vez de vinte e um.</li>
   </ol>
 
-  <p>Há uma única fixture compartilhada, e ela faz uma coisa só: aponta o caminho do banco
-  para um arquivo temporário. Como todo código resolve o banco pela configuração central,
-  inclusive o serviço, tudo cai no banco de teste sem precisar de substituição explícita.</p>
+  <p>Há uma única fixture compartilhada, e ela aponta o caminho do banco para um arquivo
+  temporário. Como todo código resolve o banco pela configuração central, inclusive o
+  serviço, tudo cai no banco de teste sem precisar de substituição explícita. Desde 04/09
+  ela também zera a senha do painel e aponta a pasta de quadros para um lugar vazio: o
+  <code>.env</code> de quem desenvolve não pode mudar o resultado de um teste.</p>
+
+  <p>A quinta técnica chegou com a camada de operação: <strong>a sonda é uma função
+  injetada</strong>. O supervisor não sabe o que é HTTP nem arquivo de pulso; recebe um
+  <code>Callable[[], bool]</code> e conta os "não". Nos testes a sonda é uma lista de
+  respostas, e o relógio é um número que o teste incrementa.</p>
 
   <div class="caixa aviso">
     <div class="rotulo">A armadilha que essa fixture já escondeu</div>
@@ -2321,8 +3166,22 @@ INTERVALO_ENVIO_S = 30.0
       <div class="topo"><h5>pytest</h5><span class="tag nucleo">desenvolvimento</span></div>
       <p>Testes escritos como funções com <code>assert</code>. As fixtures são o mecanismo
       de preparo, e a parametrização permite descrever dezenas de casos numa função só.</p>
-      <p class="aqui"><b>Aqui</b> 494 testes em 34 arquivos, todos sem rede e sem GPU. Uma
-      única fixture compartilhada, que aponta o banco para um arquivo temporário.</p>
+      <p class="aqui"><b>Aqui</b> 547 testes em 39 arquivos, todos sem rede e sem GPU. Uma
+      única fixture compartilhada, que aponta o banco para um arquivo temporário e neutraliza
+      o <code>.env</code> de quem desenvolve.</p>
+    </div>
+
+    <div class="lib">
+      <div class="topo"><h5>cloudflared · ntfy</h5><span class="tag nucleo">operação</span></div>
+      <p>Dois serviços de fora, nenhum deles biblioteca Python. O cloudflared é o cliente de
+      túnel do Cloudflare: um executável que abre uma conexão de saída e recebe uma URL
+      pública. O ntfy é um serviço de notificação por HTTP: um POST num tópico vira uma
+      notificação no celular que assina aquele tópico.</p>
+      <p class="aqui"><b>Aqui</b> O cloudflared é o quarto filho do supervisor quando se pede
+      <code>--tunel</code>, baixado sem admin para a pasta de ferramentas. O ntfy recebe a
+      URL nova pelo <code>httpx.post</code> de sempre. Nada disso exige conta, domínio ou
+      chave; o que protege o painel é a senha, e o tópico do ntfy fica só no
+      <code>.env</code>.</p>
     </div>
 
     <div class="lib">
@@ -2403,7 +3262,7 @@ INTERVALO_ENVIO_S = 30.0
       <h5>Prove que o núcleo roda sem a camada de visão</h5>
       <p>Rode a suíte inteira e confirme que nenhum teste foi pulado.</p>
       <div class="bloco"><pre><code class="language-bash">python -m pytest -q</code></pre></div>
-      <p class="esperado"><b>Esperado</b> 494 passed, e nenhum "skipped". Agora procure por
+      <p class="esperado"><b>Esperado</b> 547 passed, e nenhum "skipped". Agora procure por
       <code>skipif</code> na pasta de testes: não há. Essa ausência é a arquitetura em
       camadas provando que funciona.</p>
     </div>
@@ -2502,15 +3361,21 @@ python scripts/rodar_servico.py</code></pre></div>
     <div class="grau">Aplicação</div>
     <div class="n">8</div>
     <div>
-      <h5>Derrube o stream no meio e leia o log</h5>
-      <p>Sirva um vídeo local como stream, aponte o agente para ele, e mate o servidor de
-      vídeo no meio da execução.</p>
-      <div class="bloco"><pre><code class="language-bash">ffmpeg -re -stream_loop -1 -i dados/videos/people-detection.mp4 \
-  -c:v mjpeg -q:v 5 -f mpjpeg -listen 1 http://127.0.0.1:8090/stream</code></pre></div>
-      <p class="esperado"><b>Esperado</b> No log: a queda, as tentativas com espera
-      dobrando, e a reconexão quando o servidor voltar. Se a lacuna passar de trinta
-      segundos, aparece a mensagem sobre zerar o estado de rastreio. Entenda por que essa
-      mensagem existe antes de seguir.</p>
+      <h5>Derrube o stream no meio, mate o agente, e leia o log</h5>
+      <p>Sirva um vídeo local como stream e suba tudo sob o supervisor apontando para ele.
+      Depois mate o servidor de vídeo; depois, no Gerenciador de Tarefas, mate o agente.</p>
+      <div class="bloco"><pre><code class="language-bash">ffmpeg -re -stream_loop -1 -i dados/videos/people-detection.mp4 -c:v mjpeg -q:v 5 \
+  -f mpjpeg -content_type "multipart/x-mixed-replace;boundary=ffmpeg" \
+  -listen 1 http://127.0.0.1:8090/stream
+# noutro terminal:
+python scripts/rodar_tudo.py entrada_a --fonte http://127.0.0.1:8090/stream</code></pre></div>
+      <p class="esperado"><b>Esperado</b> No log do agente: a queda, as tentativas com
+      espera dobrando, e a reconexão quando o servidor voltar; lacuna acima de trinta
+      segundos, a mensagem sobre zerar o estado de rastreio. No log do supervisor: "agente
+      morreu" e "relançamento nº 1" cinco segundos depois. Sem o <code>-content_type</code>
+      o ffmpeg responde <code>application/octet-stream</code>, a fonte MJPEG recusa e a
+      leitura cai para o caminho lento: descubra em <code>fonte_viva.py</code> onde essa
+      decisão é tomada.</p>
     </div>
   </div>
 
@@ -2623,6 +3488,22 @@ python scripts/reprocessar_identidade.py entrada_real --varredura --gabarito &lt
     <dt>trilha</dt>
     <dd>Arquivo com o que a visão enxergou em cada quadro, gravado uma vez. Permite recontar
     com outros parâmetros sem GPU e sem reabrir o vídeo.</dd>
+
+    <dt>sonda e pulso</dt>
+    <dd>A sonda é a pergunta que o supervisor faz a um filho vivo: "você responde?". Para o
+    serviço e o painel é um GET; para o agente é a idade de um arquivo, o pulso, que o laço
+    de consumo da fonte toca a cada cinco segundos. Três "não" seguidos e o filho é
+    derrubado e relançado.</dd>
+
+    <dt>quick tunnel</dt>
+    <dd>Túnel do Cloudflare sem conta nem domínio: o cloudflared abre uma conexão de saída
+    e recebe uma URL pública aleatória em <code>trycloudflare.com</code>. Muda a cada
+    reinício, por isso o supervisor manda cada URL nova para o celular.</dd>
+
+    <dt>período de teste</dt>
+    <dd>Um nome sobre um intervalo de tempo ("Teste de campo 03/09"). Vive numa tabela
+    própria e é lido por cima do evento na consulta; nenhum evento muda quando um período é
+    criado, renomeado ou encerrado.</dd>
   </dl>
 </section>
 
@@ -2630,11 +3511,23 @@ python scripts/reprocessar_identidade.py entrada_real --varredura --gabarito &lt
   <h4>Folha de comandos</h4>
   <div class="bloco">
     <div class="cabecalho"><span class="caminho">a partir da raiz do repositório</span><span>dia a dia</span></div>
-<pre><code class="language-bash"># operação: tudo de pé, com a janela da câmera
-python scripts/rodar_tudo.py entrada_real --janela --escala 1.5
+<pre><code class="language-bash"># operação: tudo de pé, com o túnel do painel (exige SENHA_PAINEL no .env)
+python scripts/rodar_tudo.py entrada_real --tunel
+python scripts/rodar_tudo.py entrada_real --janela --escala 1.5   # vendo a contagem
 
-# o relatório do dia (só lê o banco, pode rodar com o agente de pé)
+# um período de teste com nome, para filtrar o painel e o relatório
+python scripts/periodo.py --iniciar "Laboratório de física" --camera entrada_real
+python scripts/periodo.py --encerrar
+python scripts/periodo.py --listar
+
+# o relatório do dia, ou do período (só lê o banco, pode rodar com o agente de pé)
 python scripts/relatorio_dia.py entrada_real
+python scripts/relatorio_dia.py --periodo "Teste de campo 03/09"
+
+# instalar no PC da faculdade, sem admin: túnel e tarefa de logon
+python scripts/instalar_tunel.py
+python scripts/instalar_logon.py entrada_real --tunel
+python scripts/instalar_logon.py --executar
 
 # ver o log ao vivo
 Get-Content ~\Documents\dados-fluxo\logs\agente_entrada_real.log -Wait -Tail 20
@@ -2658,7 +3551,8 @@ python -m ruff check src scripts tests</code></pre>
 </section>
 
 <footer>
-  <p>Guia escrito a partir do código em 04/09/2026, no commit <code>83cb1ae</code>. Os
+  <p>Guia escrito a partir do código em 04/09/2026 e atualizado no mesmo dia para o commit
+  <code>1bff759</code>, o que foi instalado no laboratório de física. Os
   trechos foram copiados dos arquivos, com caminho e linha. Onde este guia e o repositório
   discordarem, o repositório manda.</p>
   <p>Leia depois, na ordem: <code>docs/arquitetura.md</code> para as camadas,

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apostila — produto vetorial no Limiar</title>
+<style>
+  :root{
+    --tinta:#e6eaef; --fraca:#9aa4af; --fundo:#000; --papel:#0e1116; --painel:#07090c;
+    --linha:#ffb020; --pos:#3fd06a; --neg:#ff5c5c; --vetor:#5ab0ff;
+    --borda:#262c35; --codigo:#0b0e13;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--fundo); color:var(--tinta);
+    font:17px/1.7 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--linha); color:#000}
+  strong,b{color:#fff}
+  #capa{background:var(--fundo); border-bottom:1px solid var(--borda); padding:56px 24px 40px}
+  #capa .dentro{max-width:860px; margin:0 auto}
+  #capa h1{font-size:clamp(30px,4.4vw,48px); margin:0 0 .3em; letter-spacing:-.025em; line-height:1.1;
+           font-weight:800; color:#fff}
+  #capa p{color:var(--fraca); font-size:18px; margin:.4em 0}
+  #corpo{max-width:860px; margin:0 auto; padding:0 24px 90px}
+  section{background:var(--painel); border:1px solid var(--borda); border-radius:12px;
+          padding:28px 32px; margin:24px 0}
+  h2{font-size:clamp(23px,2.7vw,32px); margin:0 0 .7em; letter-spacing:-.02em; line-height:1.2;
+     font-weight:800; color:#fff; padding-bottom:.35em; border-bottom:2px solid var(--borda)}
+  h3{font-size:21px; margin:1.8em 0 .5em; line-height:1.3; color:#fff; font-weight:700}
+  h4{font-size:14px; margin:1.5em 0 .5em; color:var(--linha);
+     text-transform:uppercase; letter-spacing:.12em; font-weight:700}
+  p{margin:.75em 0} ul,ol{padding-left:1.35em} li{margin:.4em 0}
+  li::marker{color:var(--linha)}
+  a{color:var(--vetor)}
+  code{font-family:ui-monospace,Consolas,monospace; background:var(--papel); color:#cfe3ff;
+       padding:.1em .4em; border-radius:4px; font-size:.9em; border:1px solid var(--borda)}
+  pre{background:var(--codigo); color:#e6edf3; border:1px solid var(--borda); border-radius:10px;
+      padding:16px 18px; overflow:auto; font-size:13.5px; line-height:1.55; margin:.9em 0}
+  pre code{background:none; border:none; padding:0; color:inherit; font-size:inherit}
+  pre .c{color:#7d8590} pre .k{color:#ff7b72} pre .f{color:#d2a8ff} pre .s{color:#a5d6ff} pre .n{color:#79c0ff}
+  .formula{background:var(--papel); border:1px solid var(--borda); border-left:5px solid var(--vetor);
+    border-radius:8px; padding:14px 18px; margin:1em 0; color:#fff;
+    font-family:ui-monospace,Consolas,monospace; font-size:15.5px; line-height:1.95; overflow-x:auto}
+  .nota,.aviso,.lado{border-radius:8px; padding:13px 18px; margin:1.2em 0; font-size:16px}
+  .nota{background:#1a1505; border:1px solid #4a3a08; border-left:5px solid var(--linha); color:#e8e2cf}
+  .nota b{color:var(--linha)}
+  .aviso{background:#200a0a; border:1px solid #5a1c1c; border-left:5px solid var(--neg); color:#f0d8d8}
+  .aviso b{color:var(--neg)}
+  .lado{background:#07131f; border:1px solid #163a5c; border-left:5px solid var(--vetor); color:#d5e6f7}
+  .lado b{color:var(--vetor)}
+  table{border-collapse:collapse; width:100%; margin:1em 0; font-size:15.5px}
+  th,td{border:1px solid var(--borda); padding:9px 12px; text-align:left; vertical-align:top}
+  th{background:var(--papel); color:#fff}
+  #sumario{background:var(--painel); border:1px solid var(--borda); border-radius:12px;
+           padding:20px 28px; margin:24px 0}
+  #sumario ol{margin:.4em 0; padding-left:1.4em}
+  #sumario a{text-decoration:none} #sumario a:hover{text-decoration:underline}
+  .vid{display:block; border:1px solid var(--borda); border-radius:9px; padding:12px 16px;
+       margin:9px 0; text-decoration:none; color:inherit; background:var(--papel)}
+  .vid:hover{border-color:var(--vetor); background:#0b1520}
+  .vid b{display:block; color:var(--vetor); font-size:16px}
+  .vid span{color:var(--fraca); font-size:14px}
+  .ex{border:1px solid var(--borda); border-radius:9px; padding:14px 18px; margin:14px 0;
+      background:var(--papel)}
+  .ex h4{margin-top:0; color:#fff; text-transform:none; letter-spacing:0; font-size:17px}
+  details{margin-top:.7em; border-top:1px dashed var(--borda); padding-top:.6em}
+  summary{cursor:pointer; color:var(--linha); font-weight:600; font-size:15.5px}
+  details[open] summary{margin-bottom:.5em}
+  .pe{color:var(--fraca); font-size:14.5px; text-align:center; margin-top:8px}
+  hr{border:none; border-top:1px solid var(--borda); margin:1.6em 0}
+</style>
+</head>
+<body>
+
+<div id="capa"><div class="dentro">
+  <h1>Produto vetorial decidindo quem entrou pela porta</h1>
+  <p>Apostila de apoio à aula de álgebra linear — projeto <strong>Limiar</strong></p>
+  <p style="font-size:15.5px">Para estudar a matéria <em>e</em> o código antes de ensinar.
+     Todo trecho de código citado aqui está em produção.</p>
+</div></div>
+
+<div id="corpo">
+
+<nav id="sumario">
+  <h4 style="margin-top:0">Sumário</h4>
+  <ol>
+    <li><a href="#p1">A matemática: produto vetorial</a></li>
+    <li><a href="#p2">O segundo ato: reconhecer <em>quem</em> é a pessoa</a></li>
+    <li><a href="#p3">O código, linha a linha</a></li>
+    <li><a href="#p4">Vídeos em português</a></li>
+    <li><a href="#p5">Exercícios, com gabarito</a></li>
+  </ol>
+</nav>
+
+<!-- ============================ PARTE I ============================ -->
+<section id="p1">
+<h2>1. A matemática: produto vetorial</h2>
+
+<h3>1.1 Ponto e vetor: a diferença que importa</h3>
+<p>Um <strong>ponto</strong> é uma posição. Um <strong>vetor</strong> é um deslocamento: tem
+direção, sentido e módulo, mas não tem lugar fixo. A ponte entre os dois é a subtração:</p>
+<div class="formula">AB = B − A = (b<sub>x</sub> − a<sub>x</sub>, &nbsp; b<sub>y</sub> − a<sub>y</sub>)</div>
+<p>“Subtrair dois pontos dá o vetor que vai de um ao outro.” No sistema, os pontos são
+pixels e os vetores são deslocamentos em pixels. Nada mais sofisticado que isso.</p>
+
+<h3>1.2 Produto vetorial em R³</h3>
+<p>Dados <b>u</b> = (u₁,u₂,u₃) e <b>v</b> = (v₁,v₂,v₃), o produto vetorial é</p>
+<div class="formula">
+u × v = ( u₂v₃ − u₃v₂ , &nbsp; u₃v₁ − u₁v₃ , &nbsp; u₁v₂ − u₂v₁ )
+</div>
+<p>Três propriedades interessam para a aula:</p>
+<ul>
+  <li><strong>É perpendicular aos dois.</strong> (u × v) · u = 0 e (u × v) · v = 0 — vale a pena
+      fazer a conta uma vez para se convencer.</li>
+  <li><strong>É anticomutativo:</strong> u × v = −(v × u). Trocar a ordem inverte o sentido —
+      e é exatamente por isso que o <em>sinal</em> carrega informação.</li>
+  <li><strong>O módulo é uma área:</strong> ‖u × v‖ = ‖u‖·‖v‖·sen θ, a área do paralelogramo
+      de lados u e v. Zero quando os vetores são paralelos.</li>
+</ul>
+<p>O <strong>sentido</strong> sai da regra da mão direita: dedos de u para v, polegar aponta
+para u × v.</p>
+
+<h3>1.3 A redução ao plano — passo a passo</h3>
+<p>Aqui está a chave da aula inteira. Nossos dois vetores estão no plano da tela, então a
+terceira coordenada é zero. Substituindo <b>u</b> = (x₁, y₁, 0) e <b>v</b> = (x₂, y₂, 0)
+na fórmula acima:</p>
+<div class="formula">
+componente x: &nbsp; y₁·<b>0</b> − <b>0</b>·y₂ &nbsp;=&nbsp; <b>0</b><br>
+componente y: &nbsp; <b>0</b>·x₂ − x₁·<b>0</b> &nbsp;=&nbsp; <b>0</b><br>
+componente z: &nbsp; x₁·y₂ − x₂·y₁ &nbsp;←&nbsp; <b style="color:var(--vetor)">a única que sobrevive</b>
+</div>
+<p>Portanto:</p>
+<div class="formula">(x₁, y₁, 0) × (x₂, y₂, 0) = ( 0, 0, &nbsp;x₁y₂ − x₂y₁ )</div>
+<p>É por isso que “em 2D o produto vetorial é um número”. Ele não é: é um vetor
+perpendicular ao plano, e como só uma componente sobrevive, guarda-se só ela. Ela aponta
+para <strong>fora</strong> da tela (positiva) ou para <strong>dentro</strong> (negativa).</p>
+
+<div class="lado"><b>Uma observação, e não mais que uma.</b> Quem já viu determinantes
+reconhece <code>x₁y₂ − x₂y₁</code> como o determinante 2×2 cujas colunas são os dois
+vetores. É a mesma conta, e boa parte da bibliografia apresenta o assunto assim — vale
+saber caso um aluno pergunte. Mas o determinante não explica <em>por que o sinal
+significa “de que lado”</em>; o produto vetorial explica, via regra da mão direita. Por
+isso a aula segue por este caminho.</div>
+
+<h3>1.4 Por que o sinal é o lado</h3>
+<p>Fixe <b>AB</b>. Quando <b>AP</b> gira de <b>AB</b> no sentido anti-horário, a regra da
+mão direita manda o polegar para fora da tela: a componente z é <strong>positiva</strong>.
+No sentido horário, para dentro: <strong>negativa</strong>. E como girar “anti-horário a
+partir de AB” é o mesmo que “estar do lado esquerdo de AB”, o sinal <em>é</em> o
+semiplano.</p>
+<p>Quando os vetores são paralelos (θ = 0 ou 180°), sen θ = 0: o produto vetorial zera, e
+é isso que significa “P está sobre a reta AB”.</p>
+
+<div class="aviso"><b>A armadilha das coordenadas de imagem.</b> Em matemática o eixo y
+aponta para cima. Numa imagem ele aponta para <strong>baixo</strong> — o pixel (0,0) é o
+canto superior esquerdo. A fórmula não muda, mas o sistema deixa de ser o “da mão direita”
+que você desenhou no caderno, e o sentido visual da rotação inverte: o que a conta chama de
+anti-horário aparece na tela como horário.
+<br><br>É exatamente por isso que o Limiar <strong>não deduz</strong> qual lado é “dentro do
+prédio”. Ele mede: <code>lado_dentro</code> sai da calibração, e o docstring de
+<code>LinhaDeContagem</code> diz “depende de como a câmera foi montada”. Adivinhar aqui
+significa contar o prédio inteiro ao contrário.</div>
+
+<h3>1.5 O módulo: distância de um ponto a uma reta</h3>
+<p>A área de um paralelogramo é base × altura. Tomando <b>AB</b> como base, a altura é a
+distância de P à reta que contém AB:</p>
+<div class="formula">
+‖AB × AP‖ = ‖AB‖ · altura &nbsp;&nbsp;⟹&nbsp;&nbsp;
+distância(P, reta AB) = <span style="border-bottom:1.5px solid">‖AB × AP‖</span> / ‖AB‖
+</div>
+<p>Nenhuma raiz quadrada além da norma de AB, e nenhuma projeção explícita. É a fórmula
+que o código usa, e é <strong>o mesmo produto vetorial</strong> já calculado para o sinal.</p>
+<p><strong>Um produto vetorial, dois usos:</strong> o sinal decide de que lado a pessoa
+está; o módulo decide se ela está longe o bastante da linha para a decisão ser confiável.</p>
+
+<h3>1.6 Orientação de três pontos</h3>
+<p>A função <code>lado(A, B, P)</code> é o clássico teste de orientação da geometria
+computacional: devolve +1, −1 ou 0 conforme A → B → P descreva uma volta anti-horária,
+horária, ou os três sejam colineares. Todo o resto se constrói em cima dele.</p>
+
+<h3>1.7 Interseção de dois segmentos</h3>
+<p>Sinal sozinho fala da reta <strong>infinita</strong>. Para segmentos, o critério é a
+<strong>separação mútua</strong>: cada segmento tem de separar as pontas do outro.</p>
+<div class="formula">
+o₁ = lado(P₁, P₂, A) &nbsp;&nbsp; o₂ = lado(P₁, P₂, B)<br>
+o₃ = lado(A, B, P₁) &nbsp;&nbsp;&nbsp; o₄ = lado(A, B, P₂)<br><br>
+cruzam &nbsp;⟺&nbsp; (o₁ ≠ o₂) &nbsp;<b>e</b>&nbsp; (o₃ ≠ o₄)
+</div>
+<p>As duas condições são necessárias. Só a segunda (a pessoa trocou de lado da linha) é
+verdadeira também para quem passa a dois metros da porta, fora do segmento desenhado.</p>
+<h4>O caso degenerado</h4>
+<p>Quando algum o<sub>i</sub> = 0, os três pontos são colineares e o sinal não decide nada.
+Aí é preciso perguntar se o ponto cai <em>dentro</em> do segmento — teste de caixa
+envolvente, que é o que <code>_no_retangulo</code> faz. São quatro verificações, uma por
+extremo.</p>
+
+<h3>1.8 Combinação convexa e a média móvel</h3>
+<p>Uma combinação de vetores é <strong>convexa</strong> quando os coeficientes são não
+negativos e somam 1:</p>
+<div class="formula">P̄ = λ₁P₁ + λ₂P₂ + … + λₙPₙ, &nbsp;&nbsp; λᵢ ≥ 0, &nbsp; Σλᵢ = 1</div>
+<p>A média móvel das 3 últimas posições é o caso λᵢ = ⅓. A propriedade que importa: o
+resultado <strong>nunca sai do fecho convexo</strong> dos pontos — a suavização não pode
+inventar uma posição fora da nuvem observada.</p>
+<p>O <code>ponto_base</code> da caixa também é uma combinação convexa: peso ½ para cada
+borda vertical.</p>
+</section>
+
+<!-- ============================ PARTE II ============================ -->
+<section id="p2">
+<h2>2. O segundo ato: reconhecer <em>quem</em> é a pessoa</h2>
+<p>Contar é geometria em R². Dizer que <em>a pessoa que saiu às 12h é a que entrou às 9h</em>
+é álgebra linear em R⁵¹². A matéria é a mesma; muda a dimensão.</p>
+
+<h3>2.1 Norma e normalização</h3>
+<div class="formula">
+‖v‖ = √(v₁² + v₂² + … + vₙ²) &nbsp;&nbsp;&nbsp; v̂ = v / ‖v‖ &nbsp;(se ‖v‖ ≠ 0)
+</div>
+<p>Normalizar projeta o vetor na <strong>esfera unitária</strong>: fica só a direção,
+descartando o comprimento. O código trata o vetor nulo devolvendo ele mesmo, em vez de
+dividir por zero.</p>
+
+<h3>2.2 Produto interno e o cosseno</h3>
+<div class="formula">
+u · v = Σ uᵢvᵢ = ‖u‖·‖v‖·cos θ &nbsp;&nbsp;⟹&nbsp;&nbsp; cos θ = (u · v) / (‖u‖·‖v‖)
+</div>
+<table>
+  <tr><th>situação</th><th>cos θ</th><th>leitura no sistema</th></tr>
+  <tr><td>vetores iguais</td><td>+1</td><td>certamente a mesma pessoa</td></tr>
+  <tr><td>ortogonais</td><td>0</td><td>nada em comum</td></tr>
+  <tr><td>opostos</td><td>−1</td><td>o contrário um do outro</td></tr>
+</table>
+<p>Repare no contraste com a Parte 1: o <strong>produto vetorial</strong> mede o quanto dois
+vetores são <em>diferentes</em> em direção (vai a zero quando são paralelos); o
+<strong>produto interno</strong> mede o quanto são <em>parecidos</em> (vai a zero quando são
+perpendiculares). Um usa sen θ, o outro cos θ. São as duas metades da mesma pergunta.</p>
+
+<h3>2.3 Por que cosseno, e não distância euclidiana</h3>
+<p>O comentário do código responde: “a magnitude do vetor varia com o tamanho do recorte e
+a iluminação — coisas que <em>não são a pessoa</em>”. Uma pessoa mais perto da câmera dá um
+recorte maior, e o vetor muda de comprimento sem que ela tenha mudado.</p>
+<p>Vale conhecer a relação exata. Para vetores <strong>já normalizados</strong> (‖u‖ = ‖v‖ = 1):</p>
+<div class="formula">
+d² = ‖u − v‖² = ‖u‖² − 2(u·v) + ‖v‖² = 2 − 2·cos θ
+</div>
+<p>Ou seja: em vetores unitários, distância e cosseno são <strong>monotonicamente
+equivalentes</strong> — ordenam os candidatos igualzinho, e a escolha entre as duas é
+indiferente. A decisão de verdade foi <em>normalizar</em>. Normalizando, você já jogou a
+magnitude fora de propósito; o cosseno só é a forma direta de dizer isso.</p>
+
+<h3>2.4 Matriz de similaridade, matriz de custo</h3>
+<p>Com <em>n</em> saídas e <em>m</em> pessoas candidatas, monta-se uma matriz n × m:</p>
+<div class="formula">
+S[i][j] = cos( saída<sub>i</sub> , candidata<sub>j</sub> ) &nbsp;&nbsp;→&nbsp;&nbsp;
+C[i][j] = 1 − S[i][j]
+</div>
+<p>Similaridade alta vira custo baixo, e o problema fica “escolher um conjunto de pares que
+minimize o custo total”. O código acrescenta ainda <em>n</em> colunas
+<strong>fantasma</strong>, todas com custo <code>1 − limiar</code>: são a opção “não sei”,
+posta <em>dentro</em> da matriz. Uma saída que não se parece o bastante com ninguém prefere
+a coluna fantasma — e o resultado é “não atribuída”, em vez de um par forçado.</p>
+
+<h3>2.5 Guloso × ótimo</h3>
+<p>O jeito ingênuo é guloso: para cada saída, pegue a candidata mais parecida. Ele erra, e
+o projeto tem um teste com esse nome exato — <code>test_o_caso_que_o_guloso_erra</code>.
+A primeira saída “rouba” a candidata que era muito melhor para a segunda, e o total piora.</p>
+<p>O algoritmo <strong>húngaro</strong> (Kuhn–Munkres) resolve a atribuição de custo mínimo
+globalmente, em O(n³). A implementação do projeto usa <strong>potenciais</strong> — os
+vetores <code>u</code> e <code>v</code>, que são as variáveis do problema
+<em>dual</em>. Quem for seguir para otimização linear vai reencontrar essa dualidade.</p>
+<p>É por isso que as saídas são resolvidas <strong>em lote</strong>, numa janela de
+segundos, e nunca uma por vez: uma decisão por vez é, por construção, gulosa.</p>
+</section>
+
+<!-- ============================ PARTE III ============================ -->
+<section id="p3">
+<h2>3. O código, linha a linha</h2>
+<p>Tudo abaixo está em <code>src/fluxo/contagem/geometria.py</code> — 97 linhas que não
+importam numpy, nem OpenCV, nem torch. Deliberadamente: assim a parte mais crítica do
+sistema é testável em milissegundos, sem GPU e sem vídeo.</p>
+
+<h3>3.1 <code>produto_vetorial</code></h3>
+<pre><code><span class="k">def</span> <span class="f">produto_vetorial</span>(a: Ponto, b: Ponto, p: Ponto) -&gt; <span class="n">float</span>:
+    <span class="s">"""Componente z do produto vetorial (B-A) x (P-A)."""</span>
+    <span class="k">return</span> (b[<span class="n">0</span>] - a[<span class="n">0</span>]) * (p[<span class="n">1</span>] - a[<span class="n">1</span>]) - (b[<span class="n">1</span>] - a[<span class="n">1</span>]) * (p[<span class="n">0</span>] - a[<span class="n">0</span>])</code></pre>
+<p>Traduzindo: <code>b[0]-a[0]</code> é AB<sub>x</sub>, <code>p[1]-a[1]</code> é AP<sub>y</sub>,
+e assim por diante. É exatamente <code>x₁y₂ − x₂y₁</code> da seção 1.3, com
+<b>u</b> = AB e <b>v</b> = AP.</p>
+
+<h3>3.2 <code>lado</code> — e por que existe um EPS</h3>
+<pre><code>EPS = <span class="n">1e-9</span>
+
+<span class="k">def</span> <span class="f">lado</span>(a: Ponto, b: Ponto, p: Ponto) -&gt; <span class="n">int</span>:
+    v = produto_vetorial(a, b, p)
+    <span class="k">if</span> v &gt; EPS:  <span class="k">return</span> <span class="n">1</span>
+    <span class="k">if</span> v &lt; -EPS: <span class="k">return</span> -<span class="n">1</span>
+    <span class="k">return</span> <span class="n">0</span></code></pre>
+<p>Comparar float com zero exato é receita de bug. As coordenadas são pixels, então
+qualquer coisa abaixo de 10⁻⁹ é <strong>ruído de arredondamento, não geometria</strong> —
+e vira “sobre a reta”.</p>
+
+<h3>3.3 <code>distancia_ponto_reta</code></h3>
+<pre><code>comprimento = hypot(b[<span class="n">0</span>] - a[<span class="n">0</span>], b[<span class="n">1</span>] - a[<span class="n">1</span>])
+<span class="k">if</span> comprimento &lt; EPS:
+    <span class="k">return</span> hypot(p[<span class="n">0</span>] - a[<span class="n">0</span>], p[<span class="n">1</span>] - a[<span class="n">1</span>])
+<span class="k">return</span> abs(produto_vetorial(a, b, p)) / comprimento</code></pre>
+<p>A seção 1.5 na íntegra. O caso <code>A == B</code> é uma linha degenerada: sem direção
+não há reta, e a distância à reta vira distância ao ponto — em vez de divisão por zero.</p>
+
+<h3>3.4 A máquina de estados que usa tudo isso</h3>
+<p>Em <code>src/fluxo/contagem/linha.py</code>, para cada pessoa em cada quadro:</p>
+<table>
+  <tr><th>#</th><th>passo</th><th>de onde vem</th></tr>
+  <tr><td>1</td><td>a caixa vira o ponto do pé</td><td>combinação convexa (1.8)</td></tr>
+  <tr><td>2</td><td>track com menos de 3 quadros → ignora</td><td><code>idade_minima_track</code></td></tr>
+  <tr><td>3</td><td>média móvel das 3 últimas posições</td><td>combinação convexa (1.8)</td></tr>
+  <tr><td>4</td><td>distância &lt; 15 px → adia a decisão</td><td><b>módulo</b> do produto vetorial (1.5)</td></tr>
+  <tr><td>5</td><td>o sinal trocou desde a âncora?</td><td><b>sinal</b> do produto vetorial (1.4)</td></tr>
+  <tr><td>6</td><td>o deslocamento cruzou o segmento?</td><td>4 produtos vetoriais (1.7)</td></tr>
+  <tr><td>7</td><td>contou há menos de 1,5 s? → ignora</td><td><code>cooldown_segundos</code></td></tr>
+</table>
+<p>Passando pelos sete, compara-se o lado novo com <code>lado_dentro</code> e grava-se
+ENTRADA ou SAÍDA.</p>
+<div class="nota"><b>Um detalhe que vale mostrar na aula.</b> O lado é atualizado
+<em>mesmo quando o evento é descartado</em> pelo cooldown. Sem isso o estado ficaria preso
+no lado antigo e o <em>próximo</em> cruzamento real se perderia. É o tipo de coisa que a
+matemática não avisa e o teste pega.</div>
+
+<h3>3.5 Onde mexer sem medo</h3>
+<p>O arquivo <code>geometria_aula.py</code>, nesta mesma pasta, tem as mesmas funções
+isoladas do resto do sistema, com desenho:</p>
+<pre><code>python geometria_aula.py                 <span class="c"># todos os cenários</span>
+python geometria_aula.py --cenario porta <span class="c"># um só</span>
+python geometria_aula.py --conferir      <span class="c"># compara com o código de produção</span></code></pre>
+<p>O <code>--conferir</code> roda as funções da aula e as do projeto sobre os mesmos casos e
+exige resultado idêntico. Se você editar uma fórmula para experimentar, ele avisa que a
+aula deixou de bater com o sistema.</p>
+</section>
+
+<!-- ============================ PARTE IV ============================ -->
+<section id="p4">
+<h2>4. Vídeos em português</h2>
+<p>Na ordem da aula. Todos verificados e no ar em setembro de 2026.</p>
+
+<h4>O centro da aula: produto vetorial e regra da mão direita</h4>
+<a class="vid" href="https://www.youtube.com/watch?v=Mm2OxB-rWdw" target="_blank" rel="noopener">
+  <b>Produtos Vetorial e Misto — Aula 12</b>
+  <span>UNIVESP · Geometria Analítica e Álgebra Linear · o mais próximo do formato de curso</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=PdtgGJFNZ2I" target="_blank" rel="noopener">
+  <b>Explicando o Produto Vetorial e a regra da mão direita — Aula 10</b>
+  <span>Física Superior · a perpendicularidade explicada devagar</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=AXapTNO6jCQ" target="_blank" rel="noopener">
+  <b>Produto Vetorial: exemplos e regra da mão direita</b>
+  <span>Matemateca — Ester Velasquez · bastante exemplo resolvido</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=NaMHKwQpDNc" target="_blank" rel="noopener">
+  <b>Método INESQUECÍVEL para utilizar a regra da mão direita</b>
+  <span>Professor Octavio · curto, e útil para a turma não errar o sentido</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=QRPYsZjsZFk" target="_blank" rel="noopener">
+  <b>A Regra da Mão Direita para o Produto Vetorial</b>
+  <span>Marcelo Zannin da Rosa · outra abordagem do mesmo ponto</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=6M3Nhz2g1OE" target="_blank" rel="noopener">
+  <b>A Regra da Mão Direita — Desafio Rápido</b>
+  <span>FTOedu · bom para usar como exercício-relâmpago na aula</span></a>
+
+<h4>Base: vetores no plano e no espaço</h4>
+<a class="vid" href="https://www.youtube.com/watch?v=HaODW1zY9N0" target="_blank" rel="noopener">
+  <b>Vetores no Plano e no Espaço — Aula 03</b>
+  <span>UNIVESP · para quem precisa retomar do começo</span></a>
+<a class="vid" href="https://www.youtube.com/playlist?list=PLxI8Can9yAHdDIbEMgrt1n-FdoQfLu2-t" target="_blank" rel="noopener">
+  <b>Geometria Analítica e Álgebra Linear — playlist completa</b>
+  <span>UNIVESP · o curso inteiro, se você quiser a ementa toda</span></a>
+
+<h4>Para a Parte 2 (norma, produto escalar, cosseno)</h4>
+<a class="vid" href="https://www.youtube.com/watch?v=gBKmuAWMZ50" target="_blank" rel="noopener">
+  <b>Norma, produto escalar e ângulo entre vetores — Aula 8</b>
+  <span>Matemática em Exercícios, Prof. Gui · cobre os três de uma vez</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=bZM3wK3p0fc" target="_blank" rel="noopener">
+  <b>Produto Escalar e o Ângulo entre Vetores</b>
+  <span>Professor Altamir Araldi</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=vI3HTBycd2Y" target="_blank" rel="noopener">
+  <b>Exercícios resolvidos: produto escalar, norma e ângulo</b>
+  <span>Bote Fé na Matemática · só exercício, para fixar</span></a>
+<a class="vid" href="https://www.youtube.com/watch?v=0HOoTNrRDU4" target="_blank" rel="noopener">
+  <b>O produto escalar e o ângulo por eles formado</b>
+  <span>Khan Academy · <em>português de Portugal</em> — o sotaque e alguns termos mudam</span></a>
+
+<h4>Leitura lateral, se alguém perguntar do determinante</h4>
+<a class="vid" href="https://www.youtube.com/watch?v=r1o7RryS8WM" target="_blank" rel="noopener">
+  <b>Matrizes e Determinantes — Aula 01</b>
+  <span>UNIVESP · não é o foco da aula; serve se a pergunta vier</span></a>
+</section>
+
+<!-- ============================ PARTE V ============================ -->
+<section id="p5">
+<h2>5. Exercícios</h2>
+<p>Todos sobre a <strong>linha real da porta da faculdade</strong>, como está em
+<code>config/cameras.yaml</code>:</p>
+<div class="formula">
+A = (253, 447) &nbsp;&nbsp; B = (458, 438) &nbsp;&nbsp;
+<span style="color:var(--fraca)">— pixels de um quadro VGA 640×480</span><br>
+AB = B − A = (205, −9) &nbsp;&nbsp; ‖AB‖ = √(205² + 9²) ≈ 205,20
+</div>
+<p class="pe">Os gabaritos foram conferidos rodando o código de produção.</p>
+
+<div class="ex">
+  <h4>1. De que lado?</h4>
+  <p>Uma pessoa está em P = (300, 400). Calcule <b>AP</b>, o produto vetorial AB × AP e o
+     valor de <code>lado(A, B, P)</code>.</p>
+  <details><summary>Gabarito</summary>
+    <div class="formula">
+AP = P − A = (300 − 253, 400 − 447) = (47, −47)<br>
+AB × AP = 205·(−47) − (−9)·47 = −9635 + 423 = <b>−9212</b><br>
+lado = <b>−1</b>
+    </div>
+  </details>
+</div>
+
+<div class="ex">
+  <h4>2. A decisão é confiável?</h4>
+  <p>Ainda com P = (300, 400): a que distância da reta essa pessoa está? Sabendo que
+     <code>zona_morta_px = 15</code>, o sistema decide ou adia?</p>
+  <details><summary>Gabarito</summary>
+    <div class="formula">
+distância = |−9212| / 205,20 ≈ <b>44,9 px</b><br>
+44,9 &gt; 15 &nbsp;→&nbsp; fora da zona morta, o sistema <b>decide</b>
+    </div>
+  </details>
+</div>
+
+<div class="ex">
+  <h4>3. Quase em cima da linha</h4>
+  <p>Agora P = (400, 441). Calcule o produto vetorial, o lado e a distância. O que o
+     sistema faz?</p>
+  <details><summary>Gabarito</summary>
+    <div class="formula">
+AP = (147, −6) &nbsp;&nbsp; AB × AP = 205·(−6) − (−9)·147 = −1230 + 1323 = <b>+93</b><br>
+lado = +1 &nbsp;&nbsp; distância = 93 / 205,20 ≈ <b>0,45 px</b><br>
+0,45 &lt; 15 &nbsp;→&nbsp; <b>zona morta: adia</b>
+    </div>
+    <p>Repare que o sinal é +1 com toda a confiança do mundo — e mesmo assim o sistema não
+    conta. É a diferença entre <em>saber o lado</em> e <em>poder confiar nele</em>.</p>
+  </details>
+</div>
+
+<div class="ex">
+  <h4>4. Cruzou?</h4>
+  <p>Uma pessoa vai de P₁ = (300, 400) até P₂ = (320, 470). Calcule o lado nas duas
+     posições e diga se ela cruzou a porta.</p>
+  <details><summary>Gabarito</summary>
+    <div class="formula">
+lado(P₁) = −1 &nbsp;&nbsp; lado(P₂) = +1 &nbsp;&nbsp; <b>trocou de lado</b><br>
+E os quatro testes de orientação confirmam:
+<code>segmentos_se_cruzam = True</code>
+    </div>
+  </details>
+</div>
+
+<div class="ex">
+  <h4>5. A pegadinha — trocou de lado, mas não entrou</h4>
+  <p>Outra pessoa vai de P₁ = (600, 430) até P₂ = (600, 470), andando pelo corredor bem à
+     direita da porta. Calcule os dois lados. Ela cruzou a porta?</p>
+  <details><summary>Gabarito</summary>
+    <div class="formula">
+lado(P₁) = −1 &nbsp;&nbsp; lado(P₂) = +1 &nbsp;&nbsp; <b>trocou de lado!</b><br>
+<code>segmentos_se_cruzam = <b style="color:var(--neg)">False</b></code>
+    </div>
+    <p>Ela trocou de lado da <strong>reta</strong>, mas x = 600 está muito além de B
+    (x = 458): passou <em>fora do segmento desenhado</em>. Este é o exercício que justifica
+    a seção 1.7 inteira — e o erro que o sistema cometeria se olhasse só o sinal.</p>
+  </details>
+</div>
+
+<div class="ex">
+  <h4>6. Para pensar (sem conta)</h4>
+  <p>Por que o sistema usa o <em>centro da base</em> da caixa, e não o centro dela? Dê duas
+     situações em que o centro daria a resposta errada.</p>
+  <details><summary>Gabarito</summary>
+    <p>Porque o pé está no mesmo plano em que a linha foi desenhada — o chão. O centro da
+    caixa erra quando: (a) a pessoa <strong>levanta o braço</strong>, o que estica a caixa
+    para cima e move o centro sem que ela tenha andado; (b) a cabeça é <strong>cortada</strong>
+    pela borda do quadro ou por oclusão, o que encurta a caixa e move o centro para baixo.
+    Em ambos, o pé não se mexe.</p>
+  </details>
+</div>
+
+<div class="ex">
+  <h4>7. Para pensar (mais difícil)</h4>
+  <p>Se você trocar A por B na configuração da linha — isto é, gravar
+     <code>[458, 438, 253, 447]</code> em vez de <code>[253, 447, 458, 438]</code> — o que
+     acontece com a contagem?</p>
+  <details><summary>Gabarito</summary>
+    <p>O produto vetorial é <strong>anticomutativo</strong>: trocar a ordem inverte o sinal
+    de todos os resultados. Toda entrada vira saída e toda saída vira entrada — o prédio
+    passa a ser contado ao contrário.</p>
+    <p>O sistema não tem como perceber isso sozinho, e é por isso que
+    <code>lado_dentro</code> vem da <strong>calibração</strong>, e que o passo 7 do runbook
+    de instalação manda alguém <em>passar pela porta e conferir que entrada conta como
+    entrada</em>. Um sinal trocado é invisível no código e óbvio na porta.</p>
+  </details>
+</div>
+</section>
+
+<p class="pe">Projeto Limiar · <code>docs/aula-algebra-linear/</code> ·
+o código citado está em <code>src/fluxo/contagem/</code> e <code>src/fluxo/reid/</code></p>
+
+</div>
+</body>
+</html>

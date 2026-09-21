@@ -14,6 +14,8 @@ não há vínculo com identidade civil em nenhum ponto.
 | `docs/avaliacao.md` | como se prova que o número está certo |
 | `docs/resultados.md` | **os números medidos**, com as limitações declaradas |
 | `docs/referencias.md` | projetos de fora que resolvem problemas vizinhos |
+| `docs/aula-algebra-linear/` | slides, apostila e código isolado: a contagem explicada como produto vetorial |
+| `docs/geometria-limiar/` | **a geometria da contagem para o professor de física**: apostila em PDF, código isolado, trajetória real e cinco problemas para iniciação científica |
 
 ## Começar
 
@@ -164,6 +166,7 @@ por descuido.
 | — | Gravação da porta real e calibração | **depende de autorização** |
 | 12 | Etapa 2: re-identificação anônima | código pronto — **medição pendente**, ver `docs/resultados.md` §9 |
 | 13 | Operação desassistida: sonda de travamento, tarefa sem limite de 72 h, túnel do painel, períodos nomeados | pronto — instalado no laboratório de física em 04/09/2026, `docs/operacao.md` |
+| 14 | Avisos no celular: câmera muda, filho relançado, sonda sem resposta, e um batimento a cada 6 h | pronto — `docs/operacao.md`, "Os avisos no celular" |
 
 O que falta para fechar a etapa "Uno" não é código: é a gravação das duas
 entradas e a contagem manual de referência. Ver `docs/avaliacao.md`.
