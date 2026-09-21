@@ -224,3 +224,26 @@ class TestIdentidade:
         assert (sem.quadros, sem.entradas, len(sem.eventos)) == (
             com.quadros, com.entradas, len(com.eventos)
         )
+
+
+class TestInstanteInicial:
+    """De onde sai a hora do primeiro quadro."""
+
+    def test_informado_ganha_do_arquivo(self, tmp_path):
+        arquivo = tmp_path / "porta.mp4"
+        arquivo.write_bytes(b"")
+        pedido = datetime(2026, 9, 1, 8, 30, tzinfo=FUSO_LOCAL)
+        assert processador.instante_inicial_de(arquivo, pedido) == pedido
+
+    def test_arquivo_datado_pela_modificacao(self, tmp_path):
+        arquivo = tmp_path / "porta.mp4"
+        arquivo.write_bytes(b"")
+        esperado = datetime.fromtimestamp(arquivo.stat().st_mtime, tz=FUSO_LOCAL)
+        assert processador.instante_inicial_de(arquivo, None) == esperado
+
+    def test_webcam_e_indice_inteiro_e_nao_caminho(self, tmp_path):
+        # `Path(0)` levanta TypeError: sem este ramo, toda execução de webcam
+        # morre antes de abrir a câmera.
+        antes = datetime.now(FUSO_LOCAL)
+        obtido = processador.instante_inicial_de(0, None)
+        assert antes <= obtido <= datetime.now(FUSO_LOCAL)

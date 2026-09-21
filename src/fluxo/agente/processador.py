@@ -13,6 +13,8 @@ from tqdm import tqdm
 from fluxo.agente.remetente import Remetente
 from fluxo.contagem.linha import LinhaDeContagem
 from fluxo.dominio.evento import EventoCruzamento
+from fluxo.visao.latencia import MedidorDeLatencia
+from fluxo.visao.taxa import MedidorDeTaxa
 
 if TYPE_CHECKING:
     # Só para as anotações: importar de verdade puxaria cv2, e este módulo
@@ -87,6 +89,14 @@ def processar(
     pendentes: list[EventoCruzamento] = []
     inicio = time.monotonic()
 
+    # So faz sentido ao vivo: num arquivo o `instante` do quadro e derivado do
+    # FPS a partir do inicio da gravacao, e a diferenca para agora seria a
+    # idade do video, nao a latencia de nada.
+    medidor = MedidorDeLatencia() if getattr(fonte, "ao_vivo", False) else None
+    # A taxa, ao contrario, vale em qualquer fonte: e a do laco inteiro, e num
+    # arquivo diz quanto tempo o processamento ainda vai levar.
+    taxa = MedidorDeTaxa()
+
     total = limite_quadros or fonte.total_quadros or None
     barra = tqdm(total=total, unit="q", disable=not mostrar_progresso, leave=False)
 
@@ -99,6 +109,10 @@ def processar(
         for quadro in fonte:
             if limite_quadros is not None and resultado.quadros >= limite_quadros:
                 break
+
+            # No topo do laco: o intervalo entre duas marcas e uma volta
+            # inteira — leitura, deteccao, contagem e desenho.
+            taxa.marcar()
 
             # A fonte viva marca o primeiro quadro depois de uma queda longa:
             # quem estava na cena já não está, e id reciclado com lado velho
@@ -154,11 +168,27 @@ def processar(
             if gravador is not None or janela is not None or publicador is not None:
                 from fluxo.visao import anotador
 
+                # Medido aqui, imediatamente antes de desenhar: o que o placar
+                # anuncia e o atraso do quadro que esta sendo desenhado, ja com
+                # a espera na fila e a inferencia dentro.
+                if medidor is not None:
+                    medidor.observar(quadro.instante)
+
+                # As duas leituras de saude na mesma linha, separadas por dois
+                # espacos. Em arquivo so ha a taxa, e a linha encolhe sozinha.
+                saude = "  ".join(
+                    t for t in (
+                        medidor.texto if medidor is not None else "",
+                        taxa.texto,
+                    ) if t
+                )
+
                 anotador.anotar(
                     quadro.imagem, linha, rastros, quadro.indice,
                     extra=identidade.placar() if identidade is not None else "",
                     escala=escala_placar,
                     etiquetas=identidade.etiquetas() if identidade is not None else None,
+                    saude=saude,
                 )
             if gravador is not None:
                 gravador.escrever(quadro.imagem)
@@ -192,11 +222,17 @@ def instante_inicial_de(caminho: Path | str, informado: datetime | None) -> date
     Se não for informado, usa a data de modificação do arquivo — que para uma
     gravação é aproximadamente a hora em que ela terminou, mas é melhor que
     inventar "agora" e datar eventos de ontem com a hora de hoje.
+
+    Fonte ao vivo não tem arquivo: a webcam chega como índice inteiro, e
+    `Path(0)` levanta TypeError. Ali "agora" não é chute nenhum — é
+    literalmente o instante do quadro.
     """
     from fluxo.dominio.evento import FUSO_LOCAL
 
     if informado is not None:
         return informado
+    if isinstance(caminho, int):
+        return datetime.now(FUSO_LOCAL)
     p = Path(caminho)
     if p.exists():
         return datetime.fromtimestamp(p.stat().st_mtime, tz=FUSO_LOCAL)

@@ -81,19 +81,23 @@ def desenhar_rastros(imagem, rastros: list[Rastro], escala: float = 1.0,
 
 def desenhar_placar(
     imagem, linha: LinhaDeContagem, quadro: int, visiveis: int = 0, extra: str = "",
-    escala: float = 1.0,
+    escala: float = 1.0, saude: str = "",
 ):
-    # "visiveis" é quem está no quadro agora; "memoria" inclui os tracks ainda
-    # não esquecidos. Confundir os dois faz o placar parecer errado quando a
-    # cena está vazia.
+    # `quadro` e `visiveis` continuam no parâmetro, e não na tela: contador de
+    # quadro e ocupação instantânea são depuração, e competiam com o número que
+    # o placar existe para mostrar. Uma linha de `linhas.append` os traz de
+    # volta no dia em que forem precisos.
     linhas = [
         f"{linha.camera_id}",
         f"ENTRADAS  {linha.entradas}",
         f"SAIDAS    {linha.saidas}",
-        f"quadro {quadro}  visiveis {visiveis}  memoria {linha.rastros_ativos}",
     ]
     if extra:
         linhas.append(extra)
+    # Por ultimo, e em linha propria: e leitura de saude, nao de contagem, e
+    # quem confere o numero de pessoas nao deve tropecar nela.
+    if saude:
+        linhas.append(saude)
 
     e = escala_de(imagem, escala)
     fonte = 0.55 * e
@@ -123,10 +127,11 @@ def desenhar_placar(
 
 
 def anotar(imagem, linha: LinhaDeContagem, rastros: list[Rastro], quadro: int,
-           extra="", escala: float = 1.0, etiquetas: dict[int, str] | None = None):
+           extra="", escala: float = 1.0, etiquetas: dict[int, str] | None = None,
+           saude: str = ""):
     desenhar_linha(imagem, linha, escala)
     desenhar_rastros(imagem, rastros, escala, etiquetas)
-    desenhar_placar(imagem, linha, quadro, len(rastros), extra, escala)
+    desenhar_placar(imagem, linha, quadro, len(rastros), extra, escala, saude)
     return imagem
 
 
