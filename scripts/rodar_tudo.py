@@ -24,7 +24,7 @@ sys.path.insert(0, str(RAIZ / "src"))
 # resolve) e lança os filhos com o interpretador certo do venv.
 from fluxo import config, registro
 from fluxo.ambiente import interpretador_do_projeto
-from fluxo.operacao import energia, pulso, tunel
+from fluxo.operacao import aviso, energia, pulso, tunel
 from fluxo.operacao.supervisor import ProcessoGerido, Supervisor
 from fluxo.persistencia import backup
 
@@ -142,6 +142,18 @@ def main() -> None:
         ))
         if not config.URL_AVISO:
             log.warning("URL_AVISO vazio: a URL do túnel fica só em %s", log_tunel)
+
+    # Independente do túnel: avisar que o agente caiu ou que a câmera emudeceu
+    # não tem relação nenhuma com expor o painel para fora.
+    if config.URL_AVISO:
+        observadores.append(aviso.Vigia(
+            processos, args.camera, config.URL_AVISO, registrador=log,
+        ))
+    else:
+        log.warning(
+            "URL_AVISO vazio: ninguém será avisado se algo cair. "
+            "Para dois dias sem supervisão, defina-o no .env."
+        )
 
     supervisor = Supervisor(
         processos,

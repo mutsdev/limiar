@@ -78,11 +78,11 @@ cameras:
   entrada_real:
     nome: Entrada da faculdade
     local: PC 24h com o hardware do time de C++
-    fonte: http://10.1.0.97:81/stream
+    fonte: http://10.254.161.110:81/stream
     lado_dentro: 1
     ativa: true
     nota: 'Calibrada na cena real em 01/09/2026, com a XIAO ESP32S3 em VGA. A linha
       esta em pixels de 640x480: se alguem mexer no FRAMESIZE do firmware, ela deixa
       de valer e precisa ser recalibrada. O IP vem por DHCP - se a placa reiniciar
       e trocar de endereco, atualize a fonte. Detalhes do firmware em docs/contrato-hardware.md.'
-    linha: [253, 410, 380, 411]
+    linha: [253, 447, 458, 438]

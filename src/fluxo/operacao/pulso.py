@@ -24,6 +24,19 @@ def arquivo_do_agente(camera: str) -> Path:
     return config.CAMINHO_LOGS / f"agente_{camera}.pulso"
 
 
+def arquivo_de_quadro(camera: str) -> Path:
+    """Onde o agente marca que um quadro CHEGOU — não que o laço girou.
+
+    São duas perguntas diferentes, com respostas operacionais diferentes. O
+    `.pulso` responde "o processo está preso?", e quem age sobre ele é o
+    supervisor, derrubando e relançando. Este responde "a câmera está
+    entregando?", e relançar não resolve nada: a `FonteViva` já reconecta e
+    varre a rede atrás de um IP novo sozinha. Por isso o `.quadro` serve para
+    AVISAR um humano, e a sonda do supervisor continua lendo só o `.pulso`.
+    """
+    return config.CAMINHO_LOGS / f"agente_{camera}.quadro"
+
+
 class Pulso:
     def __init__(
         self, arquivo: Path, a_cada_s: float = 5.0,

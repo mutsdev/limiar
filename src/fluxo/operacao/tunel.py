@@ -60,14 +60,21 @@ def extrair_url(texto: str) -> str | None:
 
 
 def enviar_ntfy(url_aviso: str, url: str) -> None:
-    import httpx
+    """A URL do painel no mesmo tópico dos avisos do supervisor.
 
-    httpx.post(
+    Assinatura de dois argumentos porque é o default de `AnunciadorDeTunel`,
+    que anuncia URL e nada mais. O envio em si mora em `aviso.enviar_ntfy`,
+    para os dois caminhos terem o mesmo timeout e o mesmo tratamento de erro.
+    """
+    from fluxo.operacao import aviso
+
+    aviso.enviar_ntfy(
         url_aviso,
-        content=f"Painel do Limiar: {url}".encode(),
-        headers={"Title": "Limiar no ar", "Click": url, "Tags": "door"},
-        timeout=10.0,
-    ).raise_for_status()
+        f"Painel do Limiar: {url}",
+        titulo="Limiar no ar",
+        tags="door",
+        clique=url,
+    )
 
 
 class AnunciadorDeTunel:

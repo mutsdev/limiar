@@ -39,7 +39,7 @@ from fluxo.agente.fila_local import FilaLocal
 from fluxo.agente.remetente import Remetente
 from fluxo.contagem.linha import LinhaDeContagem
 from fluxo.operacao import descoberta
-from fluxo.operacao.pulso import Pulso, arquivo_do_agente
+from fluxo.operacao.pulso import Pulso, arquivo_de_quadro, arquivo_do_agente
 from fluxo.visao.fonte_viva import ConfigFonteViva, FonteViva
 from fluxo.visao.quadro_vivo import PublicadorDeQuadro
 from fluxo.visao.rastreador import ConfigVisao, RastreadorPessoas
@@ -118,6 +118,9 @@ def main() -> None:
     # começa a sondar minutos depois, mas o arquivo já existe.
     batida = Pulso(arquivo_do_agente(args.camera))
     batida.bater()
+    # O de quadro NÃO é batido aqui de propósito: enquanto nenhum quadro
+    # tiver chegado, a ausência do arquivo é a resposta certa.
+    batida_quadro = Pulso(arquivo_de_quadro(args.camera))
     cameras = config.carregar_cameras()
     pipeline = config.carregar_pipeline()
 
@@ -181,7 +184,10 @@ def main() -> None:
         cfg_fonte = ConfigFonteViva(
             desistir_apos_s=DESISTIR_APOS_S if _e_http(fonte_str) else None
         )
-        fonte = FonteViva(fonte_str, config=cfg_fonte, registrador=log, pulso=batida.bater)
+        fonte = FonteViva(
+            fonte_str, config=cfg_fonte, registrador=log,
+            pulso=batida.bater, pulso_quadro=batida_quadro.bater,
+        )
         fonte_atual[0] = fonte
         janela = None
         if args.janela:

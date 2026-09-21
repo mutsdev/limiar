@@ -57,6 +57,7 @@ class FonteViva:
         espera: Callable[[float], None] | None = None,
         relogio: Callable[[], float] = time.monotonic,
         pulso: Callable[[], None] | None = None,
+        pulso_quadro: Callable[[], None] | None = None,
     ) -> None:
         self.origem = origem
         self.config = config or ConfigFonteViva()
@@ -71,6 +72,12 @@ class FonteViva:
         # vida que o supervisor lê. Do lado do consumidor de propósito — um
         # `processar` travado para de bater; câmera fora do ar não.
         self._pulso = pulso
+        # Este bate SÓ quando um quadro chega de verdade, e é o que separa
+        # "o laço gira" de "a câmera entrega". Sem ele, câmera desligada é
+        # indistinguível de câmera boa: o `_pulso` acima continua batendo na
+        # volta em seco do watchdog, e todas as camadas de supervisão ficam
+        # satisfeitas enquanto a contagem é zero.
+        self._pulso_quadro = pulso_quadro
 
         self.ao_vivo = True
         self.total_quadros = 0
@@ -233,7 +240,7 @@ class FonteViva:
             if self._pulso is not None:
                 self._pulso()
             try:
-                yield self._fila.get(timeout=self.config.timeout_quadro_s)
+                quadro = self._fila.get(timeout=self.config.timeout_quadro_s)
             except queue.Empty:
                 if self._parar.is_set():
                     break
@@ -245,6 +252,12 @@ class FonteViva:
                     self.origem, self.config.timeout_quadro_s,
                 )
                 self._derrubar_fonte()
+                continue
+
+            # Antes de entregar, e só aqui: chegou quadro.
+            if self._pulso_quadro is not None:
+                self._pulso_quadro()
+            yield quadro
 
     def _derrubar_fonte(self) -> None:
         with self._tranca:

@@ -99,7 +99,7 @@ def fabrica_roteirizada(roteiro: list, esperas: list | None = None, relogio: Rel
     return fabrica
 
 
-def montar(roteiro, config, relogio=None, pulso=None):
+def montar(roteiro, config, relogio=None, pulso=None, pulso_quadro=None):
     relogio = relogio or Relogio()
     esperas: list[float] = []
 
@@ -114,6 +114,7 @@ def montar(roteiro, config, relogio=None, pulso=None):
         espera=espera,
         relogio=relogio,
         pulso=pulso,
+        pulso_quadro=pulso_quadro,
     )
     return fv, esperas
 
@@ -214,6 +215,32 @@ class TestPulso:
             fv.fechar()
         assert [q.indice for q in coletados] == [0]
         assert len(batidas) >= 2
+
+    def test_o_pulso_de_quadro_so_bate_com_quadro(self):
+        """O que separa "câmera desligada" de "câmera boa".
+
+        Mesmo roteiro do teste acima: uma fonte congelada, que faz o consumidor
+        acordar em seco no watchdog, e depois uma que entrega um quadro. O
+        pulso comum bate nas duas situações — é prova de que o laço gira. O de
+        quadro bate uma vez só, porque um quadro só chegou.
+
+        Sem esta distinção, câmera fora do ar fica indistinguível de câmera
+        contando: todas as camadas de supervisão continuam satisfeitas.
+        """
+        batidas, quadros = [], []
+        cfg = ConfigFonteViva(timeout_quadro_s=0.2, lacuna_para_zerar_s=100.0)
+        fv, _ = montar(
+            [FonteCongelada(), FonteFalsa(1, depois_congela=True)], cfg,
+            pulso=lambda: batidas.append(1),
+            pulso_quadro=lambda: quadros.append(1),
+        )
+        try:
+            coletados = coletar_ate(fv, 0)
+        finally:
+            fv.fechar()
+        assert [q.indice for q in coletados] == [0]
+        assert len(batidas) >= 2, "o laço girou mais de uma vez"
+        assert len(quadros) == 1, "mas um só quadro chegou"
 
 
 class TestDesistir:

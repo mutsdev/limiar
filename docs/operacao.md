@@ -30,6 +30,7 @@ As defesas são em camadas, e cada uma cobre a de dentro:
 | supervisor (`rodar_tudo.py`) | processo que **morre** — relança; processo **travado** — a sonda (`/saude`, pulso do agente, `/_stcore/health`) falha 3× seguidas e ele é derrubado e relançado |
 | supervisor (energia) | a máquina não dorme enquanto ele vive (`SetThreadExecutionState`, sem admin) |
 | Agendador de Tarefas | logon/reinício da máquina — lança o supervisor, **sem o limite de 72 h** e relançando se cair |
+| `Vigia` (observador do supervisor) | o que as camadas acima **não conseguem consertar sozinhas** — manda para o seu celular: filho relançado, sonda sem resposta, câmera parada há 15 min, câmera de volta, e um batimento a cada 6 h |
 
 O que **nenhuma** camada cobre: logoff/reinício sem logon automático, tampa de
 notebook fechada, e a câmera em outra rede wifi. Isso é pedido ao TI (abaixo).
@@ -69,7 +70,9 @@ Na ordem. Cada passo tem como saber que deu certo.
 11. **Subir agora**: `uv run scripts/instalar_logon.py --executar`. Em até 2 min:
     `~/Documents/dados-fluxo/logs/supervisor.log` mostra os quatro filhos
     lançados e `Túnel no ar: https://....trycloudflare.com`.
-12. **Do celular, no 4G** (não no wifi do lab): a notificação do ntfy chegou;
+12. **Do celular, no 4G** (não no wifi do lab): a notificação do ntfy chegou
+    (duas, na verdade — a URL do túnel e o batimento *Limiar de pé* com os
+    totais, que é a prova de que o canal de aviso funciona);
     abrir a URL pede a senha; a aba **Ao vivo** mostra a porta com a linha; a
     aba **Fluxo** com o período "Laboratório de física" escolhido mostra o que
     você contou no passo 7.
@@ -98,6 +101,34 @@ Na ordem. Cada passo tem como saber que deu certo.
 - **Parou no terceiro dia sem nada no log**: a tarefa foi criada pelo plano B
   (`/sc ONLOGON`), que herda o limite de 72 h. Reinstale; o XML tem de dar
   `ÊXITO`.
+
+## Os avisos no celular
+
+Tudo vai para o mesmo tópico do ntfy (`URL_AVISO`) que já recebia a URL do
+túnel. **Com `URL_AVISO` vazio ninguém é avisado de nada** — o `rodar_tudo.py`
+reclama no log na subida, mas sobe assim mesmo.
+
+| Chegou | O que aconteceu | O que fazer |
+|---|---|---|
+| *Limiar de pé* — "N entradas e M saídas hoje" | batimento de 6 h; está tudo funcionando | nada. Confira se o número anda |
+| *Limiar reiniciou um processo* | um filho caiu e o supervisor o relançou | um só, nada. Vários seguidos: `supervisor.log` e o `.saida.log` do filho |
+| *Limiar sem resposta* | o processo está de pé mas não responde à sonda; o supervisor vai derrubá-lo | espere o relançamento; se repetir, é a máquina no limite |
+| *Limiar sem imagem* | 15 min sem quadro nenhum. A recuperação automática já falhou | a câmera caiu de verdade: tomada, cabo, wifi. Ver `achar_camera.py` |
+| *Limiar voltou* | quadro chegando de novo | nada. Confira quanto tempo ficou fora |
+
+Cada um sai **uma vez por transição**, não a cada volta do supervisor: câmera
+muda avisa ao ficar muda e ao voltar, e não de cinco em cinco segundos.
+
+### O silêncio também é um alarme
+
+Esta é a razão de existir o batimento positivo. Um alerta só chega se houver
+alguém vivo para mandá-lo — se o supervisor inteiro morrer, se o Windows
+reiniciar, se a máquina perder a rede, **nenhum alerta chega**, e a operação
+parada fica indistinguível da operação saudável.
+
+Com uma mensagem a cada 6 h, isso deixa de ser ambíguo: **passou de 6 h sem
+batimento, algo está errado.** Em dois dias sem ninguém no laboratório, é o
+único sinal que cobre a falha da própria vigilância.
 
 ## Acesso de fora: o que sai e o que não sai
 
@@ -213,6 +244,7 @@ com rotação diária e 14 dias de retenção:
 - `supervisor.log` — lançamentos, mortes, relançamentos, sondas e a URL do túnel
 - `agente_<camera>.log` — reconexões do stream, eventos, batimento horário
 - `agente_<camera>.pulso` — arquivo vazio cuja data é o pulso do agente
+- `agente_<camera>.quadro` — a data do **último quadro que chegou de verdade**
 - `servico.log` — acesso e erros do uvicorn
 - `tunel.url` — a URL atual do túnel
 - `*.saida.log` — stdout/stderr crus de cada filho; passam de 20 MB e viram `.1`
@@ -221,6 +253,27 @@ O batimento no log do agente é a evidência de vida para quem lê: uma linha po
 hora com entradas, saídas, tamanho da fila local e reconexões. A evidência que
 a máquina lê é o **pulso** — batido a cada 5 s pelo laço que consome a fonte —
 e o supervisor derruba e relança o agente com 3 min sem pulso.
+
+### Por que são dois arquivos, e não um
+
+São duas perguntas diferentes, e confundi-las foi o buraco que fechou em
+08/09/2026:
+
+| arquivo | responde | quem age |
+|---|---|---|
+| `.pulso` | "o processo está preso?" | o supervisor, derrubando e relançando |
+| `.quadro` | "a câmera está entregando?" | **você**, avisado no celular |
+
+O `.pulso` bate no topo da volta do consumidor, **com quadro ou sem** — a
+`FonteViva` acorda no timeout do watchdog e bate do mesmo jeito. Isso é
+proposital (câmera fora do ar não é motivo para matar o agente), mas significa
+que, sozinho, ele não distingue câmera boa de câmera desligada: processo
+saudável, sonda passando, supervisor satisfeito, contagem zero.
+
+O `.quadro` só é tocado depois de um quadro sair da fila de verdade. Ele **não**
+alimenta a sonda do supervisor de propósito: relançar o agente não traz a
+câmera de volta, e a `FonteViva` já reconecta e varre a rede atrás de um IP
+novo sozinha. Ele serve para chamar um humano.
 
 ## Expor na rede (quando for preciso)
 
@@ -263,3 +316,16 @@ aviso no celular, senha, aba Ao vivo e relançamento antes de ir ao laboratório
 
 Para testar o supervisor: mate um filho no Gerenciador de Tarefas e veja o
 relançamento no `supervisor.log`.
+
+O mesmo ensaio prova os avisos, e foi assim que eles foram conferidos em
+08/09/2026. Com o agente rodando contra o stream do ffmpeg, compare as datas
+dos dois arquivos de pulso enquanto mata o ffmpeg:
+
+```
+python -c "import os,time; [print(time.strftime('%H:%M:%S', time.localtime(os.path.getmtime(f)))) for f in ['pulso','quadro']]"
+```
+
+Com o stream vivo os dois andam juntos. Matando o ffmpeg, o `.pulso` continua
+avançando (o laço gira no timeout do watchdog) e o `.quadro` **congela** — que
+é exatamente o estado que nenhuma camada enxergava antes, e que agora vira
+*Limiar sem imagem* no celular em 15 min.
