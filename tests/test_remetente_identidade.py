@@ -101,7 +101,19 @@ class TestFilaDeVinculos:
         )
         assert r.enviar_vinculos([vinculo(2)]) is True
         assert r.fila_vinculos.tamanho == 0
-        assert sorted(v["id_evento"] for lote in enviados for v in lote) == ["e1", "e2"]
+        # A fila sai ANTES do lote novo: o vínculo grava `dentro`, e a ordem
+        # de chegada é a ordem em que o serviço vai acreditar.
+        assert [v["id_evento"] for lote in enviados for v in lote] == ["e1", "e2"]
+
+    def test_se_a_fila_nao_sai_o_lote_novo_tambem_espera(self, tmp_path, monkeypatch):
+        def cai(*a, **k):
+            raise httpx.ConnectError("sem rede")
+
+        r = remetente(tmp_path)
+        r.fila_vinculos.enfileirar([vinculo(1)])
+        monkeypatch.setattr(httpx, "post", cai)
+        assert r.enviar_vinculos([vinculo(2)]) is False
+        assert [v.id_evento for v in r.fila_vinculos.ler()] == ["e1", "e2"]
 
     def test_sem_fila_configurada_perde_sem_quebrar(self, tmp_path, monkeypatch):
         def cai(*a, **k):
@@ -120,6 +132,32 @@ class TestFilaDeVinculos:
         r = remetente(tmp_path)
         assert r.registrar_pessoas([pessoa()]) is False
         assert r.fila_vinculos.tamanho == 0
+
+    def test_pessoas_do_dia_le_o_get_e_ignora_colunas_extras(self, tmp_path, monkeypatch):
+        linhas = [{
+            "id": 7, "camera_id": "entrada_a", "data_ref": "2026-09-04", "pseudonimo": "P3",
+            "primeiro_visto": T0.isoformat(), "ultimo_visto": T0.isoformat(), "dentro": 0,
+            "apelido": None, "entradas": 1, "saidas": 1,
+        }]
+
+        class _Get(_Resposta):
+            def json(self):
+                return linhas
+
+        chamadas = []
+        monkeypatch.setattr(httpx, "get", lambda url, **kw: (chamadas.append((url, kw)), _Get())[1])
+        pessoas = remetente(tmp_path).pessoas_do_dia("entrada_a", date(2026, 9, 4))
+        assert chamadas[0][0] == "http://servico/pessoas"
+        assert chamadas[0][1]["params"]["data_inicio"] == "2026-09-04"
+        assert [p.pseudonimo for p in pessoas] == ["P3"]
+        assert pessoas[0].dentro is False
+
+    def test_pessoas_do_dia_sem_rede_devolve_vazio(self, tmp_path, monkeypatch):
+        def cai(*a, **k):
+            raise httpx.ConnectError("sem rede")
+
+        monkeypatch.setattr(httpx, "get", cai)
+        assert remetente(tmp_path).pessoas_do_dia("entrada_a", date(2026, 9, 4)) == []
 
     def test_apelido_sem_rede_devolve_falso(self, tmp_path, monkeypatch):
         def cai(*a, **k):

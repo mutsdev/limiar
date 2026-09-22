@@ -47,6 +47,13 @@ class TestPessoas:
         assert r.json() == {"recebidos": 2, "gravados": 2}
         lista = cliente.get("/pessoas", params={"data_inicio": DIA, "data_fim": DIA}).json()
         assert [p["pseudonimo"] for p in lista] == ["P1", "P2"]
+        assert [p["dentro"] for p in lista] == [1, 1]
+
+    def test_lote_aceita_dentro_e_o_get_devolve(self, cliente):
+        fora = {**pessoa("P1"), "dentro": False}
+        assert cliente.post("/pessoas/lote", json=[fora]).status_code == 200
+        lista = cliente.get("/pessoas", params={"data_inicio": DIA, "data_fim": DIA}).json()
+        assert lista[0]["dentro"] == 0
 
     def test_camera_desconhecida_e_404(self, cliente):
         assert cliente.post("/pessoas/lote", json=[pessoa(camera="x")]).status_code == 404

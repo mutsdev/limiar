@@ -70,6 +70,7 @@ def processar(
     guardar_eventos: bool = True,
     identidade=None,
     publicador=None,
+    clipes=None,
 ) -> Resultado:
     """Roda o pipeline inteiro sobre uma fonte de vídeo.
 
@@ -82,6 +83,10 @@ def processar(
 
     `publicador` (visao.quadro_vivo.PublicadorDeQuadro) recebe o quadro
     anotado para a aba "Ao vivo" do painel.
+
+    `clipes` (visao.clipes.GravadorDeDuvidas) recebe o quadro anotado, os
+    rastros e as decisões de identidade, e grava os segundos em volta de
+    cada dúvida. Com None — o padrão — nada é gravado.
     """
     import time
 
@@ -146,8 +151,9 @@ def processar(
 
             # Depois da linha, e antes de desenhar: o recorte tem de sair do
             # quadro limpo, não do quadro com caixas em cima.
+            decisoes = []
             if identidade is not None:
-                identidade.observar(
+                decisoes = identidade.observar(
                     quadro, rastros, novos,
                     avisar=lambda m: _avisar(barra, registrador, m),
                 )
@@ -165,7 +171,10 @@ def processar(
                 pendentes = []
 
             # Anota uma vez só, e reaproveita o mesmo quadro nos três destinos.
-            if gravador is not None or janela is not None or publicador is not None:
+            if (
+                gravador is not None or janela is not None
+                or publicador is not None or clipes is not None
+            ):
                 from fluxo.visao import anotador
 
                 # Medido aqui, imediatamente antes de desenhar: o que o placar
@@ -194,6 +203,8 @@ def processar(
                 gravador.escrever(quadro.imagem)
             if publicador is not None:
                 publicador.publicar(quadro.imagem)
+            if clipes is not None:
+                clipes.observar(quadro.imagem, quadro.instante, rastros, linha, decisoes)
             if janela is not None and not janela.mostrar(quadro.imagem):
                 barra.write("Interrompido pela janela.")
                 break
@@ -206,6 +217,8 @@ def processar(
     if identidade is not None:
         # Saídas que esperavam companhia no lote são decididas agora.
         identidade.fechar(avisar=lambda m: _avisar(barra, registrador, m))
+    if clipes is not None:
+        clipes.fechar()
 
     if remetente is not None and pendentes:
         remetente.enviar(pendentes)

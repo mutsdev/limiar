@@ -16,10 +16,12 @@ Nada aqui sabe o que é imagem. Entram assinaturas prontas, saem decisões.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
 from fluxo.dominio.evento import Direcao, data_de_referencia
+from fluxo.dominio.identidade import PessoaSessao
 from fluxo.reid.assinatura import Assinatura, media, similaridade
 from fluxo.reid.atribuicao import atribuir
 
@@ -101,6 +103,10 @@ class Galeria:
     _pendentes: list[_SaidaPendente] = field(default_factory=list, init=False)
     _etiquetas: dict[int, str] = field(default_factory=dict, init=False)
     _proximo: int = field(default=1, init=False)
+    # Quem deixou de estar "dentro" sem gerar Decisao — fantasma e virada de
+    # dia. Quem publica drena esta lista para o banco não ficar com dentro=1
+    # de gente que já foi embora.
+    encerradas: list[Pessoa] = field(default_factory=list, init=False)
 
     # Contadores auditáveis. "Fantasma" é o número que diz se as saídas estão
     # sendo perdidas — e é o que contamina a atribuição se ninguém olhar.
@@ -137,6 +143,42 @@ class Galeria:
     def pendentes(self) -> int:
         return len(self._pendentes)
 
+    @property
+    def proximo(self) -> int:
+        """Número do próximo pseudônimo a nascer."""
+        return self._proximo
+
+    @property
+    def _candidatas(self) -> list[Pessoa]:
+        # Pessoa semeada de um reinício não tem assinatura: o vetor nunca vai
+        # ao banco (PROJETO §16.5). Ela conta como "dentro", mas não pode ser
+        # comparada com ninguém.
+        return [p for p in self.dentro if p.assinaturas]
+
+    def semear(self, pessoas: Iterable[PessoaSessao]) -> int:
+        """Retoma o dia depois de um reinício: quem o serviço já conhece hoje.
+
+        Sem vetor, quem estava dentro não é candidato — a saída dele vai ficar
+        "sem par" até o fantasma encerrá-lo. O que se preserva é a numeração
+        (P12 não vira P1 de novo) e o "ainda dentro" de quem já entrou.
+        """
+        n = 0
+        for s in pessoas:
+            if s.pseudonimo in self.pessoas:
+                continue
+            self.pessoas[s.pseudonimo] = Pessoa(
+                pseudonimo=s.pseudonimo, assinaturas=[],
+                primeiro_visto=s.primeiro_visto, ultimo_visto=s.ultimo_visto,
+                dentro=s.dentro,
+            )
+            self.data_ref = s.data_ref
+            try:
+                self._proximo = max(self._proximo, int(s.pseudonimo[1:]) + 1)
+            except ValueError:
+                pass
+            n += 1
+        return n
+
     def etiqueta(self, id_local: int) -> str | None:
         return self._etiquetas.get(id_local)
 
@@ -161,6 +203,11 @@ class Galeria:
             # O dia acabou com saídas na fila: resolvem-se contra a galeria de
             # ontem, e só então ela some. Ninguém de ontem existe hoje.
             decisoes.extend(self.resolver(instante, forcar=True))
+            # Quem ficou "dentro" na virada não sai amanhã como P de ontem:
+            # o banco precisa saber que aquele dia fechou com ele fora.
+            for p in self.dentro:
+                p.dentro = False
+                self.encerradas.append(p)
             self.pessoas.clear()
             self._etiquetas.clear()
             self._proximo = 1
@@ -185,6 +232,8 @@ class Galeria:
         melhor: Pessoa | None = None
         melhor_sim = -1.0
         for p in self.fora:
+            if not p.assinaturas:
+                continue
             s = similaridade(assinatura, p.assinatura)
             if s > melhor_sim:
                 melhor, melhor_sim = p, s
@@ -230,7 +279,7 @@ class Galeria:
 
         palpite = SEM_PAR
         melhor_sim = -1.0
-        for p in self.dentro:
+        for p in self._candidatas:
             s = similaridade(assinatura, p.assinatura)
             if s > melhor_sim:
                 melhor_sim = s
@@ -250,7 +299,7 @@ class Galeria:
             return []
 
         pendentes, self._pendentes = self._pendentes, []
-        candidatas = self.dentro
+        candidatas = self._candidatas
         pares, sem_par = atribuir(
             [p.assinatura for p in pendentes],
             [c.assinatura for c in candidatas],
@@ -273,9 +322,16 @@ class Galeria:
             saida = pendentes[i]
             self.nao_atribuidas += 1
             self._etiquetas[saida.id_local] = SEM_PAR
+            # A melhor candidata rejeitada vai junto: "0.66 < 0.70" é o que
+            # diz se o limiar estava no fio ou se não havia ninguém parecido.
+            # `atribuido` continua False; a similaridade aqui é diagnóstico.
+            melhor = max(
+                (similaridade(saida.assinatura, c.assinatura) for c in candidatas),
+                default=None,
+            )
             decisoes.append(Decisao(
                 saida.id_evento, saida.id_local, Direcao.SAIDA, saida.instante,
-                None, None, METODO_NAO_ATRIBUIDO,
+                None, melhor, METODO_NAO_ATRIBUIDO,
             ))
         decisoes.sort(key=lambda d: d.instante)
         return decisoes
@@ -291,6 +347,7 @@ class Galeria:
         for p in self.dentro:
             if instante - p.ultimo_visto > limite:
                 p.dentro = False
+                self.encerradas.append(p)
                 n += 1
         self.fantasmas += n
         return n

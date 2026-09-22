@@ -30,6 +30,7 @@ def banco(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[sqlite3.C
     # senha no painel, e o quadro ao vivo numa pasta vazia.
     monkeypatch.setattr(config, "SENHA_PAINEL", "")
     monkeypatch.setattr(config, "CAMINHO_QUADROS", tmp_path / "quadros")
+    monkeypatch.setattr(config, "CAMINHO_REVISAO", tmp_path / "revisao")
 
     conn = repositorio.conectar(caminho)
     repositorio.criar_banco(conn)

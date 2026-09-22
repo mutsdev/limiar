@@ -71,6 +71,22 @@ class TestResumo:
         assert r["taxa_sem_par"] == 0.5
         assert r["permanencias"] == 1
         assert r["permanencia_media_min"] == 90.0
+        # O vínculo de saída gravou dentro=0.
+        assert r["dentro"] == 0
+
+    def test_pessoas_por_dia(self, banco):
+        _povoar(banco)
+        repositorio.upsert_pessoas(banco, [PessoaSessao(
+            camera_id="entrada_a", data_ref=DIA, pseudonimo="P2",
+            primeiro_visto=T0, ultimo_visto=T0,
+        )])
+        por_dia = consultas.pessoas_por_dia(consultas.carregar_pessoas(banco))
+        assert list(por_dia.columns) == ["data_ref", "camera_id", "pessoas", "dentro"]
+        assert len(por_dia) == 1
+        assert (int(por_dia.iloc[0]["pessoas"]), int(por_dia.iloc[0]["dentro"])) == (2, 1)
+
+    def test_pessoas_por_dia_vazio(self, banco):
+        assert consultas.pessoas_por_dia(consultas.carregar_pessoas(banco)).empty
 
     def test_permanencias_levam_o_apelido(self, banco):
         _povoar(banco)

@@ -7,6 +7,7 @@ que permite testá-la com trajetórias inventadas, sem nada pesado por perto.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -26,6 +27,20 @@ class _EstadoTrack:
     # deslocamento até a posição atual atravessa o segmento, e não só a reta.
     ancora: Ponto | None = None
     contou_em: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Duvida:
+    """Um momento em que a contagem pode ter errado — para alguém julgar.
+
+    Não é evento: nada foi contado. É o registro de que um track chegou perto
+    da linha e sumiu sem cruzar, ou de que uma detecção fraca passou por ali.
+    Quem consome (visao.clipes) grava os segundos em volta para revisão.
+    """
+
+    gatilho: str        # "contagem" | "deteccao" | "reid"
+    track: int | None
+    motivo: str         # texto humano; vai no sidecar do clipe
 
 
 @dataclass(slots=True)
@@ -56,11 +71,16 @@ class LinhaDeContagem:
     costura_quadros: int = 0
     costura_raio_px: float = 80.0
     origem: Origem = Origem.VISAO
+    # Track que morre a menos disto da linha sem cruzar vira Duvida. None é
+    # 2× a zona morta: perto o bastante para a linha ter sido o destino.
+    raio_duvida_px: float | None = None
 
     _estados: dict[int, _EstadoTrack] = field(default_factory=dict, init=False)
     entradas: int = field(default=0, init=False)
     saidas: int = field(default=0, init=False)
     costuras: int = field(default=0, init=False)
+    # Limitado: sem ninguém drenando (agente sem --clipes) não pode crescer.
+    duvidas: deque[Duvida] = field(default_factory=lambda: deque(maxlen=50), init=False)
 
     def processar(
         self, quadro: int, instante: datetime, rastros: list[Rastro]
@@ -197,7 +217,22 @@ class LinhaDeContagem:
             if quadro - e.trajetoria.ultimo_quadro > limite
         ]
         for tid in mortos:
-            del self._estados[tid]
+            e = self._estados.pop(tid)
+            if e.contou_em is None:
+                # Morreu sem contar. Se foi perto da linha, alguém deveria
+                # olhar: cobre tanto o track curto demais (idade mínima) quanto
+                # o que ficou parado na zona morta e sumiu.
+                d = geometria.distancia_ponto_reta(e.trajetoria.suavizado(), self.a, self.b)
+                if d <= self.raio_duvida:
+                    self.duvidas.append(Duvida(
+                        "contagem", tid,
+                        f"track {tid} sumiu a {d:.0f} px da linha sem cruzar "
+                        f"({e.trajetoria.quadros} quadros)",
+                    ))
+
+    @property
+    def raio_duvida(self) -> float:
+        return self.raio_duvida_px or 2 * self.zona_morta_px
 
     def zerar_rastros(self) -> None:
         """Esquece o estado de todos os tracks; preserva os contadores.
@@ -238,4 +273,7 @@ class LinhaDeContagem:
             costura_quadros=int(c.get("costura_quadros", 0)),
             costura_raio_px=float(c.get("costura_raio_px", 80)),
             origem=origem,
+            raio_duvida_px=(
+                float(c["raio_duvida_px"]) if c.get("raio_duvida_px") is not None else None
+            ),
         )

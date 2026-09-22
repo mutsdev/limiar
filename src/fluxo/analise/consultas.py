@@ -198,7 +198,7 @@ def pico_do_dia(df: pd.DataFrame) -> tuple[int, int] | None:
 
 COLUNAS_PESSOAS = [
     "id", "camera_id", "data_ref", "pseudonimo", "primeiro_visto", "ultimo_visto",
-    "apelido", "entradas", "saidas",
+    "dentro", "apelido", "entradas", "saidas",
 ]
 COLUNAS_VINCULOS = [
     "id_evento", "camera_id", "data_ref", "similaridade", "atribuido", "metodo",
@@ -281,6 +281,9 @@ def resumo_identidade(pessoas: pd.DataFrame, vinculos: pd.DataFrame) -> dict:
     return {
         "unicos": int(pessoas.groupby("data_ref")["pseudonimo"].nunique().sum())
         if not pessoas.empty else 0,
+        # O flag gravado pelo vínculo, não `entradas > saidas`: uma saída sem
+        # par deixa a pessoa "dentro" na conta e "fora" na vida real.
+        "dentro": int(pessoas["dentro"].sum()) if not pessoas.empty else 0,
         "reentradas": int((vinculos["metodo"] == "reentrada").sum()) if not vinculos.empty else 0,
         "saidas": int(len(saidas)),
         "sem_par": sem_par,
@@ -288,3 +291,19 @@ def resumo_identidade(pessoas: pd.DataFrame, vinculos: pd.DataFrame) -> dict:
         "permanencias": int(len(perms)),
         "permanencia_media_min": float(perms["minutos"].mean()) if not perms.empty else 0.0,
     }
+
+
+def pessoas_por_dia(pessoas: pd.DataFrame) -> pd.DataFrame:
+    """[data_ref, camera_id, pessoas, dentro] — únicos por dia e câmera.
+
+    Por câmera de propósito: a mesma pessoa vista em duas portas é dois P,
+    e somar as portas contaria duas vezes.
+    """
+    colunas = ["data_ref", "camera_id", "pessoas", "dentro"]
+    if pessoas.empty:
+        return _vazio(colunas)
+    return (
+        pessoas.groupby(["data_ref", "camera_id"])
+        .agg(pessoas=("pseudonimo", "nunique"), dentro=("dentro", "sum"))
+        .reset_index()[colunas]
+    )

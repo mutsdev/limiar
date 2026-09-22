@@ -130,6 +130,46 @@ Com uma mensagem a cada 6 h, isso deixa de ser ambíguo: **passou de 6 h sem
 batimento, algo está errado.** Em dois dias sem ninguém no laboratório, é o
 único sinal que cobre a falha da própria vigilância.
 
+## Quem está lá dentro, e os clipes de dúvida
+
+Duas flags do agente, as duas **desligadas por padrão**:
+
+```powershell
+python scripts/rodar_agente.py entrada_real --identificar          # pessoas, não só travessias
+python scripts/rodar_agente.py entrada_real --identificar --clipes # e a caixa-preta das dúvidas
+```
+
+Também em `rodar_tudo.py`, que repassa as duas ao filho.
+
+`--identificar` liga a Etapa 2: cada travessia ganha um pseudônimo do dia
+(`P7`), e o painel passa a responder **quantas pessoas diferentes**, **quantas
+ainda estão dentro** e **quem entrou duas vezes** — na aba Pessoas. Sem a flag,
+a contagem é exatamente a de antes.
+
+Se o agente reiniciar no meio do dia, ele lê do serviço quem já existe hoje e
+**continua a numeração** (o log diz `Identidade retomada: 10 pessoa(s) de hoje,
+próximo P11`). Quem estava dentro continua dentro, mas sem vetor de aparência —
+a saída dessa pessoa vai ficar "sem par". É esperado: o vetor nunca é gravado.
+
+`--clipes` grava ~12 s de vídeo anotado em volta de cada momento duvidoso em
+`dados/revisao/<dia>/<câmera>/`, com um JSON do motivo e dos parâmetros. Na aba
+**Revisão** do painel você assiste e responde: acertou, errou, não sei, mais uma
+nota. O veredito vai para `dados/revisao/vereditos.csv` e **o clipe é apagado na
+hora**.
+
+Três coisas disparam um clipe: um track que sumiu perto da linha sem cruzar
+(o caso "duas juntas, uma colada na parede"), uma detecção fraca perto da linha,
+e uma decisão de identidade sem par ou no fio do limiar.
+
+> **Isto é imagem de pessoa.** Mesmo regime do `--guardar-recortes` (PROJETO
+> §16.2): só em validação, com autorização por escrito da coordenação, nunca em
+> operação normal. Os clipes ficam em disco local, não vão ao banco nem à API,
+> e são apagados em 48 h — o agente purga no arranque e a cada hora. Julgue e
+> apague; o que fica é o seu veredito, não o vídeo.
+
+Cada clipe pesa ~6 MB. O teto é de 200 por execução, e a gravação espera 10 s
+entre clipes: sem isso, uma câmera ruim enche o disco numa noite.
+
 ## Acesso de fora: o que sai e o que não sai
 
 Sai **uma porta só**: o painel (8501), por um *quick tunnel* do Cloudflare
@@ -140,8 +180,9 @@ nova para `URL_AVISO`, um tópico do ntfy.sh que o celular assina (app ntfy →
 "Subscribe to topic" → o mesmo nome do `.env`).
 
 No painel: senha (`SENHA_PAINEL`), a aba **Ao vivo** com o último quadro anotado
-(um JPEG por câmera, sobrescrito 5×/s — espelho, não gravação), e em
-**Exportar** o CSV dos eventos filtrados e uma cópia consistente do `fluxo.db`.
+(um JPEG por câmera, sobrescrito 5×/s — espelho, não gravação), a aba
+**Revisão** com os clipes de dúvida (quando houver), e em **Exportar** o CSV dos
+eventos filtrados e uma cópia consistente do `fluxo.db`.
 
 Não sai: o serviço FastAPI (continua em `127.0.0.1:8000`), o banco em si, o
 stream da câmera (que só aceita um cliente, e esse cliente é o agente).

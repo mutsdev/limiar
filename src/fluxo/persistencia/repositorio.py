@@ -49,6 +49,12 @@ def conectar(caminho: str | Path | None = None) -> sqlite3.Connection:
 
 def criar_banco(conn: sqlite3.Connection) -> None:
     conn.executescript(_ESQUEMA.read_text(encoding="utf-8"))
+    # CREATE IF NOT EXISTS não acrescenta coluna a tabela que já existe: um
+    # banco criado antes de `dentro` precisa do ALTER, e é a única migração
+    # do projeto.  ponytail: vira lista de migrações se aparecer a segunda.
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pessoa_sessao)")}
+    if "dentro" not in colunas:
+        conn.execute("ALTER TABLE pessoa_sessao ADD COLUMN dentro INTEGER NOT NULL DEFAULT 1")
     conn.commit()
 
 
@@ -354,11 +360,13 @@ def upsert_pessoas(
         conn.execute(
             """
             INSERT INTO pessoa_sessao
-                (camera_id, data_ref, pseudonimo, primeiro_visto, ultimo_visto, expira_em)
-            VALUES (?, ?, ?, ?, ?, ?)
+                (camera_id, data_ref, pseudonimo, primeiro_visto, ultimo_visto, dentro,
+                 expira_em)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(camera_id, data_ref, pseudonimo) DO UPDATE SET
                 primeiro_visto = MIN(pessoa_sessao.primeiro_visto, excluded.primeiro_visto),
-                ultimo_visto   = MAX(pessoa_sessao.ultimo_visto, excluded.ultimo_visto)
+                ultimo_visto   = MAX(pessoa_sessao.ultimo_visto, excluded.ultimo_visto),
+                dentro         = excluded.dentro
             """,
             (
                 p.camera_id,
@@ -366,6 +374,7 @@ def upsert_pessoas(
                 p.pseudonimo,
                 p.primeiro_visto.isoformat(),
                 p.ultimo_visto.isoformat(),
+                int(p.dentro),
                 _expira_em(p.data_ref, expira_h),
             ),
         )
@@ -403,6 +412,14 @@ def upsert_vinculos(
                      _expira_em(v.data_ref, expira_h)),
                 )
                 pessoa_id = int(cur.lastrowid or 0)
+            # É o vínculo que sabe se a pessoa acabou de entrar ou de sair —
+            # e é ele que tem fila local, então chega mesmo com o serviço
+            # caído. O `dentro` do PessoaSessao só cobre o que não gera
+            # vínculo: fantasma e virada de dia.
+            conn.execute(
+                "UPDATE pessoa_sessao SET dentro = ? WHERE id = ?",
+                (int(v.metodo in ("nova", "reentrada")), pessoa_id),
+            )
         conn.execute(
             """
             INSERT INTO vinculo
@@ -458,7 +475,7 @@ def listar_pessoas(
         conn.execute(
             f"""
             SELECT p.id, p.camera_id, p.data_ref, p.pseudonimo,
-                   p.primeiro_visto, p.ultimo_visto, a.apelido,
+                   p.primeiro_visto, p.ultimo_visto, p.dentro, a.apelido,
                    SUM(CASE WHEN e.direcao = 'ENTRADA' THEN 1 ELSE 0 END) AS entradas,
                    SUM(CASE WHEN e.direcao = 'SAIDA' THEN 1 ELSE 0 END) AS saidas
             FROM pessoa_sessao p

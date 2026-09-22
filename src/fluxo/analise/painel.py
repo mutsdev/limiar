@@ -27,6 +27,7 @@ from fluxo.analise import consultas
 from fluxo.dominio.evento import FUSO_LOCAL, Origem
 from fluxo.dominio.periodo import Periodo
 from fluxo.persistencia import backup, repositorio
+from fluxo.visao import clipes
 from fluxo.visao.quadro_vivo import idade_do_quadro
 
 st.set_page_config(page_title="Limiar", page_icon="🚪", layout="wide")
@@ -225,7 +226,9 @@ if origem == Origem.SINTETICO.value:
         icon="⚠️",
     )
 
-aba_fluxo, aba_pessoas, aba_vivo = st.tabs(["Fluxo", "Pessoas", "Ao vivo"])
+aba_fluxo, aba_pessoas, aba_vivo, aba_revisao = st.tabs(
+    ["Fluxo", "Pessoas", "Ao vivo", "Revisão"]
+)
 
 # ====================================================================== Fluxo
 with aba_fluxo:
@@ -352,8 +355,16 @@ with aba_pessoas:
         c3.metric("Permanência média",
                   f"{r['permanencia_media_min']:.0f} min" if r["permanencias"] else "—",
                   f"{r['permanencias']} pares" if r["permanencias"] else None)
-        c4.metric("Ainda dentro",
-                  _numero(int((pessoas["entradas"] > pessoas["saidas"]).sum())))
+        # O flag que o vínculo gravou, não `entradas > saidas`: quem saiu sem
+        # par ficaria "dentro" para sempre na conta.
+        c4.metric("Ainda dentro", _numero(r["dentro"]))
+
+        if pessoas["data_ref"].nunique() > 1:
+            por_dia = consultas.pessoas_por_dia(pessoas).pivot_table(
+                index="data_ref", columns="camera_id", values="pessoas", aggfunc="sum"
+            )
+            st.caption("Pessoas únicas por dia e câmera — P1 de hoje não é o de ontem.")
+            st.bar_chart(por_dia, height=220)
 
         if r["saidas"] and r["taxa_sem_par"] > 0.30:
             st.warning(
@@ -461,3 +472,76 @@ with aba_vivo:
                              use_container_width=True)
 
     _ao_vivo()
+
+
+# ==================================================================== Revisão
+with aba_revisao:
+    def _revisao() -> None:
+        """Os clipes de dúvida (--clipes), um veredito por clipe.
+
+        O veredito vai para dados/revisao/vereditos.csv e o clipe é apagado
+        na hora: a imagem existe só até alguém olhar (PROJETO §16.2).
+        """
+        pasta = config.CAMINHO_REVISAO
+        st.caption(
+            "Momentos em que o sistema ficou em dúvida — track que sumiu perto da "
+            "linha, detecção fraca, saída sem par. Diga se ele acertou. O clipe some "
+            "com o veredito; o que fica é a sua resposta."
+        )
+        vereditos = pasta / clipes.ARQUIVO_VEREDITOS
+        if vereditos.exists():
+            try:
+                julgados = pd.read_csv(vereditos)
+            except (OSError, ValueError):
+                julgados = pd.DataFrame()
+            if not julgados.empty:
+                st.subheader("O que a caixa-preta já ensinou")
+                st.dataframe(
+                    julgados.groupby(["gatilho", "veredito"]).size().unstack(fill_value=0),
+                    use_container_width=True,
+                )
+
+        pendentes = clipes.listar_clipes(pasta)
+        if not pendentes:
+            st.info(
+                "Nenhum clipe esperando veredito.\n\n"
+                "Para gravar: `python scripts/rodar_agente.py <camera> --clipes` "
+                "(ou `identificar_pessoas.py ... --clipes`). Só em validação, com "
+                "autorização — é imagem de pessoa."
+            )
+            return
+
+        st.subheader(f"{len(pendentes)} clipe(s) para julgar")
+        for clipe in pendentes:
+            id_clipe = clipe["id"]
+            with st.container(border=True):
+                st.markdown(
+                    f"**{clipe.get('gatilho', '?')}** · {clipe.get('camera', '?')} · "
+                    f"{clipe.get('instante', '?')[:19].replace('T', ' ')}  \n"
+                    f"{clipe.get('motivo', '')}"
+                )
+                try:
+                    video = Path(clipe["mp4"]).read_bytes()
+                except OSError:
+                    continue
+                if clipe.get("codec") == "avc1":
+                    st.video(video)
+                else:
+                    st.download_button(
+                        "Baixar clipe (o navegador não toca este codec; abra no VLC)",
+                        video, file_name=f"{id_clipe}.mp4", key=f"baixar-{id_clipe}",
+                    )
+                nota = st.text_input("Nota (opcional)", key=f"nota-{id_clipe}")
+                c1, c2, c3 = st.columns(3)
+                escolha = None
+                if c1.button("✅ Acertou", key=f"{id_clipe}-acertou"):
+                    escolha = "acertou"
+                if c2.button("❌ Errou", key=f"{id_clipe}-errou"):
+                    escolha = "errou"
+                if c3.button("🤷 Não sei", key=f"{id_clipe}-nao_sei"):
+                    escolha = "nao_sei"
+                if escolha is not None:
+                    clipes.registrar_veredito(pasta, clipe, escolha, nota)
+                    st.rerun()
+
+    _revisao()

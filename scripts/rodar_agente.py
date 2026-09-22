@@ -2,6 +2,7 @@
 
     python scripts/rodar_agente.py entrada_real
     python scripts/rodar_agente.py entrada_real --janela --escala 1.5
+    python scripts/rodar_agente.py entrada_real --identificar --clipes
 
 É o irmão 24h de processar_video.py: fonte resiliente (reconecta sozinha com
 recuo), log em arquivo com rotação, envio sempre ligado. `--janela` mostra a
@@ -17,6 +18,7 @@ import os
 import sys
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -38,8 +40,10 @@ from fluxo.agente import processador
 from fluxo.agente.fila_local import FilaLocal
 from fluxo.agente.remetente import Remetente
 from fluxo.contagem.linha import LinhaDeContagem
+from fluxo.dominio.evento import FUSO_LOCAL, data_de_referencia
 from fluxo.operacao import descoberta
 from fluxo.operacao.pulso import Pulso, arquivo_de_quadro, arquivo_do_agente
+from fluxo.visao import clipes
 from fluxo.visao.fonte_viva import ConfigFonteViva, FonteViva
 from fluxo.visao.quadro_vivo import PublicadorDeQuadro
 from fluxo.visao.rastreador import ConfigVisao, RastreadorPessoas
@@ -111,6 +115,13 @@ def main() -> None:
                    help="Tamanho da janela (ex.: 1.5). Só afeta a exibição.")
     p.add_argument("--sem-quadro-vivo", action="store_true",
                    help="Não publica o último quadro anotado para a aba Ao vivo do painel")
+    p.add_argument("--identificar", action="store_true",
+                   help="Etapa 2: re-identificação anônima (pseudônimos do dia, sem rosto). "
+                        "Sem a flag, a contagem é idêntica à de sempre.")
+    p.add_argument("--clipes", action="store_true",
+                   help="Grava ~12 s de vídeo anotado em volta de cada dúvida, em "
+                        "dados/revisao/, para julgar na aba Revisão. É imagem de pessoa "
+                        "(PROJETO §16.2): só em validação, com autorização; some em 48 h.")
     args = p.parse_args()
 
     config.garantir_pastas()
@@ -159,6 +170,49 @@ def main() -> None:
     if not args.sem_quadro_vivo:
         publicador = PublicadorDeQuadro(config.CAMINHO_QUADROS / f"{args.camera}.jpg")
 
+    # Fora do laço, como a linha: a FonteViva é recriada a cada volta, e a
+    # galeria tem de sobreviver a isso — quem está dentro continua dentro.
+    identidade = None
+    limiares_reid: dict[str, float] = {}
+    if args.identificar:
+        from fluxo.agente.identidade import Identidade
+        from fluxo.dominio.identidade import Vinculo
+        from fluxo.reid.galeria import Galeria
+        from fluxo.visao.aparencia import ConfigAparencia, Extrator
+
+        remetente.fila_vinculos = FilaLocal(
+            config.CAMINHO_DADOS / "fila" / f"{args.camera}.vinculos.jsonl", modelo=Vinculo
+        )
+        cfg_reid = ConfigAparencia.de_pipeline(pipeline, pasta_modelos=config.CAMINHO_MODELOS)
+        galeria = Galeria.de_pipeline(pipeline)
+        hoje = data_de_referencia(datetime.now(FUSO_LOCAL))
+        n = galeria.semear(remetente.pessoas_do_dia(args.camera, hoje))
+        log.info("Identidade retomada: %d pessoa(s) de hoje, próximo P%d", n, galeria.proximo)
+        if n == 0 and not remetente.servico_no_ar():
+            # ponytail: aceito. rodar_tudo sobe o serviço antes do agente, e o
+            # torch leva minutos para carregar; o caso real é raro.
+            log.warning(
+                "Serviço fora do ar no arranque: a numeração recomeça em P1 e pode "
+                "colidir com a de hoje."
+            )
+        identidade = Identidade(
+            camera_id=args.camera,
+            extrator=Extrator(cfg_reid),
+            galeria=galeria,
+            recortes_por_track=cfg_reid.recortes_por_track,
+            intervalo_recorte_quadros=cfg_reid.intervalo_recorte_quadros,
+            esquecer_apos_quadros=linha.quadros_ate_esquecer,
+            remetente=remetente,
+            registrador=log,
+            guardar_decisoes=False,
+        )
+        limiares_reid = {"saida": galeria.limiar_saida, "reentrada": galeria.limiar_reentrada}
+        remetente.drenar_vinculos()
+
+    # Clipes velhos somem mesmo sem --clipes: os de uma execução anterior não
+    # podem depender de alguém subir o agente com a flag de novo.
+    clipes.purgar_clipes(config.CAMINHO_REVISAO)
+
     fonte_atual: list[FonteViva | None] = [None]
 
     def batimento() -> None:
@@ -168,10 +222,14 @@ def main() -> None:
             time.sleep(BATIMENTO_S)
             fonte = fonte_atual[0]
             log.info(
-                "Batimento: entradas=%d saidas=%d fila_local=%d reconexoes=%s",
+                "Batimento: entradas=%d saidas=%d fila_local=%d reconexoes=%s%s",
                 linha.entradas, linha.saidas, fila.tamanho,
                 fonte.reconexoes if fonte is not None else "-",
+                f"  {identidade.placar()}" if identidade is not None else "",
             )
+            apagados = clipes.purgar_clipes(config.CAMINHO_REVISAO)
+            if apagados:
+                log.info("Clipes de dúvida expirados apagados: %d arquivo(s)", apagados)
 
     threading.Thread(target=batimento, daemon=True, name="batimento").start()
 
@@ -199,6 +257,16 @@ def main() -> None:
             cfg_visao.tracker, cfg_visao.confianca_minima,
             processador.versao_do_codigo(),
         )
+        gravador_duvidas = None
+        if args.clipes:
+            # Dentro do laço: largura, altura e fps vêm desta FonteViva.
+            hoje = data_de_referencia(datetime.now(FUSO_LOCAL))
+            gravador_duvidas = clipes.GravadorDeDuvidas(
+                config.CAMINHO_REVISAO / hoje.isoformat() / args.camera, args.camera,
+                fonte.fps, fonte.largura, fonte.altura,
+                params={k: pipeline.get(k, {}) for k in ("contagem", "deteccao", "reid")},
+                limiares=limiares_reid,
+            )
         quadros = 0
         espera = ESPERA_APOS_ERRO_S
         try:
@@ -208,6 +276,8 @@ def main() -> None:
                 janela=janela,
                 escala_placar=1.0 / args.escala if args.escala < 1.0 else 1.0,
                 publicador=publicador,
+                identidade=identidade,
+                clipes=gravador_duvidas,
             )
             quadros = resultado.quadros
             if fonte.desistiu:

@@ -62,6 +62,36 @@ class TestPessoas:
         repositorio.upsert_pessoas(banco, [pessoa("P10"), pessoa("P2")])
         assert [linha["pseudonimo"] for linha in repositorio.listar_pessoas(banco)] == ["P2", "P10"]
 
+    def test_reenvio_atualiza_dentro(self, banco):
+        repositorio.upsert_pessoas(banco, [pessoa("P1")])
+        assert repositorio.listar_pessoas(banco)[0]["dentro"] == 1
+        fora = pessoa("P1", minutos=30).model_copy(update={"dentro": False})
+        repositorio.upsert_pessoas(banco, [fora])
+        assert repositorio.listar_pessoas(banco)[0]["dentro"] == 0
+
+    def test_migracao_acrescenta_dentro_a_banco_antigo(self):
+        # Um banco criado antes da coluna: só o CREATE de então, sem `dentro`.
+        conn = repositorio.conectar(":memory:")
+        conn.execute("CREATE TABLE camera (id TEXT PRIMARY KEY)")
+        conn.execute(
+            """
+            CREATE TABLE pessoa_sessao (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, camera_id TEXT NOT NULL,
+                data_ref TEXT NOT NULL, pseudonimo TEXT NOT NULL,
+                primeiro_visto TEXT NOT NULL, ultimo_visto TEXT NOT NULL,
+                expira_em TEXT NOT NULL, UNIQUE (camera_id, data_ref, pseudonimo))
+            """
+        )
+        conn.execute(
+            "INSERT INTO pessoa_sessao VALUES (1, 'c', '2026-09-04', 'P1', 't', 't', 't')"
+        )
+        repositorio.criar_banco(conn)
+        colunas = {r[1] for r in conn.execute("PRAGMA table_info(pessoa_sessao)")}
+        assert "dentro" in colunas
+        # O que já existia continua lá, e nasce "dentro" — o padrão da coluna.
+        assert conn.execute("SELECT dentro FROM pessoa_sessao").fetchone()[0] == 1
+        repositorio.criar_banco(conn)  # segunda vez não quebra
+
 
 class TestVinculos:
     def test_liga_evento_a_pessoa_e_conta_direcoes(self, banco):
@@ -77,6 +107,18 @@ class TestVinculos:
         assert [v["direcao"] for v in vs] == ["ENTRADA", "SAIDA"]
         assert vs[1]["similaridade"] == 0.9
         assert vs[1]["pseudonimo"] == "P1"
+
+    def test_vinculo_grava_o_dentro(self, banco):
+        e1, e2, e3 = (
+            evento(1, Direcao.ENTRADA, 0), evento(2, Direcao.SAIDA, 60),
+            evento(3, Direcao.ENTRADA, 120),
+        )
+        repositorio.upsert_vinculos(banco, [vinculo(e1, "P1")])
+        assert repositorio.listar_pessoas(banco)[0]["dentro"] == 1
+        repositorio.upsert_vinculos(banco, [vinculo(e2, "P1", "saida", 0.9)])
+        assert repositorio.listar_pessoas(banco)[0]["dentro"] == 0
+        repositorio.upsert_vinculos(banco, [vinculo(e3, "P1", "reentrada", 0.9)])
+        assert repositorio.listar_pessoas(banco)[0]["dentro"] == 1
 
     def test_nao_atribuido_e_gravado_com_pessoa_nula(self, banco):
         e = evento(1, Direcao.SAIDA, 0)

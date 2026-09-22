@@ -78,6 +78,10 @@ CREATE TABLE IF NOT EXISTS pessoa_sessao (
     pseudonimo     TEXT NOT NULL,
     primeiro_visto TEXT NOT NULL,
     ultimo_visto   TEXT NOT NULL,
+    -- 1 = entrou e ainda não saiu. Quem escreve é o vínculo (nova/reentrada
+    -- ligam, saida desliga); PessoaSessao cobre o que não passa por vínculo:
+    -- fantasma e virada de dia.
+    dentro         INTEGER NOT NULL DEFAULT 1,
     expira_em      TEXT NOT NULL,
     UNIQUE (camera_id, data_ref, pseudonimo)
 );

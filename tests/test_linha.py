@@ -212,6 +212,46 @@ class TestMemoria:
         assert linha.rastros_ativos == 0
 
 
+class TestDuvida:
+    """Track que some perto da linha sem contar é o que alguém deveria olhar."""
+
+    def test_track_que_some_perto_da_linha_vira_duvida(self):
+        linha = nova_linha(quadros_ate_esquecer=5)
+        # Duas detecções a 20 px da linha e depois nada: track novo demais
+        # para contar, e perto demais para ignorar.
+        percorrer(linha, [430, 432], track=7)
+        assert list(linha.duvidas) == []
+        linha.processar(20, INICIO + timedelta(seconds=1), [])
+        assert len(linha.duvidas) == 1
+        d = linha.duvidas[0]
+        assert (d.gatilho, d.track) == ("contagem", 7)
+        assert "track 7" in d.motivo and "sem cruzar" in d.motivo
+
+    def test_track_que_cruzou_nao_vira_duvida(self):
+        linha = nova_linha(quadros_ate_esquecer=5)
+        eventos = percorrer(linha, [300, 350, 400, 500, 550, 600])
+        assert len(eventos) == 1
+        linha.processar(50, INICIO + timedelta(seconds=2), [])
+        assert list(linha.duvidas) == []
+
+    def test_longe_da_linha_nao_vira_duvida(self):
+        linha = nova_linha(quadros_ate_esquecer=5)
+        percorrer(linha, [300, 302])
+        linha.processar(50, INICIO + timedelta(seconds=2), [])
+        assert list(linha.duvidas) == []
+
+    def test_raio_padrao_e_o_dobro_da_zona_morta(self):
+        assert nova_linha(zona_morta_px=15).raio_duvida == 30.0
+        assert nova_linha(raio_duvida_px=50).raio_duvida == 50.0
+
+    def test_duvidas_nao_crescem_sem_limite(self):
+        linha = nova_linha(quadros_ate_esquecer=1)
+        for i in range(80):
+            percorrer(linha, [440, 441], track=i, quadro0=i * 10)
+            linha.processar(i * 10 + 5, INICIO, [])
+        assert len(linha.duvidas) == linha.duvidas.maxlen == 50
+
+
 class TestConfiguracao:
     def test_linha_nao_calibrada_da_erro_util(self):
         with pytest.raises(ValueError, match="calibrar_linha"):

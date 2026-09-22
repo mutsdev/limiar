@@ -34,6 +34,9 @@ class PessoaSessao(BaseModel):
     pseudonimo: str = Field(min_length=1, max_length=16)
     primeiro_visto: datetime
     ultimo_visto: datetime
+    # Entrou e ainda não saiu. É o que responde "quem está lá dentro agora"
+    # depois de um reinício do agente, quando a galeria em memória se foi.
+    dentro: bool = True
 
     @field_validator("primeiro_visto", "ultimo_visto")
     @classmethod

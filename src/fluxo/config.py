@@ -37,6 +37,9 @@ CAMINHO_SAIDAS = CAMINHO_DADOS / "saidas"
 CAMINHO_TRILHAS = CAMINHO_DADOS / "trilhas"
 CAMINHO_RECORTES = CAMINHO_DADOS / "recortes"
 CAMINHO_GABARITOS = CAMINHO_DADOS / "gabaritos"
+# Clipes de dúvida (--clipes): imagem de pessoa real, mesmo regime dos
+# recortes — só em validação, apagados em 48 h ou no veredito (PROJETO §16.2).
+CAMINHO_REVISAO = CAMINHO_DADOS / "revisao"
 
 # O banco mora fora do OneDrive: sincronização concorrente corrompe SQLite.
 CAMINHO_BANCO = _caminho(
@@ -131,6 +134,7 @@ def garantir_pastas() -> None:
         CAMINHO_TRILHAS,
         CAMINHO_RECORTES,
         CAMINHO_GABARITOS,
+        CAMINHO_REVISAO,
         CAMINHO_BANCO.parent,
         CAMINHO_LOGS,
         CAMINHO_BACKUPS,

@@ -226,6 +226,38 @@ class TestIdentidade:
         )
 
 
+class ClipesFalso:
+    def __init__(self):
+        self.observados = []
+        self.fechados = 0
+
+    def observar(self, imagem, instante, rastros, linha, decisoes):
+        self.observados.append((instante, list(decisoes)))
+
+    def fechar(self):
+        self.fechados += 1
+
+
+class TestClipes:
+    """O gravador de dúvidas recebe o quadro anotado e as decisões; sem ele, nada muda."""
+
+    def test_recebe_todo_quadro_e_fecha_no_fim(self, monkeypatch):
+        from fluxo.visao import anotador
+
+        anotados = []
+        monkeypatch.setattr(anotador, "anotar", lambda imagem, *a, **k: anotados.append(imagem))
+        clipes = ClipesFalso()
+        linha = LinhaFalsa({1: [evento(1, segundos=1)]})
+        processador.processar(
+            FonteLista(quadros(3)), RastreadorFalso(), linha,
+            mostrar_progresso=False, clipes=clipes, identidade=IdentidadeFalsa(),
+        )
+        # Anota mesmo sem janela nem gravador: o clipe é do quadro desenhado.
+        assert len(anotados) == 3
+        assert [i.second for i, _ in clipes.observados] == [0, 1, 2]
+        assert clipes.fechados == 1
+
+
 class TestInstanteInicial:
     """De onde sai a hora do primeiro quadro."""
 

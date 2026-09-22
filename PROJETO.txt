@@ -1584,6 +1584,43 @@ FASE 2 - RE-IDENTIFICACAO E MATRIZ ORIGEM-DESTINO
        indiferente a camera de origem; falta a chave (camera_entrada,
        camera_saida) no vinculo e o relatorio.                  [nao iniciada]
 
+  12.8 A pessoa como produto: identidade no agente 24h. rodar_agente.py ganha
+       --identificar (sem a flag, identidade=None e a contagem e a de sempre,
+       regra 7). pessoa_sessao ganha a coluna `dentro`, escrita pelo vinculo
+       (nova/reentrada ligam, saida desliga), porque o vinculo tem fila local
+       e chega com o servico caido; PessoaSessao cobre fantasma e virada de
+       dia. No arranque, Galeria.semear(GET /pessoas de hoje) retoma a
+       numeracao - sem isso o agente reinicia em P1 e o ON CONFLICT de
+       upsert_pessoas funde duas pessoas reais num registro so.
+       POR QUE: a pergunta que o usuario faz nao e "quantas travessias", e
+       "quantas pessoas, quem ainda esta dentro, quem entrou duas vezes". Os
+       tres numeros ja existiam em memoria e morriam no primeiro reinicio.
+       LIMITE ACEITO: quem foi semeado nao tem vetor (ele nunca vai ao banco,
+       §16.5), logo nao e candidato; a saida dele fica nao_atribuido ate
+       purgar_fantasmas encerra-lo em 12 h.
+       ACEITE: tests/test_reid_galeria.py (semear, encerradas),
+       test_repositorio_identidade.py (migracao, dentro pelo vinculo),
+       test_remetente_identidade.py (pessoas_do_dia, fila antes do lote),
+       consultas.pessoas_por_dia, painel "Ainda dentro" pelo flag.   [feito]
+
+  12.9 Clipes de duvida: a caixa-preta para revisao humana. --clipes grava ~12s
+       de video ANOTADO em volta de cada momento duvidoso, com um JSON do que
+       o sistema achou e com que parametros, e o painel ganha a aba "Revisao"
+       com tres botoes: acertou, errou, nao sei. Tres gatilhos: track que morre
+       perto da linha sem cruzar (LinhaDeContagem.duvidas), deteccao fraca
+       perto da linha, e decisao de re-ID sem par ou a +-0,05 do limiar.
+       POR QUE: "estou perdendo gente quando passam duas juntas e uma vem
+       colada na parede" e uma hipotese que nenhum log confirma. O veredito
+       por gatilho e um limite inferior das perdas sem exigir gabarito
+       completo, e o motivo diz qual parametro estava no fio.
+       LGPD: e imagem de pessoa, mesmo regime do --guardar-recortes (§16.2):
+       desligado por padrao, so em validacao, autorizacao por escrito, disco
+       local, apagado em 48 h ou no veredito, o que vier antes. Nunca no banco
+       nem na API. Teto de 200 clipes por execucao.
+       ACEITE: tests/test_clipes.py (gatilhos, anel, debounce, teto, purga,
+       veredito), test_linha.py (a duvida de contagem), test_processador.py
+       (byte-identico sem a flag), test_painel.py (aba Revisao).      [feito]
+
 FASE 3 - ANALISES DERIVADAS
   Tempo medio de permanencia, previsao de fluxo por dia da semana, deteccao de
   anomalia (dia atipico), estimativa de lotacao em tempo real.

@@ -134,6 +134,12 @@ python scripts/reprocessar_identidade.py entrada_real --varredura \
     --gabarito dados/gabaritos/<data>_entrada_real.csv               # limiares, sem GPU
 python scripts/identificar_pessoas.py entrada_real                   # entregando ao serviço
 
+# medido e aprovado, a identidade entra no agente 24h — sem a flag, nada muda
+python scripts/rodar_agente.py entrada_real --identificar
+# e com a caixa-preta: ~12 s de vídeo em volta de cada dúvida, para julgar no
+# painel (aba Revisão). É imagem de pessoa: só em validação, some em 48 h.
+python scripts/rodar_agente.py entrada_real --identificar --clipes
+
 # o relatório do dia — ou do período — em markdown, para levar à reunião
 python scripts/relatorio_dia.py entrada_real
 python scripts/relatorio_dia.py --todas --data 2026-09-03
@@ -167,6 +173,7 @@ por descuido.
 | 12 | Etapa 2: re-identificação anônima | código pronto — **medição pendente**, ver `docs/resultados.md` §9 |
 | 13 | Operação desassistida: sonda de travamento, tarefa sem limite de 72 h, túnel do painel, períodos nomeados | pronto — instalado no laboratório de física em 04/09/2026, `docs/operacao.md` |
 | 14 | Avisos no celular: câmera muda, filho relançado, sonda sem resposta, e um batimento a cada 6 h | pronto — `docs/operacao.md`, "Os avisos no celular" |
+| 15 | Pessoa como produto: `--identificar` no agente 24 h, "ainda dentro" que sobrevive ao reinício, e clipes de dúvida para revisão | pronto — medição da etapa 2 continua pendente |
 
 O que falta para fechar a etapa "Uno" não é código: é a gravação das duas
 entradas e a contagem manual de referência. Ver `docs/avaliacao.md`.

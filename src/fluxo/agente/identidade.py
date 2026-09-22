@@ -86,6 +86,13 @@ class Identidade:
         """Um quadro por vez, depois da linha de contagem."""
         instante = quadro.instante
         self._ultimo_instante = instante
+        if getattr(quadro, "apos_lacuna", False):
+            # O processador zerou o rastreador: os ids vão ser reciclados, e
+            # recorte ou etiqueta do id velho iria parar na pessoa errada. A
+            # galeria fica — quem está dentro continua dentro.
+            self._buffers.clear()
+            self._visto_em.clear()
+            self.galeria.esquecer(set())
         decisoes = self.galeria.preparar(instante)
 
         for r in rastros:
@@ -175,17 +182,31 @@ class Identidade:
         self.galeria.esquecer(ativos)
 
     def _publicar(self, decisoes: list[Decisao], avisar: Callable[[str], None] | None) -> None:
-        if not decisoes:
-            return
         pessoas: list[PessoaSessao] = []
+        # Fantasma e virada de dia mudam `dentro` sem Decisao; vão como pessoa,
+        # com o dia em que nasceram — antes do `return`, senão um fantasma num
+        # quadro sem evento nunca chegaria ao banco.
+        for p in self.galeria.encerradas:
+            pessoas.append(PessoaSessao(
+                camera_id=self.camera_id, data_ref=data_de_referencia(p.primeiro_visto),
+                pseudonimo=p.pseudonimo, primeiro_visto=p.primeiro_visto,
+                ultimo_visto=p.ultimo_visto, dentro=False,
+            ))
+        self.galeria.encerradas.clear()
+        if not decisoes and not pessoas:
+            return
         vinculos: list[Vinculo] = []
         for d in decisoes:
             data_ref = data_de_referencia(d.instante)
-            if d.pessoa_nova and d.pseudonimo is not None:
-                p = self.galeria.pessoas[d.pseudonimo]
+            # Toda decisão com pessoa atualiza `ultimo_visto` e `dentro`; o
+            # `.get` cobre a saída forçada da virada de dia, cuja pessoa já
+            # saiu do dicionário — o vínculo de saída grava o dentro=0 dela.
+            p = self.galeria.pessoas.get(d.pseudonimo) if d.pseudonimo else None
+            if p is not None:
                 pessoas.append(PessoaSessao(
                     camera_id=self.camera_id, data_ref=data_ref, pseudonimo=d.pseudonimo,
                     primeiro_visto=p.primeiro_visto, ultimo_visto=p.ultimo_visto,
+                    dentro=p.dentro,
                 ))
             vinculos.append(Vinculo(
                 id_evento=d.id_evento, camera_id=self.camera_id, data_ref=data_ref,

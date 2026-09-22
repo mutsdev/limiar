@@ -231,17 +231,40 @@ class TestPublicar:
         ident.observar(quadro(1, 30), [rastro(2, 100)], [evento(2, Direcao.SAIDA, 30)])
         ident.fechar()
 
-        assert len(rem.pessoas) == 1
-        assert isinstance(rem.pessoas[0], PessoaSessao)
-        assert rem.pessoas[0].pseudonimo == "P1"
+        # Uma pessoa por decisão com pseudônimo: a entrada a cria "dentro", a
+        # saída a atualiza "fora". É assim que o banco sabe quem ainda está lá.
+        assert len(rem.pessoas) == 2
+        assert all(isinstance(p, PessoaSessao) for p in rem.pessoas)
+        assert [p.pseudonimo for p in rem.pessoas] == ["P1", "P1"]
+        assert [p.dentro for p in rem.pessoas] == [True, False]
         assert rem.pessoas[0].data_ref.isoformat() == "2026-09-04"
+        assert rem.pessoas[1].ultimo_visto == T0 + timedelta(seconds=30)
 
         assert len(rem.vinculos) == 2
         assert all(isinstance(v, Vinculo) for v in rem.vinculos)
         assert [v.metodo for v in rem.vinculos] == [METODO_NOVA, METODO_SAIDA]
         assert rem.vinculos[1].atribuido
-        assert ident.pessoas_enviadas == 1
+        assert ident.pessoas_enviadas == 2
         assert ident.vinculos_enviados == 2
+
+    def test_fantasma_publica_dentro_false(self):
+        rem = RemetenteFalso()
+        ident = nova(remetente=rem, galeria=Galeria(max_permanencia_h=0.01))
+        ident.observar(quadro(0), [rastro(1, 100)], [evento(1, Direcao.ENTRADA, 0)])
+        # Um quadro sem evento, uma hora depois: o fantasma tem de chegar ao
+        # banco mesmo sem nenhuma decisão no quadro.
+        ident.observar(quadro(1, 3600), [], [])
+        assert [p.dentro for p in rem.pessoas] == [True, False]
+        assert rem.pessoas[1].pseudonimo == "P1"
+
+    def test_lacuna_esquece_buffers_e_etiquetas_mas_nao_a_galeria(self):
+        ident = nova()
+        ident.observar(quadro(0), [rastro(1, 100)], [evento(1, Direcao.ENTRADA, 0)])
+        assert ident.etiquetas() == {1: "P1"} and 1 in ident._buffers
+        ident.observar(QuadroFalso(1, T0 + timedelta(seconds=1), apos_lacuna=True), [], [])
+        assert ident.etiquetas() == {}
+        assert ident._buffers == {}
+        assert ident.placar().startswith("pessoas 1  dentro 1")
 
     def test_avisar_recebe_uma_linha_por_decisao(self):
         linhas = []

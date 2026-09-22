@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from datetime import date
 
 import httpx
 
@@ -145,13 +146,39 @@ class Remetente:
     def enviar_vinculos(self, vinculos: list[Vinculo]) -> bool:
         if not vinculos:
             return True
+        # A fila vai ANTES do lote novo: o vínculo grava `dentro`, e um "nova"
+        # atrasado chegando depois da "saida" de hoje reabriria a pessoa.
+        if self.fila_vinculos is not None and self.fila_vinculos.tamanho:
+            if not self.drenar_vinculos():
+                self.fila_vinculos.enfileirar(vinculos)
+                return False
         if self._postar_json("/vinculos/lote", [v.model_dump(mode="json") for v in vinculos]):
-            if self.fila_vinculos is not None and self.fila_vinculos.tamanho:
-                self.drenar_vinculos()
             return True
         if self.fila_vinculos is not None:
             self.fila_vinculos.enfileirar(vinculos)
         return False
+
+    def pessoas_do_dia(self, camera_id: str, data_ref: date) -> list[PessoaSessao]:
+        """Quem o serviço já conhece hoje — para o agente retomar de onde parou.
+
+        Vazio se o serviço não responder: a numeração recomeça e pode colidir
+        com a de hoje; quem chama decide o que fazer com o aviso.
+        """
+        try:
+            r = httpx.get(
+                f"{self.url}/pessoas",
+                params={
+                    "camera_id": camera_id,
+                    "data_inicio": data_ref.isoformat(),
+                    "data_fim": data_ref.isoformat(),
+                },
+                timeout=self.timeout,
+            )
+            r.raise_for_status()
+            # O GET devolve também id, apelido, entradas, saidas: pydantic ignora.
+            return [PessoaSessao.model_validate(linha) for linha in r.json()]
+        except (httpx.HTTPError, ValueError):
+            return []
 
     def drenar_vinculos(self) -> int:
         if self.fila_vinculos is None:

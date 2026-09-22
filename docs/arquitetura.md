@@ -178,7 +178,7 @@ novas (`persistencia/esquema.sql`), e nenhuma delas a quebra:
 
 | tabela | o que guarda | o que NÃO guarda |
 |---|---|---|
-| `pessoa_sessao` | `P7`, câmera, dia, primeira/última vez visto, **`expira_em`** | vetor, imagem, nome |
+| `pessoa_sessao` | `P7`, câmera, dia, primeira/última vez visto, **`dentro`**, **`expira_em`** | vetor, imagem, nome |
 | `vinculo` | evento → `P7` (ou → **nenhum**), similaridade, método | nada da pessoa |
 | `apelido_teste` | um rótulo dado à mão, **só no teste de validação** | — |
 
@@ -201,6 +201,17 @@ nenhuma imagem é gravada. Apague a pasta quando o gabarito estiver preenchido.
 isso está **separada**, com esse nome. Em operação fica vazia; o painel nem
 mostra a coluna quando ela não tem nada.
 
+`dentro` é o "entrou e ainda não saiu" que sobrevive ao reinício do agente.
+Quem o escreve é o **vínculo** (`nova` e `reentrada` ligam, `saida` desliga),
+porque é ele que tem fila local e chega mesmo com o serviço fora do ar; o
+`PessoaSessao` cobre só o que não gera vínculo — fantasma e virada de dia. No
+arranque, `rodar_agente.py --identificar` lê `GET /pessoas` do dia e chama
+`Galeria.semear`: a numeração continua de onde parou (P11, não P1 de novo) e
+quem estava dentro continua dentro. Essa pessoa semeada **não tem vetor** — ele
+nunca vai ao banco —, então não é candidata a nada: a saída dela fica
+`nao_atribuido` até `purgar_fantasmas` encerrá-la (12 h). É o preço de não
+guardar aparência, e é o preço certo.
+
 `vinculo.id_evento` não é FOREIGN KEY para `evento` de propósito: os eventos
 saem do agente em lotes de 25 e o vínculo pode chegar antes. A junção é feita
 na consulta. Reenvio de vínculo substitui (chave = `id_evento`); reenvio de
@@ -217,3 +228,27 @@ pessoa só alarga as datas (chave = câmera + dia + pseudônimo).
 8. **Nunca forçar um par.** Saída sem candidato bom fica `nao_atribuido`, e a
    fração de "não sei" aparece no relatório e no painel. Um par inventado é
    pior que uma lacuna assumida.
+9. **Clipe de dúvida é imagem, e segue a regra da imagem.** `--clipes` grava
+   ~12 s de vídeo **anotado** em volta de cada momento duvidoso em
+   `dados/revisao/<dia>/<câmera>/`, com um JSON dizendo o que o sistema achou
+   e com que parâmetros. Mesmo regime do `--guardar-recortes` (PROJETO §16.2):
+   desligado por padrão, só em validação, autorização por escrito, disco local,
+   nunca no banco nem na API. Apagado em 48 h (`purgar_clipes`, no arranque e a
+   cada hora) ou no instante do veredito, o que vier antes. Teto de 200 clipes
+   por execução: a ~6 MB cada, sem teto uma câmera ruim enche o disco e ninguém
+   julga oito mil vídeos.
+
+### O que dispara um clipe
+
+| gatilho | quem detecta | o que significa |
+|---|---|---|
+| `contagem` | `LinhaDeContagem.duvidas` | um track morreu a menos de `raio_duvida_px` (padrão 2× a zona morta) da linha **sem cruzar** — o caso "duas pessoas juntas, uma colada na parede" |
+| `deteccao` | `clipes.duvidas_de_deteccao` | detecção com confiança abaixo de 0,5 perto da linha: o YOLO quase não viu |
+| `reid` | `clipes.duvidas_de_reid` | saída `nao_atribuido`, ou similaridade a ±0,05 de um limiar — o limiar decidiu, não a pessoa |
+
+O veredito (acertou / errou / não sei, mais uma nota) vai para
+`dados/revisao/vereditos.csv` e o clipe é apagado na hora. O `errou` por
+gatilho é um **limite inferior** das perdas, sem precisar de gabarito completo:
+diz quantas das dúvidas eram erro real, e o `motivo` diz qual parâmetro estava
+no fio. Se o YOLO nunca viu a pessoa, nenhum gatilho dispara — o clipe só
+mostra o que o detector enxergou ao menos uma vez.

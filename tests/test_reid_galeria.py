@@ -176,6 +176,69 @@ class TestDiaEFantasmas:
         gal.esquecer({2})
         assert gal.etiquetas() == {2: "P2"}
 
+    def test_fantasma_vai_para_encerradas(self):
+        gal = nova(max_permanencia_h=1)
+        gal.entrar("e1", 1, A, em(0))
+        gal.purgar_fantasmas(em(3601))
+        assert [p.pseudonimo for p in gal.encerradas] == ["P1"]
+        assert not gal.encerradas[0].dentro
+
+    def test_virada_de_dia_encerra_quem_ficou_dentro(self):
+        gal = nova()
+        gal.entrar("e1", 1, A, em(0))
+        gal.preparar(em(0))
+        gal.preparar(T0 + timedelta(days=1))
+        assert [p.pseudonimo for p in gal.encerradas] == ["P1"]
+        assert gal.pessoas == {}
+
+    def test_sem_par_leva_a_melhor_similaridade_rejeitada(self):
+        gal = nova(limiar_saida=0.99)
+        gal.entrar("e1", 1, A, em(0))
+        gal.sair("s1", 2, ruidoso(A, 0.3), em(10))
+        d = gal.resolver(em(100))[0]
+        assert d.metodo == g.METODO_NAO_ATRIBUIDO
+        assert not d.atribuido
+        assert d.similaridade is not None and 0.5 < d.similaridade < 0.99
+
+
+def sessao(pseudonimo, dentro=True):
+    from fluxo.dominio.identidade import PessoaSessao
+
+    return PessoaSessao(
+        camera_id="entrada_a", data_ref=T0.date(), pseudonimo=pseudonimo,
+        primeiro_visto=em(0), ultimo_visto=em(0), dentro=dentro,
+    )
+
+
+class TestSemear:
+    def test_retoma_a_numeracao(self):
+        gal = nova()
+        assert gal.semear([sessao("P1"), sessao("P3", dentro=False), sessao("P2")]) == 3
+        assert gal.proximo == 4
+        assert [p.pseudonimo for p in gal.dentro] == ["P1", "P2"]
+        assert gal.entrar("e1", 1, A, em(10)).pseudonimo == "P4"
+
+    def test_semeado_nao_e_candidato(self):
+        gal = nova()
+        gal.semear([sessao("P1")])
+        # Sem vetor, P1 não pode casar com ninguém: a saída fica sem par, e a
+        # similaridade é None porque não havia com quem comparar.
+        gal.sair("s1", 2, A, em(10))
+        d = gal.resolver(em(100))[0]
+        assert d.metodo == g.METODO_NAO_ATRIBUIDO
+        assert d.similaridade is None
+        assert gal.pessoas["P1"].dentro
+
+    def test_semeado_fora_tambem_nao_e_reentrada(self):
+        gal = nova()
+        gal.semear([sessao("P1", dentro=False)])
+        assert gal.entrar("e1", 1, A, em(10)).pseudonimo == "P2"
+
+    def test_semear_duas_vezes_nao_duplica(self):
+        gal = nova()
+        gal.semear([sessao("P1")])
+        assert gal.semear([sessao("P1")]) == 0
+
 
 class TestDePipeline:
     def test_le_a_secao_reid(self):

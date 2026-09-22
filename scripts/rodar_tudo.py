@@ -62,6 +62,10 @@ def main() -> None:
     p.add_argument("--escala", type=float, default=1.0, help="Tamanho da janela")
     p.add_argument("--fonte", default=None,
                    help="Sobrescreve a fonte da câmera só nesta execução (ensaio com ffmpeg)")
+    p.add_argument("--identificar", action="store_true",
+                   help="Agente com re-identificação anônima (rodar_agente.py --identificar)")
+    p.add_argument("--clipes", action="store_true",
+                   help="Agente grava clipes de dúvida (rodar_agente.py --clipes; PROJETO §16.2)")
     args = p.parse_args()
 
     config.garantir_pastas()
@@ -91,7 +95,9 @@ def main() -> None:
             "agente",
             [str(python), str(scripts / "rodar_agente.py"), args.camera]
             + (["--janela", "--escala", str(args.escala)] if args.janela else [])
-            + (["--fonte", args.fonte] if args.fonte else []),
+            + (["--fonte", args.fonte] if args.fonte else [])
+            + (["--identificar"] if args.identificar else [])
+            + (["--clipes"] if args.clipes else []),
             log=config.CAMINHO_LOGS / "agente.saida.log",
             cwd=RAIZ,
             atraso_inicial_s=3.0,

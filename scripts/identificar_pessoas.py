@@ -38,8 +38,10 @@ from fluxo.agente.identidade import Identidade
 from fluxo.agente.remetente import Remetente
 from fluxo.avaliacao import trilhas
 from fluxo.contagem.linha import LinhaDeContagem
-from fluxo.dominio.evento import FUSO_LOCAL
+from fluxo.dominio.evento import FUSO_LOCAL, data_de_referencia
+from fluxo.dominio.identidade import Vinculo
 from fluxo.reid.galeria import Galeria
+from fluxo.visao import clipes
 from fluxo.visao.anotador import GravadorDeVideo, JanelaAoVivo
 from fluxo.visao.aparencia import ConfigAparencia, Extrator
 from fluxo.visao.fonte import FonteDeVideo
@@ -77,6 +79,10 @@ def main() -> None:
     p.add_argument("--tempo-real", action="store_true",
                    help="Respeita o relógio na LEITURA (para simular câmera ao vivo)")
     p.add_argument("--velocidade", type=float, default=1.0)
+    p.add_argument("--clipes", action="store_true",
+                   help="Grava ~12 s de vídeo anotado em volta de cada dúvida em dados/revisao/ "
+                        "(aba Revisão do painel). Imagem de pessoa, PROJETO §16.2: só em "
+                        "validação; some em 48 h ou no veredito.")
     args = p.parse_args()
 
     config.garantir_pastas()
@@ -141,7 +147,12 @@ def main() -> None:
     remetente = None
     if not args.sem_envio:
         fila = FilaLocal(config.CAMINHO_DADOS / "fila" / f"{args.camera}.jsonl")
-        remetente = Remetente(config.URL_SERVICO, fila, chave=config.CHAVE_API)
+        fila_vinculos = FilaLocal(
+            config.CAMINHO_DADOS / "fila" / f"{args.camera}.vinculos.jsonl", modelo=Vinculo
+        )
+        remetente = Remetente(
+            config.URL_SERVICO, fila, chave=config.CHAVE_API, fila_vinculos=fila_vinculos
+        )
         if not remetente.servico_no_ar():
             print(f"AVISO: serviço fora do ar em {config.URL_SERVICO}. "
                   f"Os eventos vão para a fila local e serão reenviados depois.")
@@ -172,10 +183,18 @@ def main() -> None:
         )
 
     pasta_recortes = config.CAMINHO_RECORTES if args.guardar_recortes else None
+    galeria = Galeria.de_pipeline(pipeline)
+    if remetente is not None:
+        # Continua a numeração de hoje: sem isto, este script e o agente 24h
+        # no mesmo dia criariam dois P1 que o serviço fundiria num só.
+        hoje = data_de_referencia(datetime.now(FUSO_LOCAL))
+        n = galeria.semear(remetente.pessoas_do_dia(args.camera, hoje))
+        if n:
+            print(f"Identidade retomada: {n} pessoa(s) de hoje, próximo P{galeria.proximo}")
     identidade = Identidade(
         camera_id=args.camera,
         extrator=extrator,
-        galeria=Galeria.de_pipeline(pipeline),
+        galeria=galeria,
         recortes_por_track=cfg_reid.recortes_por_track,
         intervalo_recorte_quadros=cfg_reid.intervalo_recorte_quadros,
         esquecer_apos_quadros=linha.quadros_ate_esquecer,
@@ -223,11 +242,20 @@ def main() -> None:
             processador.versao_do_codigo(),
         )
 
+    gravador_duvidas = None
+    if args.clipes:
+        gravador_duvidas = clipes.GravadorDeDuvidas(
+            config.CAMINHO_REVISAO / datetime.now(FUSO_LOCAL).date().isoformat() / args.camera,
+            args.camera, fonte.fps, fonte.largura, fonte.altura,
+            params={k: pipeline.get(k, {}) for k in ("contagem", "deteccao", "reid")},
+            limiares={"saida": galeria.limiar_saida, "reentrada": galeria.limiar_reentrada},
+        )
+
     try:
         resultado = processador.processar(
             fonte, rastreador, linha, remetente, gravador, args.limite,
             janela=janela, trilha=trilha, escala_placar=escala_placar,
-            identidade=identidade,
+            identidade=identidade, clipes=gravador_duvidas,
         )
     finally:
         fonte.fechar()
@@ -260,6 +288,9 @@ def main() -> None:
                   f"{identidade.vinculos_enviados} vínculos")
     if gravador is not None:
         print(f"Vídeo    : {gravador.caminho}")
+    if gravador_duvidas is not None:
+        print(f"Clipes   : {gravador_duvidas.gravados} gravados em {gravador_duvidas.pasta}  "
+              f"(ignorados {gravador_duvidas.ignoradas})")
     if trilha is not None:
         print(f"Trilha   : {trilha.caminho}  ({trilha.quadros} quadros)")
         print(f"           varra os limiares sem GPU: "

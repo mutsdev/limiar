@@ -49,6 +49,11 @@ contagem:
   costura_quadros: 0       # 15 = 0,5 s a 30 fps; 0 desliga
   costura_raio_px: 80      # o quanto ela pode ter andado enquanto sumiu
 
+  # Só com --clipes: track que morre a menos disto da linha SEM cruzar vira
+  # uma dúvida, e o agente grava os segundos em volta para você julgar na aba
+  # Revisão. Comentado = 2x a zona morta (30 px).
+  # raio_duvida_px: 30
+
 # Etapa 2 — re-identificação anônima (scripts/identificar_pessoas.py).
 # Os limiares são ajustados por medição: scripts/reprocessar_identidade.py
 # --varredura sobre uma trilha/2 gravada, contra o gabarito preenchido à mão.
