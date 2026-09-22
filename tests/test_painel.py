@@ -193,14 +193,22 @@ def test_aba_revisao_vazia_orienta(banco):
 
 
 def test_aba_revisao_lista_clipe_e_veredito_apaga(banco, tmp_path):
+    import base64
+    import zipfile
+
     from fluxo import config
 
+    # PNG 1x1 de verdade: o st.image decodifica o que recebe.
+    imagem = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
     pasta = config.CAMINHO_REVISAO / "2026-09-21" / "entrada_a"
     pasta.mkdir(parents=True)
-    (pasta / "c1.mp4").write_bytes(b"v")
+    with zipfile.ZipFile(pasta / "c1.zip", "w") as z:
+        z.writestr("0000.jpg", imagem)
     (pasta / "c1.json").write_text(
         '{"id": "c1", "instante": "2026-09-21T09:00:00-03:00", "camera": "entrada_a", '
-        '"gatilho": "contagem", "motivo": "track 7 sumiu", "codec": "mp4v"}',
+        '"gatilho": "contagem", "motivo": "track 7 sumiu"}',
         encoding="utf-8",
     )
     app = AppTest.from_file(CAMINHO_PAINEL, default_timeout=60).run()
@@ -209,7 +217,7 @@ def test_aba_revisao_lista_clipe_e_veredito_apaga(banco, tmp_path):
     botao = next(b for b in app.button if b.key == "c1-errou")
     botao.click().run()
     assert not app.exception, [e.value for e in app.exception]
-    assert not (pasta / "c1.mp4").exists()
+    assert not (pasta / "c1.zip").exists()
     vereditos = (config.CAMINHO_REVISAO / "vereditos.csv").read_text(encoding="utf-8")
     assert vereditos.count("errou") == 1
 

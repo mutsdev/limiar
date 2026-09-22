@@ -227,13 +227,11 @@ class JanelaAoVivo:
 class GravadorDeVideo:
     """Grava o vídeo anotado. É o entregável visual da apresentação."""
 
-    def __init__(
-        self, caminho, largura: int, altura: int, fps: float, fourcc: str = "mp4v"
-    ) -> None:
+    def __init__(self, caminho, largura: int, altura: int, fps: float) -> None:
         caminho.parent.mkdir(parents=True, exist_ok=True)
         self.caminho = caminho
         self._w = cv2.VideoWriter(
-            str(caminho), cv2.VideoWriter_fourcc(*fourcc), fps, (largura, altura)
+            str(caminho), cv2.VideoWriter_fourcc(*"mp4v"), fps, (largura, altura)
         )
         if not self._w.isOpened():
             raise OSError(f"Não consegui abrir o gravador em {caminho}")

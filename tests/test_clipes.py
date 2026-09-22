@@ -54,6 +54,21 @@ class TestGatilhos:
         ds = clipes.duvidas_de_reid([decisao("nao_atribuido", None, pseudonimo=None)], {})
         assert "ninguém" in ds[0].motivo
 
+    def test_reid_sem_par_acima_do_limiar_diz_a_verdade(self):
+        # O húngaro deu a candidata a outra saída do lote: dizer "0.95 < 0.70"
+        # seria mentira, e é justamente o caso que vale investigar.
+        ds = clipes.duvidas_de_reid(
+            [decisao("nao_atribuido", 0.95, pseudonimo=None)], {"saida": 0.70}
+        )
+        assert "passava do limiar" in ds[0].motivo
+        assert "par de outra saída" in ds[0].motivo
+
+    def test_zip_guarda_os_quadros_em_ordem(self, tmp_path):
+        alvo = tmp_path / "c.zip"
+        clipes._gravar_zip(alvo, [b"a", b"b", b"c"], {"id": "c"})
+        assert clipes.abrir_clipe(alvo) == [b"a", b"b", b"c"]
+        assert alvo.with_suffix(".json").exists()
+
     def test_reid_no_fio_do_limiar(self):
         limiares = {"saida": 0.70, "reentrada": 0.75}
         assert len(clipes.duvidas_de_reid([decisao("saida", 0.72)], limiares)) == 1
@@ -95,7 +110,7 @@ class TestGravador:
         # 15 quadros: os 9 antes do gatilho, o do gatilho, e os 5 depois.
         assert quadros == [bytes([i]) for i in range(11, 26)]
         assert caminho.parent == tmp_path
-        assert caminho.name == "20260921_090002_contagem_t7.mp4"
+        assert caminho.name == "20260921_090002_contagem_t7.zip"
         assert sidecar["motivo"] == "sumiu" and sidecar["params"] == {"x": 1}
         assert sidecar["quadros"] == 15 and sidecar["fps"] == 10
         assert g.gravados == 1
@@ -165,6 +180,28 @@ class TestGravador:
         assert g.gravados == 2
         assert g.ignoradas == 3
 
+    def test_intervalo_e_por_gatilho(self, tmp_path):
+        g, _, relogio = gravador(tmp_path, intervalo_min_s=10.0)
+        li = linha()
+        g.observar(0, T0, [rastro(1, 440, conf=0.4)], li, [])  # deteccao
+        for i in range(1, 6):
+            g.observar(i, T0, [], li, [])
+        relogio[0] = 3.0
+        # Cedo demais para outra detecção, mas a contagem tem o relógio dela.
+        assert g.observar(6, T0, [rastro(2, 440, conf=0.4)], li, []) is None
+        li.duvidas.append(Duvida("contagem", 9, "sumiu"))
+        d = g.observar(7, T0, [], li, [])
+        assert d is not None and d.gatilho == "contagem"
+
+    def test_contagem_tem_prioridade_sobre_deteccao(self, tmp_path):
+        g, _, _ = gravador(tmp_path)
+        li = linha()
+        li.duvidas.append(Duvida("contagem", 7, "sumiu perto da linha"))
+        # No mesmo quadro há também uma detecção fraca; só uma vira clipe.
+        d = g.observar(0, T0, [rastro(9, 440, conf=0.4)], li, [])
+        assert d is not None and d.gatilho == "contagem"
+        assert g.ignoradas == 1
+
     def test_decisoes_de_reid_tambem_disparam(self, tmp_path):
         g, _, _ = gravador(tmp_path, limiares={"saida": 0.70})
         d = g.observar(0, T0, [], linha(), [decisao("nao_atribuido", 0.6, pseudonimo=None)])
@@ -172,7 +209,10 @@ class TestGravador:
 
 
 def clipe_no_disco(pasta, id_clipe, instante="2026-09-21T09:00:00-03:00"):
-    (pasta / f"{id_clipe}.mp4").write_bytes(b"v")
+    import zipfile
+
+    with zipfile.ZipFile(pasta / f"{id_clipe}.zip", "w") as z:
+        z.writestr("0000.jpg", b"jpeg")
     (pasta / f"{id_clipe}.json").write_text(
         f'{{"id": "{id_clipe}", "instante": "{instante}", "camera": "entrada_a", '
         f'"gatilho": "contagem"}}', encoding="utf-8",
@@ -186,7 +226,7 @@ class TestDisco:
         (tmp_path / "c.json").write_text('{"id": "c", "instante": "2026-09-21T11:00:00-03:00"}')
         lista = clipes.listar_clipes(tmp_path)
         assert [c["id"] for c in lista] == ["b", "a"]
-        assert lista[0]["mp4"].endswith("b.mp4")
+        assert lista[0]["zip"].endswith("b.zip")
 
     def test_listar_pasta_inexistente(self, tmp_path):
         assert clipes.listar_clipes(tmp_path / "nada") == []
@@ -195,7 +235,7 @@ class TestDisco:
         clipe_no_disco(tmp_path, "a")
         clipe = clipes.listar_clipes(tmp_path)[0]
         clipes.registrar_veredito(tmp_path, clipe, "errou", "duas juntas")
-        assert not (tmp_path / "a.mp4").exists() and not (tmp_path / "a.json").exists()
+        assert not (tmp_path / "a.zip").exists() and not (tmp_path / "a.json").exists()
         with (tmp_path / clipes.ARQUIVO_VEREDITOS).open(encoding="utf-8") as f:
             linhas = list(csv.DictReader(f))
         assert len(linhas) == 1
@@ -213,7 +253,7 @@ class TestDisco:
         clipe_no_disco(tmp_path, "velho")
         clipe_no_disco(tmp_path, "novo")
         antigo = time.time() - 49 * 3600
-        for nome in ("velho.mp4", "velho.json"):
+        for nome in ("velho.zip", "velho.json"):
             os.utime(tmp_path / nome, (antigo, antigo))
         assert clipes.purgar_clipes(tmp_path, max_idade_h=48) == 2
         assert [c["id"] for c in clipes.listar_clipes(tmp_path)] == ["novo"]

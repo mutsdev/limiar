@@ -485,8 +485,9 @@ with aba_revisao:
         pasta = config.CAMINHO_REVISAO
         st.caption(
             "Momentos em que o sistema ficou em dúvida — track que sumiu perto da "
-            "linha, detecção fraca, saída sem par. Diga se ele acertou. O clipe some "
-            "com o veredito; o que fica é a sua resposta."
+            "linha, detecção fraca, saída sem par. Arraste o quadro, veja o que "
+            "aconteceu e diga se ele acertou. O clipe some com o veredito; o que "
+            "fica é a sua resposta."
         )
         vereditos = pasta / clipes.ARQUIVO_VEREDITOS
         if vereditos.exists():
@@ -521,16 +522,21 @@ with aba_revisao:
                     f"{clipe.get('motivo', '')}"
                 )
                 try:
-                    video = Path(clipe["mp4"]).read_bytes()
-                except OSError:
+                    quadros = clipes.abrir_clipe(Path(clipe["zip"]))
+                except (OSError, ValueError):
                     continue
-                if clipe.get("codec") == "avc1":
-                    st.video(video)
-                else:
-                    st.download_button(
-                        "Baixar clipe (o navegador não toca este codec; abra no VLC)",
-                        video, file_name=f"{id_clipe}.mp4", key=f"baixar-{id_clipe}",
-                    )
+                if not quadros:
+                    continue
+                # Quadro a quadro, e não vídeo: o caso a julgar é justamente o
+                # instante em que duas pessoas se sobrepõem, e ele dura 2 ou 3
+                # quadros. Parar neles vale mais que ver rodar.
+                meio = len(quadros) // 2
+                i = st.slider(
+                    "Quadro", 0, len(quadros) - 1, meio, key=f"q-{id_clipe}",
+                    help="O gatilho está no meio do clipe.",
+                ) if len(quadros) > 1 else 0
+                st.image(quadros[i], use_container_width=True)
+                st.caption(f"quadro {i + 1} de {len(quadros)}")
                 nota = st.text_input("Nota (opcional)", key=f"nota-{id_clipe}")
                 c1, c2, c3 = st.columns(3)
                 escolha = None

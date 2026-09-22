@@ -6,9 +6,14 @@ Três coisas disparam um clipe:
   * uma detecção fraca perto da linha (a pessoa que o YOLO quase não viu);
   * uma decisão de re-ID sem par, ou com similaridade no fio do limiar.
 
-O clipe é o vídeo ANOTADO dos segundos antes e depois, mais um JSON dizendo
-o que o sistema achou. Alguém julga na aba "Revisão" do painel: acertou,
-errou, não sei. O veredito fica; o clipe some.
+O clipe são os quadros ANOTADOS dos segundos antes e depois, num ZIP de JPEGs,
+mais um JSON dizendo o que o sistema achou. Alguém julga na aba "Revisão" do
+painel, quadro a quadro: acertou, errou, não sei. O veredito fica; o clipe some.
+
+Por que ZIP e não mp4: o OpenCV empacotado não traz H.264 em toda máquina
+(`Unable to create encoder`), e o que sobra — mp4v — nenhum navegador toca. O
+ZIP não depende de codec nenhum, é stdlib, e para julgar "passaram duas juntas"
+parar no quadro certo vale mais que ver rodar.
 
 LGPD (PROJETO §16.2): isto é imagem de pessoa real. Mesmo regime de
 `--guardar-recortes` — desligado por padrão, só em validação, disco local,
@@ -16,8 +21,8 @@ apagado em 48 h ou no veredito, o que vier antes. Nunca vai ao banco nem à
 API.
 
 O anel guarda JPEG (bytes), não arrays: 180 quadros VGA em JPEG são ~7 MB;
-crus seriam 160 MB. O cv2 só entra na codificação e na gravação, para o
-gatilho, o anel e a purga rodarem nos testes de núcleo.
+crus seriam 160 MB. E, como já são JPEG, gravar é só zipar. O cv2 entra apenas
+na codificação, para o gatilho, o anel e a purga rodarem nos testes de núcleo.
 """
 
 from __future__ import annotations
@@ -26,6 +31,7 @@ import csv
 import json
 import threading
 import time
+import zipfile
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -40,6 +46,14 @@ from fluxo.dominio.rastro import Rastro
 GATILHO_CONTAGEM = "contagem"
 GATILHO_DETECCAO = "deteccao"
 GATILHO_REID = "reid"
+# Quando várias dúvidas caem no mesmo quadro, só uma vira clipe. Contagem vem
+# primeiro porque é a que descreve um evento que NÃO existe — a pessoa que o
+# sistema perdeu; detecção fraca é a mais comum e a menos conclusiva.
+PRIORIDADE = {GATILHO_CONTAGEM: 0, GATILHO_REID: 1, GATILHO_DETECCAO: 2}
+
+# Qualidade do JPEG no anel. 60 em vez de 70 corta ~30% do clipe (medido:
+# 7,6 MB -> ~5 MB em 768x576/12 s) sem atrapalhar quem está julgando.
+QUALIDADE_JPEG = 60
 
 # Detecção abaixo disto, perto da linha, é dúvida: o detector viu alguma
 # coisa, mas não tinha certeza de que era gente.
@@ -48,9 +62,9 @@ CONFIANCA_DUVIDA = 0.5
 # fio da navalha — o caso em que o limiar, e não a pessoa, decidiu.
 MARGEM_SIMILARIDADE = 0.05
 
-# Teto de clipes por execução. Medido: ~6 MB cada em 768x576/12 s, então 200
-# são ~1,2 GB. Sem teto, uma câmera ruim gravando uma dúvida a cada 10 s
-# enche 50 GB num dia — e ninguém julga 8 mil clipes.
+# Teto de clipes por execução. Medido: ~2,5 MB cada em 768x576/12 s, então 200
+# são ~500 MB. Sem teto, uma câmera ruim gravando uma dúvida a cada 10 s enche
+# o disco num dia — e ninguém julga 8 mil clipes.
 MAXIMO_POR_EXECUCAO = 200
 
 VEREDITOS = ("acertou", "errou", "nao_sei")
@@ -87,10 +101,22 @@ def duvidas_de_reid(decisoes, limiares: dict[str, float]) -> list[Duvida]:
     duvidas = []
     for d in decisoes:
         if d.metodo == "nao_atribuido":
-            melhor = (
-                f"melhor sim {d.similaridade:.2f} < {limiares.get('saida', 0):.2f}"
-                if d.similaridade is not None else "ninguém dentro para comparar"
-            )
+            limiar = limiares.get("saida")
+            if d.similaridade is None:
+                melhor = "ninguém dentro para comparar"
+            elif limiar is not None and d.similaridade >= limiar:
+                # Passa do limiar e mesmo assim ficou sem par: a candidata foi
+                # dada a outra saída do mesmo lote. Dizer "0.95 < 0.70" aqui
+                # seria mentira, e é justamente o caso interessante.
+                melhor = (
+                    f"melhor sim {d.similaridade:.2f} passava do limiar "
+                    f"{limiar:.2f}, mas a candidata foi par de outra saída"
+                )
+            else:
+                melhor = (
+                    f"melhor sim {d.similaridade:.2f} < {limiar:.2f}"
+                    if limiar is not None else f"melhor sim {d.similaridade:.2f}"
+                )
             duvidas.append(Duvida(
                 GATILHO_REID, d.id_local, f"saída t{d.id_local} sem par ({melhor})",
             ))
@@ -112,7 +138,7 @@ def duvidas_de_reid(decisoes, limiares: dict[str, float]) -> list[Duvida]:
 # --------------------------------------------------------------------------
 
 
-def _codificar_jpg(imagem, qualidade: int = 70) -> bytes:
+def _codificar_jpg(imagem, qualidade: int = QUALIDADE_JPEG) -> bytes:
     import cv2
 
     ok, dados = cv2.imencode(".jpg", imagem, [int(cv2.IMWRITE_JPEG_QUALITY), qualidade])
@@ -121,36 +147,30 @@ def _codificar_jpg(imagem, qualidade: int = 70) -> bytes:
     return dados.tobytes()
 
 
-def _gravar_mp4(caminho: Path, quadros: list[bytes], sidecar: dict) -> None:
-    """Decodifica o anel e escreve o mp4 + o JSON. Roda numa thread própria."""
-    import cv2
-    import numpy as np
+def _gravar_zip(caminho: Path, quadros: list[bytes], sidecar: dict) -> None:
+    """Zipa os JPEGs do anel e escreve o JSON ao lado. Roda numa thread própria.
 
-    from fluxo.visao.anotador import GravadorDeVideo
-
-    largura, altura, fps = sidecar["largura"], sidecar["altura"], sidecar["fps"]
-    # avc1 (H.264) é o que o navegador toca; nem todo OpenCV tem o codec, e
-    # aí mp4v grava igual — só que a aba Revisão passa a oferecer download.
-    try:
-        gravador = GravadorDeVideo(caminho, largura, altura, fps, fourcc="avc1")
-        sidecar["codec"] = "avc1"
-    except OSError:
-        gravador = GravadorDeVideo(caminho, largura, altura, fps, fourcc="mp4v")
-        sidecar["codec"] = "mp4v"
-    with gravador:
-        for jpg in quadros:
-            imagem = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-            if imagem is not None:
-                gravador.escrever(imagem)
+    ZIP_STORED, não DEFLATE: JPEG já está comprimido, e comprimir de novo
+    gasta CPU do agente para economizar uns 2%.
+    """
+    with zipfile.ZipFile(caminho, "w", zipfile.ZIP_STORED) as z:
+        for i, jpg in enumerate(quadros):
+            z.writestr(f"{i:04d}.jpg", jpg)
     caminho.with_suffix(".json").write_text(
         json.dumps(sidecar, ensure_ascii=False, indent=1), encoding="utf-8"
     )
 
 
+def abrir_clipe(caminho: Path) -> list[bytes]:
+    """Os quadros de um clipe, em ordem. É o que a aba Revisão exibe."""
+    with zipfile.ZipFile(caminho) as z:
+        return [z.read(nome) for nome in sorted(z.namelist())]
+
+
 def _gravar_em_thread(caminho: Path, quadros: list[bytes], sidecar: dict) -> list:
     """Grava fora do laço principal. Devolve a thread, para quem quiser esperar."""
     t = threading.Thread(
-        target=_gravar_mp4, args=(caminho, quadros, sidecar), daemon=True, name="clipe",
+        target=_gravar_zip, args=(caminho, quadros, sidecar), daemon=True, name="clipe",
     )
     t.start()
     return [t]
@@ -203,7 +223,10 @@ class GravadorDeDuvidas:
         )
         self._em_curso: _Gravando | None = None
         self._threads: list = []
-        self._ultimo_em: float | None = None
+        # Um intervalo POR GATILHO: numa cena cheia a detecção fraca dispara
+        # toda hora, e um relógio só faria ela engolir a vaga da contagem —
+        # que é a dúvida que interessa e nasce segundos depois do sumiço.
+        self._ultimo_em: dict[str, float] = {}
         # ponytail: O(n) num deque de 500 chaves; vira dict se um dia doer.
         self._vistas: deque[tuple[str, int | None]] = deque(maxlen=500)
 
@@ -232,26 +255,26 @@ class GravadorDeDuvidas:
         duvidas += duvidas_de_reid(decisoes, self.limiares)
 
         escolhida = None
-        for d in duvidas:
+        for d in sorted(duvidas, key=lambda d: PRIORIDADE.get(d.gatilho, 9)):
             chave = (d.gatilho, d.track)
             if chave in self._vistas:
                 continue
             self._vistas.append(chave)
-            if escolhida is None and self._pode_gravar():
+            if escolhida is None and self._pode_gravar(d.gatilho):
                 escolhida = d
             else:
                 self.ignoradas += 1
 
         if escolhida is not None:
             self._em_curso = _Gravando(escolhida, instante, self.depois_quadros)
-            self._ultimo_em = self._relogio()
+            self._ultimo_em[escolhida.gatilho] = self._relogio()
         return escolhida
 
-    def _pode_gravar(self) -> bool:
+    def _pode_gravar(self, gatilho: str) -> bool:
         if self._em_curso is not None or self.gravados >= self.maximo:
             return False
-        agora = self._relogio()
-        return self._ultimo_em is None or agora - self._ultimo_em >= self.intervalo_min_s
+        ultimo = self._ultimo_em.get(gatilho)
+        return ultimo is None or self._relogio() - ultimo >= self.intervalo_min_s
 
     def _fechar(self) -> None:
         g, self._em_curso = self._em_curso, None
@@ -275,7 +298,7 @@ class GravadorDeDuvidas:
             "params": self.params,
         }
         self.pasta.mkdir(parents=True, exist_ok=True)
-        threads = self._gravar(self.pasta / f"{id_clipe}.mp4", quadros, sidecar)
+        threads = self._gravar(self.pasta / f"{id_clipe}.zip", quadros, sidecar)
         if threads:
             self._threads.extend(threads)
         self.gravados += 1
@@ -299,20 +322,20 @@ class GravadorDeDuvidas:
 
 
 def listar_clipes(pasta: Path) -> list[dict]:
-    """Os clipes pendentes de veredito, mais novo primeiro. Só os que já têm mp4."""
+    """Os clipes pendentes de veredito, mais novo primeiro. Só os já gravados."""
     pasta = Path(pasta)
     if not pasta.exists():
         return []
     clipes = []
     for sidecar in pasta.rglob("*.json"):
-        mp4 = sidecar.with_suffix(".mp4")
-        if not mp4.exists():
+        quadros = sidecar.with_suffix(".zip")
+        if not quadros.exists():
             continue
         try:
             dados = json.loads(sidecar.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        dados["mp4"] = str(mp4)
+        dados["zip"] = str(quadros)
         dados["json"] = str(sidecar)
         clipes.append(dados)
     clipes.sort(key=lambda c: c.get("instante", ""), reverse=True)
@@ -336,20 +359,20 @@ def registrar_veredito(pasta: Path, clipe: dict, veredito: str, nota: str = "") 
             clipe.get("gatilho", ""), veredito, nota,
             datetime.now(FUSO_LOCAL).isoformat(),
         ])
-    for chave in ("mp4", "json"):
+    for chave in ("zip", "json"):
         arquivo = clipe.get(chave)
         if arquivo:
             Path(arquivo).unlink(missing_ok=True)
 
 
 def purgar_clipes(pasta: Path, max_idade_h: float = 48.0, agora: float | None = None) -> int:
-    """Apaga clipes mais velhos que `max_idade_h`. Devolve quantos."""
+    """Apaga clipes mais velhos que `max_idade_h`. Devolve quantos arquivos."""
     pasta = Path(pasta)
     if not pasta.exists():
         return 0
     limite = (time.time() if agora is None else agora) - max_idade_h * 3600
     n = 0
-    for arquivo in list(pasta.rglob("*.mp4")) + list(pasta.rglob("*.json")):
+    for arquivo in list(pasta.rglob("*.zip")) + list(pasta.rglob("*.json")):
         try:
             if arquivo.stat().st_mtime < limite:
                 arquivo.unlink()
