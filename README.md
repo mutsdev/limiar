@@ -113,10 +113,10 @@ python scripts/simular_dia.py --dias 14
 # YOLO contra a linha de base de subtração de fundo
 python scripts/comparar_detectores.py --camera entrada_a
 
-# avaliar contra anotação humana (MOT17)
-python scripts/baixar_mot.py --sequencias MOT17-09
-python scripts/avaliar.py --mot dados/videos/MOT17-09 --sugerir-linha
-python scripts/avaliar.py --mot dados/videos/MOT17-09 --camera mot17_09 --visibilidade 0.25
+# avaliar contra anotação humana (MOT17): três sequências de câmera estática
+python scripts/baixar_mot.py                        # MOT17-09, -02 e -04
+python scripts/avaliar.py --mot dados/videos/MOT17-02 --sugerir-linha
+python scripts/avaliar.py --mot dados/videos/MOT17-02 --camera mot17_02 --visibilidade 0.25
 
 # avaliar contra contagem manual, quando a gravação real existir
 python scripts/avaliar.py --camera entrada_a --ground-truth dados/ground_truth/porta.csv
@@ -129,7 +129,7 @@ python scripts/reprocessar.py entrada_a --varredura
 # Etapa 2: contar E dizer que "P7 saiu" — pseudônimo do dia, sem rosto, sem nome.
 # Script próprio; o processar_video.py de produção não muda.
 python scripts/identificar_pessoas.py entrada_real --sem-envio --gravar-trilhas --guardar-recortes
-python scripts/rotular_pessoas.py --gerar --camera entrada_real      # CSV para você preencher
+python scripts/rotular_pessoas.py --web                              # rotula no navegador
 python scripts/reprocessar_identidade.py entrada_real --varredura \
     --gabarito dados/gabaritos/<data>_entrada_real.csv               # limiares, sem GPU
 python scripts/identificar_pessoas.py entrada_real                   # entregando ao serviço

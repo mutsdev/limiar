@@ -59,7 +59,57 @@ leitura da tabela de visibilidade por outro caminho.
 
 Decisão: fica o **yolo11n**, que é o mais preciso aqui e o dobro mais rápido.
 
+### Mais duas sequências anotadas: onde a régua aprova e onde reprova
+
+Medido em 22/09/2026, corte de visibilidade de 25% nas três, linha sugerida
+pelas trajetórias anotadas e conferida em imagem antes de aceitar.
+
+| Sequência | Cena | ENTRADA medido/anotado | erro | SAÍDA medido/anotado | erro | q/s | Veredito |
+|---|---|---|---|---|---|---|---|
+| MOT17-09 | calçada comercial, câmera baixa, 26 pessoas | 11 / 10 | 10,0% | 3 / 3 | 0% | 39,3 | aprovado |
+| MOT17-02 | praça em Veneza, câmera fixa, 62 pessoas | 9 / 10 | 10,0% | 1 / 1 | 0% | 12,9 | aprovado |
+| MOT17-04 | rua comercial à noite, câmera alta, 83 pessoas | 6 / 13 | **53,8%** | 5 / 6 | 16,7% | 23,2 | **reprovado** |
+
+**MOT17-02 confirma o número de -09 numa cena independente**: 10% de erro de
+entrada e zero de saída, com o triplo de pessoas anotadas. Duas cenas
+diferentes dando o mesmo erro é mais informação que uma cena dando um erro
+bonito.
+
+**MOT17-04 reprova, e o sinal do erro diz por quê**: −7 entradas, todas
+perdidas, nenhuma inventada. Rua estreita à noite, câmera alta, gente andando
+em fila indiana atrás de gente — é o caso da tabela de visibilidade levado ao
+extremo. A geometria está correta (a saída erra 1 em 6); o que falta é o
+detector ver quem está atrás de outra pessoa, e a seção anterior já mostrou que
+modelo maior não resolve isso.
+
+Para a porta da faculdade isso é limite pessimista, não previsão: numa soleira
+de 2 m com duas pessoas por vez a oclusão é uma fração disto. Mas fixa o
+recado: **onde a fila é densa e o ângulo é alto, este sistema subconta, e
+subconta só num sentido**.
+
 ---
+
+### Limiar do NMS (`iou`): 0.8 no lugar de 0.5
+
+Medido em 29/09/2026, a partir de uma dica recebida no LinkedIn: com `iou`
+baixo o NMS apaga a caixa de quem anda colado atrás de outra pessoa. Mesmas
+três sequências, corte de visibilidade de 25%, só o `iou` muda.
+
+| Sequência | iou 0.5 (entrada / saída) | iou 0.7 | iou 0.8 |
+|---|---|---|---|
+| MOT17-09 | 11/10 · 3/3 | 11/10 · 3/3 | **10/10 · 3/3** |
+| MOT17-02 | 9/10 · 1/1 | 9/10 · 1/1 | 9/10 · 1/1 |
+| MOT17-04 | 6/13 · 5/6 | 6/13 · 4/6 | 6/13 · 5/6 |
+
+(medido / anotado)
+
+**Padrão novo: 0.8.** Zera o erro de entrada no -09 (10% → 0%) e não piora
+nenhuma outra célula. O 0.7 piora uma saída no -04.
+
+**O -04 não mexe:** −7 entradas nos três valores. Confirma a leitura da seção
+anterior por um quarto caminho: o que se perde ali é gente que o detector
+nunca achou, não caixa achada e apagada pelo NMS. Ganho pequeno, amostra de
+uma travessia; é padrão melhor, não prova.
 
 ## 2. Contra a linha de base (subtração de fundo)
 
@@ -288,9 +338,10 @@ O que existe é a máquina de medir, e ela é a mesma máquina da seção 8.
 
 1. Uma execução ao vivo grava a trilha com as assinaturas e uma miniatura por
    travessia (`identificar_pessoas.py --gravar-trilhas --guardar-recortes`).
-2. `rotular_pessoas.py --gerar` transforma o índice de miniaturas num CSV; quem
-   conhece as pessoas preenche `apelido_real` olhando as imagens. Esse CSV é o
-   gabarito.
+2. `rotular_pessoas.py --web` abre as miniaturas do dia em grade: quem conhece
+   as pessoas marca as que são a mesma e dá um nome, e o CSV do gabarito
+   (`apelido_real`) é gravado a cada clique. Quem preferir a mão continua com
+   `--gerar` e um editor.
 3. `reprocessar_identidade.py --varredura --gabarito` reconta a trilha para
    cada combinação de `limiar_saida × limiar_reentrada × janela_lote_s` — sem
    GPU, em segundos — e imprime, por combinação:

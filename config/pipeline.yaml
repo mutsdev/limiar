@@ -6,7 +6,11 @@ deteccao:
   modelo: "yolo11n.pt"     # troca para yolo11s.pt / yolo11m.pt se a precisão exigir
   classes: [0]             # 0 = "person" no COCO
   confianca_minima: 0.30   # baixo de propósito: o ByteTrack aproveita detecção fraca
-  iou: 0.50
+  # NMS: acima disto de sobreposição, a caixa mais fraca é apagada. Alto de
+  # propósito para não apagar quem anda colado atrás de outra pessoa.
+  # Medido em 29/09/2026 (docs/resultados.md §1): 0.8 zera o erro de entrada
+  # no MOT17-09 e empata com 0.5 no -02 e no -04.
+  iou: 0.80
   dispositivo: "auto"      # "auto" | "cpu" | "0" (índice da GPU)
   pular_quadros: 0         # 1 processa 1 de cada 2 quadros; 0 processa todos
 
