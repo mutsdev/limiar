@@ -4,8 +4,9 @@
     python scripts/rotular_pessoas.py --gerar --camera entrada_real            # último dia
     python scripts/rotular_pessoas.py --gerar --camera entrada_real --data 2026-09-04
 
-    # 2. abra dados/recortes/<data>/<camera>/, olhe as miniaturas e preencha a
-    #    coluna apelido_real do CSV (qualquer editor; deixe em branco o que não souber)
+    # 2. rotule no navegador: marca as miniaturas que são a mesma pessoa e dá o nome
+    python scripts/rotular_pessoas.py --web
+    #    (ou preencha a coluna apelido_real do CSV à mão, em qualquer editor)
 
     # 3. mede a execução ao vivo contra o gabarito
     python scripts/rotular_pessoas.py --metricas dados/gabaritos/2026-09-04_entrada_real.csv
@@ -157,6 +158,19 @@ def aplicar(caminho: Path) -> None:
     print(f"\n{ok} apelidos gravados, {falhas} falhas.")
 
 
+def web() -> None:
+    """Sobe o rotulador. Mesmo padrão do rodar_painel.py, em outra porta."""
+    import subprocess
+
+    raiz = Path(__file__).resolve().parents[1]
+    subprocess.run(
+        [sys.executable, "-m", "streamlit", "run",
+         str(raiz / "src" / "fluxo" / "analise" / "rotulador.py"),
+         "--server.address", "127.0.0.1", "--server.port", "8502"],
+        cwd=raiz, check=False,
+    )
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Gabarito de identidade para o teste de validação")
     p.add_argument("--gerar", action="store_true",
@@ -164,12 +178,16 @@ def main() -> None:
     p.add_argument("--camera", default=None, help="Id da câmera (com --gerar)")
     p.add_argument("--data", default=None, help="AAAA-MM-DD (padrão: o último dia gravado)")
     p.add_argument("--sobrescrever", action="store_true")
+    p.add_argument("--web", action="store_true",
+                   help="Rotula no navegador, em grade de miniaturas (porta 8502)")
     p.add_argument("--metricas", default=None, metavar="CSV", help="Mede o gabarito preenchido")
     p.add_argument("--aplicar", default=None, metavar="CSV",
                    help="Grava o apelido majoritário de cada P via API")
     args = p.parse_args()
 
-    if args.gerar:
+    if args.web:
+        web()
+    elif args.gerar:
         if not args.camera:
             sys.exit("--gerar precisa de --camera")
         gerar(args.camera, args.data, args.sobrescrever)
