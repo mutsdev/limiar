@@ -11,6 +11,7 @@ mostra a porta da faculdade.
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 import sys
 from datetime import date, datetime, timedelta
@@ -37,8 +38,18 @@ QUADRO_VELHO_S = 15.0
 
 
 # ================================================================== senha
+def _chave_url() -> str:
+    # Derivada da senha, nunca a senha em si. Trocar SENHA_PAINEL invalida as
+    # URLs antigas.
+    return hashlib.sha256(f"limiar:{config.SENHA_PAINEL}".encode()).hexdigest()[:32]
+
+
 def _exigir_senha() -> None:
     if not config.SENHA_PAINEL or st.session_state.get("autenticado"):
+        return
+    # O F5 abre sessão nova e zera o session_state; a chave na URL sobrevive.
+    if secrets.compare_digest(st.query_params.get("chave", ""), _chave_url()):
+        st.session_state["autenticado"] = True
         return
     caixa = st.empty()
     with caixa.container():
@@ -46,6 +57,7 @@ def _exigir_senha() -> None:
         senha = st.text_input("Senha", type="password")
         if senha and secrets.compare_digest(senha, config.SENHA_PAINEL):
             st.session_state["autenticado"] = True
+            st.query_params["chave"] = _chave_url()
         elif senha:
             st.error("Senha incorreta.")
     if not st.session_state.get("autenticado"):
@@ -57,7 +69,7 @@ _exigir_senha()
 
 
 # ================================================================== dados
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=5)
 def _carregar(inicio: date, fim: date, camera: str | None, origem: str) -> pd.DataFrame:
     conn = repositorio.conectar()
     try:
@@ -232,100 +244,109 @@ aba_fluxo, aba_pessoas, aba_vivo, aba_revisao = st.tabs(
 
 # ====================================================================== Fluxo
 with aba_fluxo:
-    if df.empty:
-        st.info(
-            "Nenhum evento no período.\n\n"
-            "- Para dados reais: `python scripts/processar_video.py --camera entrada_a`\n"
-            "- Para simulação: `python scripts/simular_dia.py --dias 14` e escolha "
-            "SINTETICO ao lado."
-        )
-    else:
-        resumo = consultas.resumo_diario(df)
-        entradas = int(resumo["entradas"].sum())
-        saidas = int(resumo["saidas"].sum())
-        dias = int(resumo["data_ref"].nunique())
-        pico = consultas.pico_do_dia(df)
+    # Reexecuta só esta aba a cada 3 s: o projetor mostra contagem nova sem F5.
+    @st.fragment(run_every=3)
+    def _fluxo() -> None:
+        df = _carregar(inicio, fim, camera, origem)
+        if periodo is not None:
+            df = consultas.recortar(df, "instante", periodo.inicio, periodo.fim)
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Entradas", _numero(entradas))
-        c2.metric("Saídas", _numero(saidas))
-        c3.metric("Média por dia", _numero(entradas // dias) if dias else "—")
-        c4.metric("Hora de pico", f"{pico[0]:02d}h" if pico else "—",
-                  f"{pico[1]} entradas" if pico else None)
-
-        saldo = entradas - saidas
-        if entradas and abs(saldo) > 0.10 * entradas:
-            st.warning(
-                f"Saldo do período: **{saldo:+d}**. Entradas e saídas deveriam quase fechar. "
-                f"Um desvio grande indica passagens não detectadas — vale conferir o vídeo "
-                f"anotado.",
-                icon="📐",
+        if df.empty:
+            st.info(
+                "Nenhum evento no período.\n\n"
+                "- Para dados reais: `python scripts/processar_video.py --camera entrada_a`\n"
+                "- Para simulação: `python scripts/simular_dia.py --dias 14` e escolha "
+                "SINTETICO ao lado."
             )
+        else:
+            resumo = consultas.resumo_diario(df)
+            entradas = int(resumo["entradas"].sum())
+            saidas = int(resumo["saidas"].sum())
+            dias = int(resumo["data_ref"].nunique())
+            pico = consultas.pico_do_dia(df)
 
-        st.divider()
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Entradas", _numero(entradas))
+            c2.metric("Saídas", _numero(saidas))
+            c3.metric("Média por dia", _numero(entradas // dias) if dias else "—")
+            c4.metric("Hora de pico", f"{pico[0]:02d}h" if pico else "—",
+                      f"{pico[1]} entradas" if pico else None)
 
-        esq, dir_ = st.columns([3, 2])
-
-        with esq:
-            st.subheader("Movimento por hora do dia")
-            serie = consultas.serie_horaria(df).set_index("hora")
-            st.bar_chart(serie[["entradas", "saidas"]], height=300)
-            st.caption(
-                "Somado no período. É a curva que define escala de portaria e horário de limpeza."
-            )
-
-        with dir_:
-            st.subheader("Uso de cada entrada")
-            comparativo = consultas.comparativo_portas(df)
-            st.dataframe(
-                comparativo.rename(columns={
-                    "camera_id": "Entrada", "total": "Passagens", "participacao": "% do total"
-                }),
-                hide_index=True, use_container_width=True,
-            )
-            st.caption("Desbalanceamento grande costuma ser sinalização mal resolvida.")
-
-        st.subheader("Volume por dia")
-        por_dia = resumo.groupby("data_ref")[["entradas", "saidas"]].sum()
-        st.line_chart(por_dia, height=280)
-
-        col_a, col_b = st.columns(2)
-
-        with col_a:
-            st.subheader("Ocupação estimada ao longo do dia")
-            dias_disponiveis = sorted(df["data_ref"].dt.date.unique(), reverse=True)
-            dia = st.selectbox(
-                "Dia", dias_disponiveis, format_func=lambda d: d.strftime("%d/%m/%Y")
-            )
-            curva = consultas.ocupacao_do_dia(df, dia)
-            if curva.empty:
-                st.info("Sem eventos nesse dia.")
-            else:
-                st.line_chart(curva.set_index("instante")["ocupacao"], height=260)
-                st.caption(
-                    "Entradas acumuladas menos saídas. É **estimativa**: uma saída não detectada "
-                    "mantém a curva alta pelo resto do dia."
+            saldo = entradas - saidas
+            if entradas and abs(saldo) > 0.10 * entradas:
+                st.warning(
+                    f"Saldo do período: **{saldo:+d}**. Entradas e saídas deveriam quase fechar. "
+                    f"Um desvio grande indica passagens não detectadas — vale conferir o vídeo "
+                    f"anotado.",
+                    icon="📐",
                 )
 
-        with col_b:
-            st.subheader("Média por dia da semana")
-            media = consultas.media_por_dia_da_semana(df)
-            if media.empty:
-                st.info("Sem dados suficientes.")
-            else:
-                st.bar_chart(media.set_index("nome")["media_entradas"], height=260)
-                st.caption("Base para planejar evento, prova e escala em dia fraco.")
+            st.divider()
 
-        with st.expander("Eventos brutos"):
-            st.dataframe(
-                df[["instante", "camera_id", "direcao", "track_id_local", "confianca"]]
-                .rename(columns={
-                    "instante": "Instante", "camera_id": "Entrada", "direcao": "Direção",
-                    "track_id_local": "Track", "confianca": "Confiança",
-                }),
-                hide_index=True, use_container_width=True, height=320,
-            )
-            st.caption(f"{len(df)} eventos.")
+            esq, dir_ = st.columns([3, 2])
+
+            with esq:
+                st.subheader("Movimento por hora do dia")
+                serie = consultas.serie_horaria(df).set_index("hora")
+                st.bar_chart(serie[["entradas", "saidas"]], height=300)
+                st.caption(
+                    "Somado no período. É a curva que define escala de portaria e horário de limpeza."
+                )
+
+            with dir_:
+                st.subheader("Uso de cada entrada")
+                comparativo = consultas.comparativo_portas(df)
+                st.dataframe(
+                    comparativo.rename(columns={
+                        "camera_id": "Entrada", "total": "Passagens", "participacao": "% do total"
+                    }),
+                    hide_index=True, use_container_width=True,
+                )
+                st.caption("Desbalanceamento grande costuma ser sinalização mal resolvida.")
+
+            st.subheader("Volume por dia")
+            por_dia = resumo.groupby("data_ref")[["entradas", "saidas"]].sum()
+            st.line_chart(por_dia, height=280)
+
+            col_a, col_b = st.columns(2)
+
+            with col_a:
+                st.subheader("Ocupação estimada ao longo do dia")
+                dias_disponiveis = sorted(df["data_ref"].dt.date.unique(), reverse=True)
+                dia = st.selectbox(
+                    "Dia", dias_disponiveis, format_func=lambda d: d.strftime("%d/%m/%Y")
+                )
+                curva = consultas.ocupacao_do_dia(df, dia)
+                if curva.empty:
+                    st.info("Sem eventos nesse dia.")
+                else:
+                    st.line_chart(curva.set_index("instante")["ocupacao"], height=260)
+                    st.caption(
+                        "Entradas acumuladas menos saídas. É **estimativa**: uma saída não detectada "
+                        "mantém a curva alta pelo resto do dia."
+                    )
+
+            with col_b:
+                st.subheader("Média por dia da semana")
+                media = consultas.media_por_dia_da_semana(df)
+                if media.empty:
+                    st.info("Sem dados suficientes.")
+                else:
+                    st.bar_chart(media.set_index("nome")["media_entradas"], height=260)
+                    st.caption("Base para planejar evento, prova e escala em dia fraco.")
+
+            with st.expander("Eventos brutos"):
+                st.dataframe(
+                    df[["instante", "camera_id", "direcao", "track_id_local", "confianca"]]
+                    .rename(columns={
+                        "instante": "Instante", "camera_id": "Entrada", "direcao": "Direção",
+                        "track_id_local": "Track", "confianca": "Confiança",
+                    }),
+                    hide_index=True, use_container_width=True, height=320,
+                )
+                st.caption(f"{len(df)} eventos.")
+
+    _fluxo()
 
 # ==================================================================== Pessoas
 with aba_pessoas:

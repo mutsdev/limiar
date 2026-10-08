@@ -139,7 +139,10 @@ class TestModoContinuo:
         assert resultado.entradas == 1
         assert sum(len(lote) for lote in remetente.lotes) == 1
 
-    def test_lote_cheio_drena_a_fila_local(self):
+    def test_lote_cheio_drena_a_fila_local(self, monkeypatch):
+        # Isola o gatilho por tamanho: com o envio por tempo ativo, os eventos
+        # (1 por segundo) sairiam antes de o lote encher.
+        monkeypatch.setattr(processador, "INTERVALO_ENVIO_S", 3600.0)
         por_quadro = {i: [evento(track=i, segundos=i)] for i in range(25)}
         remetente = RemetenteFalso(tamanho_fila=3)
         processador.processar(

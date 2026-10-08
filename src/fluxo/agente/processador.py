@@ -30,7 +30,7 @@ TAMANHO_LOTE = 25
 # levam uma tarde; nesse meio-tempo o painel não vê nada e, se o agente
 # morrer, o que estava na memória morre junto — o supervisor relança o
 # processo, não a memória.
-INTERVALO_ENVIO_S = 30.0
+INTERVALO_ENVIO_S = 3.0  # curto: o painel no projetor precisa ver a travessia já
 
 
 @dataclass

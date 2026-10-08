@@ -78,11 +78,61 @@ cameras:
   entrada_real:
     nome: Entrada da faculdade
     local: PC 24h com o hardware do time de C++
-    fonte: http://10.254.161.110:81/stream
+    fonte: http://10.105.231.36:81/stream
     lado_dentro: 1
     ativa: true
     nota: 'Calibrada na cena real em 01/09/2026, com a XIAO ESP32S3 em VGA. A linha
       esta em pixels de 640x480: se alguem mexer no FRAMESIZE do firmware, ela deixa
       de valer e precisa ser recalibrada. O IP vem por DHCP - se a placa reiniciar
       e trocar de endereco, atualize a fonte. Detalhes do firmware em docs/contrato-hardware.md.'
-    linha: [253, 447, 458, 438]
+    linha: [120, 380, 373, 421]
+  catraca_metro:
+    nome: Catraca de metro
+    local: Estacao em 4K, passagem canalizada uma pessoa por vez
+    ativa: false
+    nota: 'Catraca de metro em 4K: passagem canalizada, uma pessoa por vez. Video
+      nao versionado (dados/videos/FONTES.md).'
+    fonte: dados/videos/05_catraca_metro_4k.mp4
+    linha: [2655, 0, 2655, 2160]
+    lado_dentro: -1
+  escada_rolante:
+    nome: Escada rolante
+    local: Shopping em 1080p, dois sentidos ao mesmo tempo
+    ativa: false
+    nota: 'Escada rolante: dois sentidos simultaneos em planos diferentes, gente parada
+      durante a travessia. O clipe e preto-e-branco e de foco suave - serve para contagem,
+      nao para julgar aparencia na Etapa 2. Nao versionado.'
+    fonte: dados/videos/06_escada_rolante_1080p.mp4
+    linha: [0, 970, 1920, 970]
+    lado_dentro: -1
+  shopping_multidao:
+    nome: Shopping, camera alta (multidao)
+    local: Saguao de shopping em 4K, pessoas atravessando o piso inferior
+    ativa: false
+    nota: 'Shopping em 4K, 86 s: 157 tracks, oclusao entre pessoas e a regra - caso
+      mais duro do acervo para a Etapa 2. A linha vai de y=900 para baixo porque a
+      vertical inteira cruzaria tambem a passarela do piso de cima, somando dois fluxos
+      num numero so. Video nao versionado.'
+    fonte: dados/videos/04_shopping_multidao_4k.mp4
+    linha: [835, 900, 835, 2160]
+    lado_dentro: -1
+  mot17_02:
+    nome: MOT17-02 (avaliacao)
+    local: Praca em Veneza, camera fixa, fluxo cruzado
+    fonte: dados/videos/MOT17-02/img1/%06d.jpg
+    linha: [990, 0, 990, 1080]
+    lado_dentro: -1
+    ativa: false
+    nota: x=990 e cruzado por 21 das 62 pessoas anotadas e cai em calcada aberta -
+      conferido no quadro 250, longe do tronco da arvore (x~620). Baixe a sequencia
+      com scripts/baixar_mot.py.
+  mot17_04:
+    nome: MOT17-04 (avaliacao)
+    local: Rua comercial a noite, camera alta e fixa, multidao densa
+    fonte: dados/videos/MOT17-04/img1/%06d.jpg
+    linha: [455, 0, 455, 1080]
+    lado_dentro: -1
+    ativa: false
+    nota: 'x=455 e cruzado por 22 das 83 pessoas anotadas - conferido no quadro 250,
+      a esquerda do poste de luz (x~675). Cena noturna e densa: e o caso em que a
+      deteccao, nao a geometria, limita a contagem.'

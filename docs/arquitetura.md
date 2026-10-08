@@ -65,10 +65,15 @@ reenvio ser seguro e, portanto, de a fila local poder existir.
 Quando o serviço não responde, o agente grava em JSONL e segue contando. Na
 execução seguinte, drena antes de começar.
 
-Os eventos sobem em lote de 25 **ou quando o mais velho da fila completa 30 s**
+Os eventos sobem em lote de 25 **ou quando o mais velho da fila completa 3 s**
 (`INTERVALO_ENVIO_S`), o que vier primeiro. Só por tamanho, uma tarde de pouco
 movimento deixaria até 24 travessias fora do painel — e fora do banco se o
 agente morresse, porque o supervisor relança o processo, não a memória.
+
+Eram 30 s até a Uniube Aberta (26/09/2026), quando o painel no projetor
+precisou mostrar a travessia na hora. Com o serviço na mesma máquina, enviar
+mais vezes não custa nada, e a perda máxima se o agente morrer cai de 30 s
+para 3 s de eventos.
 
 JSONL e não JSON único: uma queda no meio da escrita corrompe no máximo a
 última linha, e as anteriores continuam legíveis.
