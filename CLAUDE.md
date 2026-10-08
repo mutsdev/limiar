@@ -1,4 +1,4 @@
-# fluxo-faculdade
+# limiar
 
 Veja `README.md` desta pasta para o que o projeto é.
 
